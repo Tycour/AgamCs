@@ -1,13 +1,13 @@
 # AgamCs
 
 ## Description
-This module fetches conservation scores and creates a heatmap based on genomic coordinates.
+This package fetches conservation scores and creates a heatmap based on genomic coordinates.
 
-## Usage
+## Example Usage
 ```commandline
 AgamCs --region 3R:5886340-5889928 --output AGAP008118.png
 ```
-
+![AGAP008118.png](data/AGAP008118.png)
 
 ## Setup
 
