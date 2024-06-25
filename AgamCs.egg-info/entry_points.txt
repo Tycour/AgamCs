@@ -1,0 +1,2 @@
+[console_scripts]
+AgamCs = AgamCs.main:main

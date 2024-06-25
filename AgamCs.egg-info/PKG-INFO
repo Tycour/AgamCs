@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: AgamCs
+Version: 0.1
+Requires-Dist: pandas
+Requires-Dist: seaborn
+Requires-Dist: matplotlib
+Requires-Dist: h5py

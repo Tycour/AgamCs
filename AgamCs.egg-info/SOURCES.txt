@@ -1,0 +1,12 @@
+README.md
+setup.py
+AgamCs/__init__.py
+AgamCs/create_heatmap.py
+AgamCs/fetch_score.py
+AgamCs/main.py
+AgamCs.egg-info/PKG-INFO
+AgamCs.egg-info/SOURCES.txt
+AgamCs.egg-info/dependency_links.txt
+AgamCs.egg-info/entry_points.txt
+AgamCs.egg-info/requires.txt
+AgamCs.egg-info/top_level.txt
