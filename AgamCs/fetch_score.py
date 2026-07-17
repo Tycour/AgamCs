@@ -1,8 +1,28 @@
 # fetch_score.py
 
-import os
+from pathlib import Path
 import h5py
 import pandas as pd
+
+
+DATASET_FILENAME = 'AgamP4_conservation.h5'
+
+
+def get_dataset_path():
+    """Return the HDF5 dataset path, preferring the current project data dir."""
+    project_data_path = Path(__file__).resolve().parents[1] / 'data' / DATASET_FILENAME
+    cwd_data_path = Path.cwd() / 'data' / DATASET_FILENAME
+
+    if project_data_path.exists():
+        return project_data_path
+    if cwd_data_path.exists():
+        return cwd_data_path
+
+    checked_paths = f'{project_data_path} or {cwd_data_path}'
+    raise FileNotFoundError(
+        f'Dataset file does not exist. Download {DATASET_FILENAME} from the README link '
+        f'and place it at {project_data_path}. Checked: {checked_paths}'
+    )
 
 
 def fetch_scores(region, arrays, output_file):
@@ -19,9 +39,6 @@ def fetch_scores(region, arrays, output_file):
         FileNotFoundError: If the HDF5 dataset file does not exist.
     """
 
-    # Path to the HDF5 data file
-    file_name = 'data/AgamP4_conservation.h5'
-
     def parse_region(region_string):
         """
         Parses the region string to extract chromosome, start, and end positions.
@@ -36,11 +53,7 @@ def fetch_scores(region, arrays, output_file):
         start, end = positions.split('-')
         return chromosome, int(start), int(end)
 
-    # Check if the data file exists
-    if not os.path.exists(file_name):
-        raise FileNotFoundError(
-            'Dataset file does not exist. Please download it from the provided link and place it in the "data" directory.'
-        )
+    file_name = get_dataset_path()
 
     # Parse the region string to get chromosome, start, and end positions
     chromosome, start, end = parse_region(region)
@@ -53,7 +66,7 @@ def fetch_scores(region, arrays, output_file):
 
         for array in arrays:
             # Extract the values for the specified region and array
-            values = root[chromosome][array][:, start - 1:end - 1]
+            values = root[chromosome][array][:, start - 1:end]
             # Extract the row names (attributes of the array)
             row_names = root[chromosome][array].attrs['rows']
 
