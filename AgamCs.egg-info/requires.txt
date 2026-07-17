@@ -1,4 +1,0 @@
-pandas
-seaborn
-matplotlib
-h5py

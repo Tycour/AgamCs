@@ -3,11 +3,33 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Data files
+# Local datasets and generated lookup caches
 data/AgamP4_conservation.h5
+data/AgamP4_mean_Cs.csv
+data/VectorBase-68_AgambiaePEST_Genome.fasta
+data/VectorBase-68_AgambiaePEST_Genome.fasta.fai
+data/accession_annotation_cache.json
+data/accession_region_cache.json
+
+# Generated plot outputs and intermediate score files
+results/
+
+# Local analysis and reference files not consumed by the plotting package
+notebooks/
+MK_hist_AGAPs.txt.rtf
+miR989 MSA.txt
+tRNASec MSA.txt
+
+# Python build, package, and test artifacts
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.coverage
+htmlcov/
 
 # Jupyter Notebook checkpoints
-.ipynb_checkpoints
+.ipynb_checkpoints/
 
 # Environment
 .env
@@ -20,3 +42,9 @@ venv.bak/
 
 # VS Code
 .vscode/
+
+# JetBrains IDEs
+.idea/
+
+# macOS
+.DS_Store
