@@ -1,22 +1,29 @@
-# fetch_score.py
+"""Read AgamP4 conservation scores from local HDF5 or remote byte ranges."""
 
+from contextlib import contextmanager
 from pathlib import Path
+
 import h5py
 import pandas as pd
 
 
 DATASET_FILENAME = 'AgamP4_conservation.h5'
+REFERENCE_FILENAME = 'AgamP4_conservation.kerchunk.json'
+DEFAULT_REMOTE_URL = (
+    'https://zenodo.org/api/records/4304586/files/'
+    'AgamP4_conservation.h5/content'
+)
+DATA_SOURCES = ('auto', 'local', 'remote')
 
 
 def get_dataset_path():
-    """Return the HDF5 dataset path, preferring the current project data dir."""
+    """Return the local HDF5 path, preferring the project data directory."""
     project_data_path = Path(__file__).resolve().parents[1] / 'data' / DATASET_FILENAME
     cwd_data_path = Path.cwd() / 'data' / DATASET_FILENAME
 
-    if project_data_path.exists():
-        return project_data_path
-    if cwd_data_path.exists():
-        return cwd_data_path
+    for path in (project_data_path, cwd_data_path):
+        if path.exists():
+            return path
 
     checked_paths = f'{project_data_path} or {cwd_data_path}'
     raise FileNotFoundError(
@@ -25,73 +32,169 @@ def get_dataset_path():
     )
 
 
-def fetch_scores(region, arrays, output_file):
-    """
-    Fetches conservation scores from the HDF5 file based on the specified region and arrays,
-    and saves the results to a specified output file.
+def get_reference_path(reference_file=None):
+    """Return the bundled Kerchunk reference index or a requested override."""
+    if reference_file:
+        path = Path(reference_file).expanduser().resolve()
+        if path.exists():
+            return path
+        raise FileNotFoundError(f'Kerchunk reference index does not exist: {path}')
 
-    Args:
-        region (str): Genomic region in the format 'chromosome:start-end' (e.g., '3R:5886340-5889928').
-        arrays (str): Comma-separated list of arrays to access (e.g., 'Cs,score,snp_density,stack,stack_norm,phyloP').
-        output_file (str): Name of the output file where data will be saved (e.g., 'results.tsv').
+    package_path = Path(__file__).resolve().parent / 'data' / REFERENCE_FILENAME
+    project_path = Path(__file__).resolve().parents[1] / 'data' / REFERENCE_FILENAME
+    cwd_path = Path.cwd() / 'data' / REFERENCE_FILENAME
 
-    Raises:
-        FileNotFoundError: If the HDF5 dataset file does not exist.
-    """
+    for path in (package_path, project_path, cwd_path):
+        if path.exists():
+            return path
 
-    def parse_region(region_string):
-        """
-        Parses the region string to extract chromosome, start, and end positions.
+    raise FileNotFoundError(
+        f'Kerchunk reference index does not exist. Checked: '
+        f'{package_path}, {project_path}, or {cwd_path}'
+    )
 
-        Args:
-            region_string (str): Region string in the format 'chromosome:start-end'.
 
-        Returns:
-            tuple: A tuple containing the chromosome (str), start (int), and end (int) positions.
-        """
-        chromosome, positions = region_string.split(':')
-        start, end = positions.split('-')
-        return chromosome, int(start), int(end)
+def parse_region(region_string):
+    """Parse a one-based inclusive ``chromosome:start-end`` region."""
+    try:
+        chromosome, positions = region_string.split(':', maxsplit=1)
+        start_text, end_text = positions.replace(',', '').split('-', maxsplit=1)
+        start, end = int(start_text), int(end_text)
+    except (AttributeError, TypeError, ValueError) as error:
+        raise ValueError(
+            f'Invalid region {region_string!r}; expected chromosome:start-end.'
+        ) from error
 
-    file_name = get_dataset_path()
+    if not chromosome or start < 1 or end < start:
+        raise ValueError(
+            f'Invalid region {region_string!r}; coordinates must satisfy 1 <= start <= end.'
+        )
+    return chromosome, start, end
 
-    # Parse the region string to get chromosome, start, and end positions
+
+def _resolve_data_source(data_source):
+    if data_source not in DATA_SOURCES:
+        choices = ', '.join(DATA_SOURCES)
+        raise ValueError(f'Unknown data source {data_source!r}; choose one of: {choices}.')
+
+    if data_source != 'auto':
+        return data_source
+
+    try:
+        get_dataset_path()
+    except FileNotFoundError:
+        return 'remote'
+    return 'local'
+
+
+@contextmanager
+def open_score_store(data_source='auto', reference_file=None, remote_url=None):
+    """Open the local HDF5 file or its remote Kerchunk/Zarr representation."""
+    resolved_source = _resolve_data_source(data_source)
+    if resolved_source == 'local':
+        with h5py.File(get_dataset_path(), mode='r') as root:
+            yield root
+        return
+
+    try:
+        import fsspec
+        import zarr
+    except ImportError as error:
+        raise ImportError(
+            'Remote access requires fsspec[http] and zarr. Reinstall AgamCs '
+            'with its current dependencies.'
+        ) from error
+
+    reference_path = get_reference_path(reference_file)
+    template_overrides = None
+    if remote_url:
+        template_overrides = {'source': remote_url}
+
+    filesystem = fsspec.filesystem(
+        'reference',
+        fo=str(reference_path),
+        template_overrides=template_overrides,
+        asynchronous=True,
+        remote_options={'asynchronous': True},
+        skip_instance_cache=True,
+    )
+    store = zarr.storage.FsspecStore(
+        filesystem,
+        path='',
+        read_only=True,
+    )
+    root = zarr.open_group(
+        store=store,
+        mode='r',
+        zarr_format=2,
+    )
+    yield root
+
+
+def _column_names(array, dataset, values):
+    row_names = dataset.attrs['rows']
+    if values.shape[0] == 1:
+        row_names = [row_names[0]]
+
+    names = []
+    for row_name in row_names:
+        if isinstance(row_name, bytes):
+            row_name = row_name.decode('utf-8')
+        names.append(f'{array}_{row_name}')
+    return names
+
+
+def scores_dataframe(root, region, arrays):
+    """Extract a region from an HDF5- or Zarr-like root into a DataFrame."""
     chromosome, start, end = parse_region(region)
-    # Split the arrays string into a list of arrays
-    arrays = arrays.split(',')
+    array_names = arrays.split(',') if isinstance(arrays, str) else list(arrays)
+    array_names = [name.strip() for name in array_names if name.strip()]
+    if not array_names:
+        raise ValueError('At least one score array must be requested.')
 
-    # Open the HDF5 file
-    with h5py.File(file_name, mode='r') as root:
-        combined_df = pd.DataFrame()
+    if chromosome not in root:
+        raise ValueError(f'Chromosome {chromosome!r} is not present in the dataset.')
 
-        for array in arrays:
-            # Extract the values for the specified region and array
-            values = root[chromosome][array][:, start - 1:end]
-            # Extract the row names (attributes of the array)
-            row_names = root[chromosome][array].attrs['rows']
+    chromosome_group = root[chromosome]
+    frames = []
+    for array in array_names:
+        if array not in chromosome_group:
+            raise ValueError(f'Array {array!r} is not available for chromosome {chromosome}.')
 
-            if values.shape[0] == 1:
-                # If there is only one row, create a DataFrame with a single column
-                df = pd.DataFrame(values.T, columns=[f"{array}_{row_names[0]}"])
-            else:
-                # If there are multiple rows, create a DataFrame with multiple columns
-                df = pd.DataFrame(values.T, columns=[f"{array}_{name}" for name in row_names])
+        dataset = chromosome_group[array]
+        chromosome_length = dataset.shape[1]
+        if end > chromosome_length:
+            raise ValueError(
+                f'Region ends at {end:,}, beyond chromosome {chromosome} length '
+                f'{chromosome_length:,}.'
+            )
 
-            if combined_df.empty:
-                # If the combined DataFrame is empty, initialize it with the current DataFrame
-                combined_df = df
-            else:
-                # Otherwise, concatenate the current DataFrame to the combined DataFrame
-                combined_df = pd.concat([combined_df, df], axis=1)
+        values = dataset[:, start - 1:end]
+        frames.append(pd.DataFrame(values.T, columns=_column_names(array, dataset, values)))
 
-        # Add the chromosome and position columns to the combined DataFrame
-        combined_df['chromosome'] = chromosome
-        combined_df['pos'] = pd.Series(range(start, end + 1))
+    combined_df = pd.concat(frames, axis=1)
+    combined_df.insert(0, 'pos', range(start, end + 1))
+    combined_df.insert(0, 'chromosome', chromosome)
+    return combined_df
 
-        # Reorder the columns to place 'chromosome' and 'pos' at the beginning
-        cols = combined_df.columns.tolist()
-        combined_df = combined_df.loc[:, cols[-2:] + cols[:-2]]
 
-        # Save the combined DataFrame to the output file in TSV format
-        combined_df.to_csv(output_file, sep='\t', index=False)
-        print(f'Saved to {output_file}')
+def fetch_scores(
+    region,
+    arrays,
+    output_file,
+    data_source='auto',
+    reference_file=None,
+    remote_url=None,
+):
+    """Fetch conservation scores and write them as a tab-separated file.
+
+    ``data_source='auto'`` uses a local HDF5 file when available and otherwise
+    streams the required compressed chunks from Zenodo through the bundled
+    Kerchunk reference index.
+    """
+    with open_score_store(data_source, reference_file, remote_url) as root:
+        combined_df = scores_dataframe(root, region, arrays)
+
+    combined_df.to_csv(output_file, sep='\t', index=False)
+    print(f'Saved to {output_file}')
+    return combined_df

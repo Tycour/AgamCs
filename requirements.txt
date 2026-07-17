@@ -2,3 +2,10 @@ pandas
 seaborn
 matplotlib
 h5py
+fsspec>=2025.2.0
+aiohttp>=3.10
+requests>=2.32
+zarr>=3.0.1,<4
+kerchunk>=0.2.10
+shiny>=1.6
+pytest

@@ -21,6 +21,9 @@ def process_region(
     keep_tsv=True,
     results_root='results',
     gene_annotation=None,
+    data_source='auto',
+    reference_file=None,
+    remote_url=None,
 ):
     from .create_heatmap import create_heatmap, plot_cs_snp_density
     from .fetch_score import fetch_scores
@@ -30,7 +33,14 @@ def process_region(
     os.makedirs(results_dir, exist_ok=True)
 
     tsv_filename = os.path.join(results_dir, 'temp_scores.tsv')
-    fetch_scores(region, 'Cs,score,snp_density,stack,stack_norm,phyloP', tsv_filename)
+    fetch_scores(
+        region,
+        'Cs,score,snp_density,stack,stack_norm,phyloP',
+        tsv_filename,
+        data_source=data_source,
+        reference_file=reference_file,
+        remote_url=remote_url,
+    )
 
     heatmap_path = os.path.join(results_dir, f"{output_name}_heatmap.png")
     create_heatmap(tsv_filename, heatmap_path)
@@ -124,6 +134,20 @@ def main():
     parser.add_argument('--output', default='AgamCs', help='Output name for single runs or the batch directory name')
     parser.add_argument('--keep-tsv', action='store_true', default=True,
                         help='Keep the intermediate TSV file with the same name as the output image')
+    parser.add_argument(
+        '--data-source',
+        choices=('auto', 'local', 'remote'),
+        default='auto',
+        help='Use local HDF5, remote Zenodo range reads, or auto-detect (default: auto)',
+    )
+    parser.add_argument(
+        '--reference-file',
+        help='Optional path to a Kerchunk reference JSON for remote reads',
+    )
+    parser.add_argument(
+        '--remote-url',
+        help='Optional HDF5 mirror URL to substitute for the bundled Zenodo URL',
+    )
     parser.add_argument('--highlight', nargs='+',
                         help='One or more ranges to highlight. E.g., --highlight 5887000-5888000')
 
@@ -141,6 +165,9 @@ def main():
             args.keep_tsv,
             results_root,
             gene_annotation,
+            args.data_source,
+            args.reference_file,
+            args.remote_url,
         )
 
 

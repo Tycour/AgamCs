@@ -9,6 +9,18 @@ AgamCs --region 3R:5886340-5889928 --output AGAP008118.png
 ```
 ![AGAP008118.png](data/AGAP008118.png)
 
+AgamCs now uses the local HDF5 file when it is present and otherwise streams
+only the compressed chunks required for the requested interval from the
+Zenodo archive:
+
+```commandline
+AgamCs --data-source remote --region 3R:5886340-5889928 --output AGAP008118
+```
+
+The web prototype requests only the three arrays consumed by its plot: `Cs`,
+`snp_density`, and the 21-row `stack`. The CLI retains its six original score
+families. Neither mode downloads or caches the full 3.7 GB HDF5 file.
+
 ## Batch accession usage
 
 To process genes by accession number, pass one or more `AGAP...` IDs. AgamCs
@@ -65,9 +77,49 @@ AGAP008118	3R	5886340	5889928
 pip install -r requirements.txt
 ```
 
-### 2. Download the data file:
+### 2. Choose remote or local data
+
+No data download is required for the remote prototype. `--data-source auto`
+is the default: it uses a local dataset when one is available, then falls back
+to the bundled Kerchunk index and Zenodo range requests.
+
+To work offline, download the archival file:
+
 Download the `AgamP4_conservation.h5` file from the following link:
 [Download AgamP4_conservation.h5](https://zenodo.org/record/4304586/files/AgamP4_conservation.h5)
 
-### 3. Place the data file:
 Place the downloaded `AgamP4_conservation.h5` file in the `data` directory within the project.
+
+Force either mode when testing:
+
+```commandline
+AgamCs --data-source remote --region 3R:5886340-5889928 --output remote_test
+AgamCs --data-source local --region 3R:5886340-5889928 --output local_test
+```
+
+### 3. Run the web prototype
+
+The Shiny prototype uses the remote source by default and keeps each browser
+session's generated files isolated in a temporary directory:
+
+```commandline
+shiny run AgamCs.app:app
+```
+
+Open `http://127.0.0.1:8000`, enter an AgamP4 interval, and click **Run**.
+
+## Kerchunk index maintenance
+
+The committed reference JSON contains byte offsets and compression metadata,
+not conservation data. It is about 700 KB and points at the immutable Zenodo
+record. Rebuild it only when the archived HDF5 source changes:
+
+```commandline
+python tools/build_kerchunk_reference.py
+```
+
+The generator publishes the CLI's six score arrays by default. It also divides
+the otherwise-contiguous `phyloP` byte range into 65,536-base virtual chunks,
+so a small remote query does not transfer an entire chromosome. Pass an
+explicit list with `--arrays` to build a narrower index. After rebuilding,
+compare a remote interval with the local HDF5 before publishing the new index.
