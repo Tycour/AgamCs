@@ -72,10 +72,19 @@ AGAP008118	3R	5886340	5889928
 
 ## Setup
 
-### 1. Install the required packages:
+### 1. Install the required packages
+
+For development, use a project-specific virtual environment so the web and
+test dependencies do not modify another environment:
+
 ```commandline
-pip install -r requirements.txt
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e ".[web,test]"
 ```
+
+On Windows PowerShell, activate it with `.venv\Scripts\Activate.ps1`.
 
 ### 2. Choose remote or local data
 
@@ -97,16 +106,51 @@ AgamCs --data-source remote --region 3R:5886340-5889928 --output remote_test
 AgamCs --data-source local --region 3R:5886340-5889928 --output local_test
 ```
 
-### 3. Run the web prototype
+### 3. Run the lab web demo
 
-The Shiny prototype uses the remote source by default and keeps each browser
+The Shiny app uses the remote source by default and keeps each browser
 session's generated files isolated in a temporary directory:
 
 ```commandline
 shiny run AgamCs.app:app
 ```
 
-Open `http://127.0.0.1:8000`, enter an AgamP4 interval, and click **Run**.
+Open `http://127.0.0.1:8000` and choose one query mode:
+
+- **Gene accession** resolves an `AGAP...` identifier, applies optional padding,
+  and adds the representative transcript model to the Cs profile.
+- **Genomic region** accepts a one-based inclusive AgamP4 interval such as
+  `3R:5886340-5889928` and plots it without assuming a transcript.
+
+Optional highlight ranges use absolute genomic `start-end` coordinates. Enter
+multiple ranges with commas, spaces, semicolons, or new lines. After clicking
+**Generate plots**, the app reports progress and shows either a concise error or
+the resolved interval. Successful runs provide tabs for the annotated Cs
+profile and heatmap plus download buttons for both PNGs and the source TSV.
+
+The web demo limits a request to 250,000 bp to keep browser sessions responsive
+and bound remote reads. The CLI remains available for larger intervals. Select
+**Local HDF5** only when `data/AgamP4_conservation.h5` exists on the machine
+running Shiny; other users should leave **Zenodo (remote)** selected.
+
+Run the automated checks with:
+
+```commandline
+python -m pytest -q
+```
+
+### GitHub Pages compatibility
+
+The current app is server-backed and cannot be copied directly to GitHub Pages,
+which only serves static files. A separate Shinylive build is the intended
+static-hosting experiment: it would run Shiny and Python in each visitor's
+browser while continuing to range-read the HDF5 data from Zenodo.
+
+Before publishing that build, the accession lookup must be changed from
+`urllib.request` to a browser-compatible request path, and the remote Zarr
+reader must be tested against Shinylive's Pyodide package versions. Keep the
+server-backed app as the reference implementation until accession lookup,
+range reads, plots, and downloads all pass an exported Shinylive smoke test.
 
 ## Kerchunk index maintenance
 
