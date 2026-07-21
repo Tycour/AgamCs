@@ -4,10 +4,21 @@
 This package fetches conservation scores and creates a heatmap based on genomic coordinates.
 
 ## Example Usage
+
+Generate the current set of plots for a gene accession:
+
 ```commandline
-AgamCs --region 3R:5886340-5889928 --output AGAP008118.png
+AgamCs --accessions AGAP006241 --output AGAP006241
 ```
-![AGAP008118.png](data/AGAP008118.png)
+
+The binned summary shows the median conservation score and its percentile
+ribbons, mean SNP density, and the representative transcript model:
+
+![Binned conservation and SNP-density summary for AGAP006241](data/AGAP006241_cs_snp_summary.png)
+
+The same run also produces the cross-species sequence-identity heatmap:
+
+![Cross-species sequence-identity heatmap for AGAP006241](data/AGAP006241_heatmap.png)
 
 AgamCs now uses the local HDF5 file when it is present and otherwise streams
 only the compressed chunks required for the requested interval from the
