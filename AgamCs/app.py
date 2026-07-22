@@ -133,7 +133,7 @@ def build_plot_bundle(
     cs_profile_path = output_dir / f'{output_stem}_cs_profile.png'
 
     if progress:
-        progress(0.25, 'Reading conservation data', f'Fetching {region}')
+        progress(0.25, 'Reading scores and accessibility', f'Fetching {region}')
     fetch_scores(
         region,
         'Cs,snp_density,stack',
@@ -261,7 +261,8 @@ app_ui = ui.page_sidebar(
     ),
     ui.p(
         'Explore AgamP4 conservation scores without downloading the full 3.7 GB archive. '
-        'The remote mode reads only the compressed chunks needed for this interval.'
+        'The remote mode reads only the compressed chunks needed for this interval. '
+        'Grey SNP-density regions failed the published accessibility/QC mask and are unknown.'
     ),
     ui.output_ui('run_status'),
     ui.output_ui('download_controls'),

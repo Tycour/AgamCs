@@ -8,6 +8,46 @@ from matplotlib.font_manager import FontProperties
 from matplotlib.patches import Patch, Rectangle
 
 
+INACCESSIBLE_COLOR = '#969696'
+
+
+def _accessibility_mask(data):
+    """Return a conservative boolean callability mask from a queried TSV."""
+    if 'is_accessible' not in data:
+        # Retain support for TSVs produced before the companion track existed.
+        return pd.Series(True, index=data.index, dtype=bool)
+
+    values = data['is_accessible']
+    if pd.api.types.is_bool_dtype(values):
+        return values.fillna(False).astype(bool)
+    if pd.api.types.is_numeric_dtype(values):
+        return values.fillna(0).astype(int).eq(1)
+    return values.astype('string').str.strip().str.lower().eq('true').fillna(False)
+
+
+def _shade_inaccessible(axis, positions, accessible):
+    """Shade QC-failed bases efficiently as one stepped collection."""
+    frame = pd.DataFrame({
+        'position': pd.to_numeric(positions, errors='coerce'),
+        'accessible': pd.Series(accessible, index=getattr(positions, 'index', None)),
+    }).dropna(subset=['position']).sort_values('position')
+    if frame.empty or frame['accessible'].all():
+        return None
+    return axis.fill_between(
+        frame['position'].to_numpy(),
+        0,
+        1,
+        where=~frame['accessible'].astype(bool).to_numpy(),
+        step='mid',
+        transform=axis.get_xaxis_transform(),
+        color=INACCESSIBLE_COLOR,
+        alpha=0.22,
+        linewidth=0,
+        zorder=0,
+        label='Inaccessible / QC-failed (SNP density unknown)',
+    )
+
+
 def create_heatmap(input_file, output_image_path):
     import seaborn as sns
 
@@ -197,7 +237,10 @@ def plot_cs_snp_density(
     gene_annotation=None,
 ):
     """
-    Plots Cs and SNP density and adds highlighted vertical regions.
+    Plot Cs and accessibility-aware SNP density with highlighted regions.
+
+    The TSV's original density values are not changed. QC-failed bases are
+    masked in this view and shaded as positions where density is unknown.
 
     Args:
         input_file (str): Path to the input TSV file.
@@ -214,7 +257,11 @@ def plot_cs_snp_density(
 
     # Extract the Cs and SNP density columns
     cs_values = data['Cs_C']
-    snp_density_values = data['snp_density_s']
+    accessible = _accessibility_mask(data)
+    # Preserve the archived values in the TSV and mask only the plotted view.
+    snp_density_values = pd.to_numeric(
+        data['snp_density_s'], errors='coerce'
+    ).where(accessible)
 
     # Get the chromosome name and plotted interval for labeling
     chromosome = data['chromosome'].iloc[0]
@@ -271,10 +318,23 @@ def plot_cs_snp_density(
     ax1.set_ylim(0, 1)
 
     ax2 = ax1.twinx()  # Create a twin Axes sharing the x-axis
-    ax2.plot(plot_positions, snp_density_values, color='green', label='SNP Density')
+    snp_line, = ax2.plot(
+        plot_positions,
+        snp_density_values,
+        color='green',
+        label='SNP density (accessible bases)',
+    )
+    inaccessible_patch = _shade_inaccessible(ax2, plot_positions, accessible)
     ax2.set_ylabel('SNP Density', color='green')
     ax2.tick_params(axis='y', labelcolor='green')
     ax2.set_ylim(0, 1)
+    if inaccessible_patch is not None:
+        ax2.legend(
+            handles=[snp_line, inaccessible_patch],
+            loc='upper right',
+            frameon=False,
+            fontsize=8,
+        )
 
     ax1.set_title('Cs and SNP Density')
 

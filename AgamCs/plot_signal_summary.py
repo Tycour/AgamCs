@@ -14,7 +14,12 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from matplotlib.ticker import FuncFormatter, MaxNLocator
 
-from .create_heatmap import _draw_gene_model, _gene_coordinate_mapper
+from .create_heatmap import (
+    _accessibility_mask,
+    _draw_gene_model,
+    _gene_coordinate_mapper,
+    _shade_inaccessible,
+)
 
 
 CONSERVATION_COLOR = '#175a9e'
@@ -60,6 +65,42 @@ def _bin_signal(positions, values, bins=240):
     return summary.reset_index(drop=True)
 
 
+def _bin_snp_signal(positions, values, accessible, bins=240):
+    """Bin SNP density over callable bases without converting unknowns to zero."""
+    if bins < 1:
+        raise ValueError('bins must be at least 1')
+
+    frame = pd.DataFrame({
+        'position': pd.to_numeric(positions, errors='coerce'),
+        'value': pd.to_numeric(values, errors='coerce'),
+        'accessible': pd.Series(accessible, index=getattr(positions, 'index', None)),
+    }).dropna(subset=['position'])
+    if frame.empty:
+        raise ValueError('The SNP-density signal contains no finite positions.')
+    frame['accessible'] = frame['accessible'].fillna(False).astype(bool)
+
+    minimum = frame['position'].min()
+    maximum = frame['position'].max()
+    span = maximum - minimum
+    bin_count = min(int(bins), len(frame))
+    if span == 0:
+        frame['_bin'] = 0
+    else:
+        frame['_bin'] = (
+            ((frame['position'] - minimum) * bin_count / span)
+            .astype(int)
+            .clip(upper=bin_count - 1)
+        )
+
+    frame['callable_value'] = frame['value'].where(frame['accessible'])
+    grouped = frame.groupby('_bin', sort=True)
+    return grouped.agg(
+        position=('position', 'mean'),
+        mean=('callable_value', 'mean'),
+        callable_fraction=('accessible', 'mean'),
+    ).reset_index(drop=True)
+
+
 def _parse_highlight_ranges(ranges, to_plot_position):
     """Convert genomic ``start-end`` strings into displayed coordinates."""
     parsed = []
@@ -99,8 +140,9 @@ def plot_cs_snp_summary(
     profile.
 
     Args:
-        input_file (str): Input TSV containing ``pos``, ``Cs_C``, and
-            ``snp_density_s`` columns.
+        input_file (str): Input TSV containing ``pos``, ``Cs_C``,
+            ``snp_density_s``, and ``is_accessible`` columns. SNP-density
+            means exclude QC-failed positions.
         output_image_path (str): Destination for the new summary PNG.
         highlight_ranges (list, optional): Absolute genomic ``start-end``
             intervals to shade.
@@ -112,6 +154,7 @@ def plot_cs_snp_summary(
     positions = pd.to_numeric(data['pos'], errors='coerce')
     cs_values = pd.to_numeric(data['Cs_C'], errors='coerce')
     snp_values = pd.to_numeric(data['snp_density_s'], errors='coerce')
+    accessible = _accessibility_mask(data)
 
     chromosome = data['chromosome'].iloc[0]
     start_pos = positions.min()
@@ -131,7 +174,12 @@ def plot_cs_snp_summary(
     plot_positions = positions.map(to_plot_position)
     x_limits = (plot_positions.min(), plot_positions.max())
     cs_summary = _bin_signal(plot_positions, cs_values, bins=bins)
-    snp_summary = _bin_signal(plot_positions, snp_values, bins=bins)
+    snp_summary = _bin_snp_signal(
+        plot_positions,
+        snp_values,
+        accessible,
+        bins=bins,
+    )
 
     if gene_annotation:
         fig = plt.figure(figsize=(9, 6), layout='constrained')
@@ -198,22 +246,35 @@ def plot_cs_snp_summary(
     snp_mean = snp_summary['mean'].to_numpy()
     snp_ax.fill_between(x_snp, 0, snp_mean, color=SNP_COLOR, alpha=0.25, linewidth=0)
     snp_ax.plot(x_snp, snp_mean, color=SNP_COLOR, linewidth=1.1)
+    _shade_inaccessible(snp_ax, plot_positions, accessible)
     snp_ax.set_ylim(0, 1)
     snp_ax.set_ylabel('SNP\ndensity')
     snp_ax.text(
         0.01,
         0.82,
-        'Mean within the same positional bins',
+        'Mean over accessible bases; grey marks QC-failed bases',
         transform=snp_ax.transAxes,
         fontsize=8,
         color='#4d4d4d',
         va='top',
     )
-    if snp_summary['mean'].max() == 0:
+    finite_snp_means = snp_summary['mean'].dropna()
+    if finite_snp_means.empty:
         snp_ax.text(
             0.99,
             0.82,
-            'No SNP density signal in this interval',
+            'SNP density unavailable: no accessible positions',
+            transform=snp_ax.transAxes,
+            fontsize=8,
+            color='#4d4d4d',
+            ha='right',
+            va='top',
+        )
+    elif finite_snp_means.max() == 0:
+        snp_ax.text(
+            0.99,
+            0.82,
+            'Confirmed zero among accessible positions',
             transform=snp_ax.transAxes,
             fontsize=8,
             color='#4d4d4d',
@@ -244,4 +305,3 @@ def plot_cs_snp_summary(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=150)
     plt.close(fig)
-

@@ -32,6 +32,29 @@ The web prototype requests only the three arrays consumed by its plot: `Cs`,
 `snp_density`, and the 21-row `stack`. The CLI retains its six original score
 families. Neither mode downloads or caches the full 3.7 GB HDF5 file.
 
+## SNP-density accessibility and QC
+
+Every queried TSV now includes two companion columns from the Ag1000G Phase 2
+AR1 AgamP4 accessibility map:
+
+- `is_accessible` is true only where the published site mask is PASS.
+- `quality_status` is `PASS` or lists the published FILTER reason(s), such as
+  `LowCoverage`, `HighMQ0`, or `RepeatDUST`.
+
+The archived `snp_density_s` column is preserved exactly. A stored value of
+zero is interpreted as a callable zero only when `is_accessible` is true. At
+inaccessible or QC-failed positions the plots mask SNP density and use grey to
+show that the value is missing/uncertain; the stored zero is not plotted as
+evidence of no variation. A non-PASS quality status is a site-level QC result,
+not a confirmed variant call.
+
+The bundled 5.6 MB read-only companion track packs `is_accessible` and the
+seven published `filter_*` arrays into one byte per base before chunked gzip
+compression. It covers AgamP4 chromosome arms 2L, 2R, 3L, 3R, and X and is
+queried locally in both local and remote conservation-data modes. See
+[`docs/accessibility-track.md`](docs/accessibility-track.md) for the bit schema,
+source provenance, validation, and rebuild procedure.
+
 ## Batch accession usage
 
 To process genes by accession number, pass one or more `AGAP...` IDs. AgamCs
@@ -178,3 +201,16 @@ the otherwise-contiguous `phyloP` byte range into 65,536-base virtual chunks,
 so a small remote query does not transfer an entire chromosome. Pass an
 explicit list with `--arrays` to build a narrower index. After rebuilding,
 compare a remote interval with the local HDF5 before publishing the new index.
+
+## Accessibility-track maintenance
+
+The companion track is derived from the public Ag1000G Phase 2 AR1
+`accessibility/accessibility.h5` file. Rebuild and revalidate it with:
+
+```commandline
+python tools/build_accessibility_track.py
+python -m pytest -q
+```
+
+Use `--source /path/to/accessibility.h5` for an offline source and
+`--accessibility-file /path/to/track.h5` to query an explicitly rebuilt track.

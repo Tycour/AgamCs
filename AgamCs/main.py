@@ -24,6 +24,7 @@ def process_region(
     data_source='auto',
     reference_file=None,
     remote_url=None,
+    accessibility_file=None,
 ):
     from .create_heatmap import create_heatmap, plot_cs_snp_density
     from .fetch_score import fetch_scores
@@ -40,6 +41,7 @@ def process_region(
         data_source=data_source,
         reference_file=reference_file,
         remote_url=remote_url,
+        accessibility_file=accessibility_file,
     )
 
     heatmap_path = os.path.join(results_dir, f"{output_name}_heatmap.png")
@@ -148,6 +150,10 @@ def main():
         '--remote-url',
         help='Optional HDF5 mirror URL to substitute for the bundled Zenodo URL',
     )
+    parser.add_argument(
+        '--accessibility-file',
+        help='Optional override for the bundled Ag1000G accessibility companion track',
+    )
     parser.add_argument('--highlight', nargs='+',
                         help='One or more ranges to highlight. E.g., --highlight 5887000-5888000')
 
@@ -168,6 +174,7 @@ def main():
             args.data_source,
             args.reference_file,
             args.remote_url,
+            args.accessibility_file,
         )
 
 

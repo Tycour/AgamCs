@@ -132,6 +132,10 @@ def test_annotation_plot_renders_with_genomic_highlights(tmp_path):
         'pos': [100, 200, 300, 400, 500],
         'Cs_C': [0.1, 0.3, 0.2, 0.8, 0.4],
         'snp_density_s': [0.0, 0.1, 0.0, 0.2, 0.0],
+        'is_accessible': [True, False, True, False, True],
+        'quality_status': [
+            'PASS', 'LowCoverage', 'PASS', 'RepeatDUST', 'PASS',
+        ],
     }).to_csv(input_path, sep='\t', index=False)
 
     plot_cs_snp_density(

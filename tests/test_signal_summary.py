@@ -4,7 +4,11 @@ import pytest
 
 matplotlib.use('Agg')
 
-from AgamCs.plot_signal_summary import _bin_signal, plot_cs_snp_summary
+from AgamCs.plot_signal_summary import (
+    _bin_signal,
+    _bin_snp_signal,
+    plot_cs_snp_summary,
+)
 
 
 def test_bin_signal_reports_median_and_percentile_ribbons():
@@ -29,8 +33,37 @@ def test_summary_plot_renders_without_replacing_raw_plot(tmp_path):
         'pos': range(100, 108),
         'Cs_C': [0.0, 0.8, 0.1, 0.9, 0.2, 1.0, 0.1, 0.7],
         'snp_density_s': [0.0, 0.0, 0.2, 0.0, 0.3, 0.0, 0.0, 0.1],
+        'is_accessible': [True, True, False, True, False, True, True, True],
+        'quality_status': [
+            'PASS', 'PASS', 'LowCoverage', 'PASS',
+            'RepeatDUST', 'PASS', 'PASS', 'PASS',
+        ],
     }).to_csv(input_path, sep='\t', index=False)
 
     plot_cs_snp_summary(input_path, output_path, bins=4)
 
     assert output_path.stat().st_size > 0
+
+
+def test_snp_bins_exclude_inaccessible_values_instead_of_counting_them_as_zero():
+    summary = _bin_snp_signal(
+        positions=pd.Series(range(4)),
+        values=pd.Series([0.0, 0.8, 0.5, 0.0]),
+        accessible=pd.Series([True, False, False, True]),
+        bins=2,
+    )
+
+    assert summary['mean'].tolist() == [0.0, 0.0]
+    assert summary['callable_fraction'].tolist() == [0.5, 0.5]
+
+
+def test_snp_bin_is_missing_when_it_contains_no_accessible_positions():
+    summary = _bin_snp_signal(
+        positions=pd.Series(range(4)),
+        values=pd.Series([0.0, 0.0, 0.0, 0.0]),
+        accessible=pd.Series([False, False, True, True]),
+        bins=2,
+    )
+
+    assert pd.isna(summary.loc[0, 'mean'])
+    assert summary.loc[1, 'mean'] == 0.0

@@ -7,7 +7,7 @@ setup(
     version='0.1',
     packages=find_packages(),
     include_package_data=True,
-    package_data={'AgamCs': ['data/*.json']},
+    package_data={'AgamCs': ['data/*.json', 'data/*.h5']},
     install_requires=[
         'pandas',
         'seaborn',
