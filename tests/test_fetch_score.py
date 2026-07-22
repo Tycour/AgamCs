@@ -60,6 +60,34 @@ def test_scores_dataframe_works_with_an_hdf5_like_store(tmp_path):
     assert frame['stack_species_b'].tolist() == [60, 70]
 
 
+def test_fetch_scores_queries_bundled_accessibility_columns_without_masking_density(
+    tmp_path,
+    monkeypatch,
+):
+    hdf5_path = tmp_path / 'scores.h5'
+    output_path = tmp_path / 'scores.tsv'
+    make_test_hdf5(hdf5_path)
+    monkeypatch.setattr(fetch_score, 'get_dataset_path', lambda: hdf5_path)
+
+    frame = fetch_score.fetch_scores(
+        '3R:1-3',
+        'snp_density',
+        output_path,
+        data_source='local',
+    )
+
+    assert frame.columns[:5].tolist() == [
+        'chromosome',
+        'pos',
+        'is_accessible',
+        'quality_status',
+        'snp_density_s',
+    ]
+    assert frame['is_accessible'].dtype == bool
+    assert frame['quality_status'].str.len().gt(0).all()
+    assert frame['snp_density_s'].tolist() == pytest.approx([1.0, 0.5, 0.25])
+
+
 def test_fetch_scores_passes_remote_configuration_and_writes_tsv(tmp_path, monkeypatch):
     hdf5_path = tmp_path / 'scores.h5'
     output_path = tmp_path / 'scores.tsv'

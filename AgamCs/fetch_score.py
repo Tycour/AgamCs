@@ -6,6 +6,8 @@ from pathlib import Path
 import h5py
 import pandas as pd
 
+from .accessibility import accessibility_dataframe, open_accessibility_store
+
 
 DATASET_FILENAME = 'AgamP4_conservation.h5'
 REFERENCE_FILENAME = 'AgamP4_conservation.kerchunk.json'
@@ -144,7 +146,7 @@ def _column_names(array, dataset, values):
     return names
 
 
-def scores_dataframe(root, region, arrays):
+def scores_dataframe(root, region, arrays, accessibility_root=None):
     """Extract a region from an HDF5- or Zarr-like root into a DataFrame."""
     chromosome, start, end = parse_region(region)
     array_names = arrays.split(',') if isinstance(arrays, str) else list(arrays)
@@ -175,6 +177,10 @@ def scores_dataframe(root, region, arrays):
     combined_df = pd.concat(frames, axis=1)
     combined_df.insert(0, 'pos', range(start, end + 1))
     combined_df.insert(0, 'chromosome', chromosome)
+    if accessibility_root is not None:
+        status = accessibility_dataframe(accessibility_root, region, parse_region)
+        combined_df.insert(2, 'is_accessible', status['is_accessible'].to_numpy())
+        combined_df.insert(3, 'quality_status', status['quality_status'].to_numpy())
     return combined_df
 
 
@@ -185,15 +191,24 @@ def fetch_scores(
     data_source='auto',
     reference_file=None,
     remote_url=None,
+    accessibility_file=None,
 ):
     """Fetch conservation scores and write them as a tab-separated file.
 
     ``data_source='auto'`` uses a local HDF5 file when available and otherwise
     streams the required compressed chunks from Zenodo through the bundled
-    Kerchunk reference index.
+    Kerchunk reference index. The archived score values are preserved while
+    ``is_accessible`` and ``quality_status`` are joined from the read-only
+    Ag1000G Phase 2 AR1 companion track.
     """
     with open_score_store(data_source, reference_file, remote_url) as root:
-        combined_df = scores_dataframe(root, region, arrays)
+        with open_accessibility_store(accessibility_file) as accessibility_root:
+            combined_df = scores_dataframe(
+                root,
+                region,
+                arrays,
+                accessibility_root=accessibility_root,
+            )
 
     combined_df.to_csv(output_file, sep='\t', index=False)
     print(f'Saved to {output_file}')
