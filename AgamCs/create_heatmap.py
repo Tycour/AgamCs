@@ -135,6 +135,77 @@ def _annotation_landmarks(annotation, max_exon_ticks=8):
     return positions, [landmarks[position] for position in positions]
 
 
+def _draw_landmark_labels(ax, positions, labels, font_size=8, minimum_gap_pixels=8):
+    """Draw collision-free landmark labels below a gene-model axis.
+
+    Labels are assigned greedily to the first vertical row where their rendered
+    horizontal bounds do not collide. Additional rows are created as needed,
+    so tightly clustered exon starts remain labelled without text overlap.
+    """
+    ax.set_xticks(positions)
+    ax.set_xticklabels([])
+    ax.tick_params(axis='x', labelbottom=False)
+    if not positions:
+        return []
+
+    # Resolve widths in display pixels so collision avoidance follows the
+    # actual figure size and font renderer instead of an arbitrary bp cutoff.
+    ax.figure.canvas.draw()
+    renderer = ax.figure.canvas.get_renderer()
+    font = FontProperties(size=font_size)
+    row_right_edges = []
+    annotations = []
+
+    for index, (position, label) in enumerate(zip(positions, labels)):
+        if index == 0:
+            horizontal_alignment = 'left'
+        elif index == len(positions) - 1:
+            horizontal_alignment = 'right'
+        else:
+            horizontal_alignment = 'center'
+
+        width = max(
+            renderer.get_text_width_height_descent(line, font, ismath=False)[0]
+            for line in label.splitlines()
+        )
+        display_x = ax.transData.transform((position, 0))[0]
+        if horizontal_alignment == 'left':
+            left, right = display_x, display_x + width
+        elif horizontal_alignment == 'right':
+            left, right = display_x - width, display_x
+        else:
+            left, right = display_x - width / 2, display_x + width / 2
+
+        row = next(
+            (
+                row_index
+                for row_index, previous_right in enumerate(row_right_edges)
+                if left >= previous_right + minimum_gap_pixels
+            ),
+            len(row_right_edges),
+        )
+        if row == len(row_right_edges):
+            row_right_edges.append(right)
+        else:
+            row_right_edges[row] = right
+
+        annotation = ax.annotate(
+            label,
+            xy=(position, 0),
+            xycoords=ax.get_xaxis_transform(),
+            xytext=(0, -(7 + row * 24)),
+            textcoords='offset points',
+            ha=horizontal_alignment,
+            va='top',
+            fontsize=font_size,
+            annotation_clip=False,
+        )
+        annotation.set_gid('gene-landmark-label')
+        annotations.append(annotation)
+
+    return annotations
+
+
 def _draw_gene_model(ax, annotation, x_limits):
     """Draw one representative transcript beneath the signal plot."""
     to_gene_position = _gene_coordinate_mapper(annotation)
@@ -201,23 +272,22 @@ def _draw_gene_model(ax, annotation, x_limits):
         ax.spines[side].set_visible(False)
 
     tick_positions, tick_labels = _annotation_landmarks(annotation)
-    ax.set_xticks(tick_positions, tick_labels)
-    ax.tick_params(axis='x', labelsize=8)
-    rendered_labels = ax.get_xticklabels()
-    if rendered_labels:
-        rendered_labels[0].set_ha('left')
-        rendered_labels[-1].set_ha('right')
-    plotted_span = max(1, x_limits[1] - x_limits[0])
-    for index in range(1, len(tick_positions)):
-        if tick_positions[index] - tick_positions[index - 1] < plotted_span * 0.08:
-            rendered_labels[index - 1].set_ha('right')
-            rendered_labels[index].set_ha('left')
+    landmark_labels = _draw_landmark_labels(ax, tick_positions, tick_labels)
+    label_rows = len({round(label.xyann[1]) for label in landmark_labels})
     ax.set_xlabel(
-        f"Position relative to {annotation.get('id', 'gene')} transcription start (bp)"
+        f"Position relative to {annotation.get('id', 'gene')} transcription start (bp)",
+        labelpad=8 + label_rows * 24,
     )
 
     if exons:
-        legend_items = [Patch(facecolor='#9ecae1', edgecolor='#08519c', label='UTR / exon')]
+        noncoding_label = 'UTR' if cds_start is not None and cds_end is not None else 'Exon'
+        legend_items = [
+            Patch(
+                facecolor='#9ecae1',
+                edgecolor='#08519c',
+                label=noncoding_label,
+            )
+        ]
         if cds_start is not None and cds_end is not None:
             legend_items.append(Patch(facecolor='#2171b5', edgecolor='#084594', label='CDS'))
         ax.legend(

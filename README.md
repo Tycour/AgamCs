@@ -8,7 +8,7 @@ This package fetches conservation scores and creates a heatmap based on genomic 
 Generate the current set of plots for a gene accession:
 
 ```commandline
-AgamCs --accessions AGAP006241 --output AGAP006241
+agamcs --accessions AGAP006241 --output AGAP006241
 ```
 
 The binned summary shows the median conservation score and its percentile
@@ -25,7 +25,7 @@ only the compressed chunks required for the requested interval from the
 Zenodo archive:
 
 ```commandline
-AgamCs --data-source remote --region 3R:5886340-5889928 --output AGAP008118
+agamcs --data-source remote --region 3R:5886340-5889928 --output AGAP008118
 ```
 
 The web prototype requests only the three arrays consumed by its plot: `Cs`,
@@ -62,13 +62,13 @@ will query Ensembl/VectorBase to resolve each accession to genomic coordinates
 and retrieve its canonical transcript annotation:
 
 ```commandline
-AgamCs --accessions AGAP008118 AGAP001234 --output accession_batch
+agamcs --accessions AGAP008118 AGAP001234 --output accession_batch
 ```
 
 You can also provide the accessions in a text file, one per line:
 
 ```commandline
-AgamCs --accessions-file accessions.txt --output accession_batch
+agamcs --accessions-file accessions.txt --output accession_batch
 ```
 
 Each accession is written to its own directory under `results/<output>/`.
@@ -136,8 +136,8 @@ Place the downloaded `AgamP4_conservation.h5` file in the `data` directory withi
 Force either mode when testing:
 
 ```commandline
-AgamCs --data-source remote --region 3R:5886340-5889928 --output remote_test
-AgamCs --data-source local --region 3R:5886340-5889928 --output local_test
+agamcs --data-source remote --region 3R:5886340-5889928 --output remote_test
+agamcs --data-source local --region 3R:5886340-5889928 --output local_test
 ```
 
 ### 3. Run the lab web demo
