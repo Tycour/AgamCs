@@ -10,6 +10,78 @@ from matplotlib.patches import Patch, Rectangle
 
 INACCESSIBLE_COLOR = '#969696'
 
+# The taxon order and topology follow the whole-genome alignment described in
+# https://doi.org/10.3390/insects12020097, on which this resource is based.
+# Branch lengths are deliberately omitted: the source alignment supports the
+# relationships shown here, but the heatmap is not intended to be a calibrated
+# evolutionary-distance plot.
+SPECIES_LABELS = [
+    'A. coluzzii', 'A. arabiensis', 'A. quadriannulatus', 'A. melas', 'A. merus',
+    'A. epiroticus', 'A. christyi', 'A. sinensis', 'A. minimus', 'A. maculatus',
+    'A. culicifacies', 'A. stephensi', 'A. funestus', 'A. atroparvus', 'A. dirus',
+    'A. farauti', 'A. darlingi', 'A. albimanus', 'Ae. aegypti',
+    'C. quinquefasciatus', 'D. melanogaster',
+]
+
+# Nested clades are arranged in the same top-to-bottom order as the alignment.
+SPECIES_TREE = (
+    (
+        (((('A. coluzzii', 'A. arabiensis'), 'A. quadriannulatus'),
+          ('A. melas', 'A. merus')), 'A. epiroticus'),
+        ('A. christyi', ('A. sinensis', ('A. minimus', ('A. maculatus',
+         ('A. culicifacies', ('A. stephensi', ('A. funestus',
+          ('A. atroparvus', ('A. dirus', 'A. farauti'))))))))),
+    ),
+    (('A. darlingi', 'A. albimanus'),
+     ('Ae. aegypti', ('C. quinquefasciatus', 'D. melanogaster'))),
+)
+
+CLADE_STYLES = (
+    (range(0, 5), '#2166ac', '#d9edf7'),       # gambiae complex
+    (range(5, 16), '#6a51a3', '#eee5f7'),     # other Old World Anopheles
+    (range(16, 18), '#238b45', '#e1f3e5'),    # New World Anopheles
+    (range(18, 21), '#b35806', '#fbe6cf'),    # non-Anopheles outgroups
+)
+
+
+def _draw_species_tree(ax, tree=SPECIES_TREE, labels=SPECIES_LABELS):
+    """Draw a compact cladogram whose tips align with heatmap rows."""
+    y_positions = {label: index + 0.5 for index, label in enumerate(labels)}
+
+    def depth(node):
+        if isinstance(node, str):
+            return 0
+        return 1 + max(depth(child) for child in node)
+
+    maximum_depth = depth(tree)
+
+    def draw(node):
+        if isinstance(node, str):
+            return maximum_depth, y_positions[node]
+        children = [draw(child) for child in node]
+        x = maximum_depth - depth(node)
+        child_ys = [child[1] for child in children]
+        ax.plot([x, x], [min(child_ys), max(child_ys)], color='#4d4d4d', lw=0.8)
+        for child_x, child_y in children:
+            ax.plot([x, child_x], [child_y, child_y], color='#4d4d4d', lw=0.8)
+        return x, sum(child_ys) / len(child_ys)
+
+    draw(tree)
+    ax.set_xlim(-0.25, maximum_depth + 0.15)
+    ax.set_ylim(len(labels), 0)
+    ax.axis('off')
+
+
+def _style_species_labels(ax):
+    """Colour label text and backgrounds by increasingly distant clades."""
+    for indices, foreground, background in CLADE_STYLES:
+        for index in indices:
+            label = ax.get_yticklabels()[index]
+            label.set_color(foreground)
+            label.set_fontproperties(FontProperties(style='italic', weight='semibold'))
+            label.set_bbox({'facecolor': background, 'edgecolor': 'none',
+                            'boxstyle': 'round,pad=0.16'})
+
 
 def _accessibility_mask(data):
     """Return a conservative boolean callability mask from a queried TSV."""
@@ -48,9 +120,7 @@ def _shade_inaccessible(axis, positions, accessible):
     )
 
 
-def create_heatmap(input_file, output_image_path):
-    import seaborn as sns
-
+def create_heatmap(input_file, output_image_path, gene_annotation=None):
     data = pd.read_csv(input_file, sep='\t')
 
     # Extract the relevant columns for sequence identity
@@ -63,34 +133,77 @@ def create_heatmap(input_file, output_image_path):
     # Create a custom colormap
     cmap = LinearSegmentedColormap.from_list('custom_red', ['black', 'red', 'white'])
 
-    # List of species names
-    species_labels = [
-        'A. coluzzii', 'A. arabiensis', 'A. quadriannulatus', 'A. melas', 'A. merus',
-        'A. epiroticus', 'A. christyi', 'A. sinensis', 'A. minimus', 'A. maculatus',
-        'A. culicifacies', 'A. stephensi', 'A. funestus', 'A. atroparvus', 'A. dirus',
-        'A. farauti', 'A. darlingi', 'A. albimanus', 'Ae. aegypti',
-        'C. quinquefasciatus', 'D. melanogaster'
-    ]
+    chromosome = data['chromosome'].iloc[0]
+    start_pos, end_pos = positions.min(), positions.max()
+    annotation_matches_plot = bool(
+        gene_annotation
+        and str(gene_annotation.get('chromosome')) == str(chromosome)
+        and int(gene_annotation['start']) <= end_pos
+        and int(gene_annotation['end']) >= start_pos
+    )
+    if annotation_matches_plot:
+        to_plot_position = _gene_coordinate_mapper(gene_annotation)
+    else:
+        gene_annotation = None
+        to_plot_position = lambda position: position - start_pos
 
-    # Create a heatmap
-    plt.figure(figsize=(9, 4))
-    ax = sns.heatmap(sequence_identity_cols.T, cmap=cmap, cbar_kws={'label': 'Sequence Identity'}, yticklabels=species_labels)
-    ax.set_xlabel(f"Chromosome {data['chromosome'][0]} position (bp)")
+    plot_positions = positions.map(to_plot_position)
+    order = plot_positions.sort_values().index
+    heatmap_data = sequence_identity_cols.loc[order].T
 
-    # Set species labels in italics
-    for text in ax.get_yticklabels():
-        text.set_fontproperties(FontProperties(style='italic'))
+    # The tree occupies its own narrow axis so its tips remain locked to rows;
+    # the optional gene-model axis shares the heatmap's genomic x coordinates.
+    fig = plt.figure(figsize=(12, 6 if gene_annotation else 5), layout='constrained')
+    grid = fig.add_gridspec(
+        2 if gene_annotation else 1, 2,
+        width_ratios=(1.8, 8.2),
+        height_ratios=(5, 1.55) if gene_annotation else None,
+        hspace=0.05,
+    )
+    tree_ax = fig.add_subplot(grid[0, 0])
+    ax = fig.add_subplot(grid[0, 1])
+    gene_ax = fig.add_subplot(grid[1, 1], sharex=ax) if gene_annotation else None
+
+    # Use genomic coordinates as the actual cell edges, rather than merely as
+    # tick labels, so gene features are precisely aligned even with padding.
+    sorted_positions = plot_positions.loc[order].to_numpy(dtype=float)
+    if len(sorted_positions) > 1:
+        midpoints = (sorted_positions[:-1] + sorted_positions[1:]) / 2
+        edges = [sorted_positions[0] - (midpoints[0] - sorted_positions[0]),
+                 *midpoints,
+                 sorted_positions[-1] + (sorted_positions[-1] - midpoints[-1])]
+    else:
+        edges = [sorted_positions[0] - 0.5, sorted_positions[0] + 0.5]
+    mesh = ax.pcolormesh(edges, range(len(SPECIES_LABELS) + 1), heatmap_data,
+                         cmap=cmap, shading='flat')
+    fig.colorbar(mesh, ax=ax, label='Sequence Identity', pad=0.02)
+    ax.set_ylim(len(SPECIES_LABELS), 0)
+    ax.set_yticks([index + 0.5 for index in range(len(SPECIES_LABELS))],
+                  labels=SPECIES_LABELS)
+    _style_species_labels(ax)
+    _draw_species_tree(tree_ax)
 
     # Set x-axis ticks to be regularly interspaced
-    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=7, integer=True, steps=[1, 2, 5, 10]))
 
     # Rotate the x-axis labels for better readability
-    plt.xticks(rotation=45)
+    ax.tick_params(axis='x', labelrotation=45)
+
+    x_limits = (sorted_positions.min(), sorted_positions.max())
+    ax.set_xlim(*x_limits)
+    if gene_ax is not None:
+        ax.tick_params(axis='x', which='both', bottom=False, labelbottom=False)
+        _draw_gene_model(gene_ax, gene_annotation, x_limits)
+    else:
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _pos: f'{int(x):,}'))
+        ax.set_xlabel(
+            f'Position in plotted region (bp; Chromosome {chromosome}: '
+            f'{start_pos:,}–{end_pos:,})'
+        )
 
     # Save the plot to a file
-    plt.tight_layout()
-    plt.savefig(output_image_path)
-    plt.close()
+    fig.savefig(output_image_path)
+    plt.close(fig)
 
 def _gene_coordinate_mapper(annotation):
     """Return a genomic-to-transcription coordinate transform (5' to 3')."""
