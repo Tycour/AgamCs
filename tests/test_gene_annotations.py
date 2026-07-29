@@ -5,6 +5,8 @@ import pandas as pd
 matplotlib.use('Agg')
 
 from AgamCs.create_heatmap import (
+    SPECIES_LABELS,
+    _draw_species_tree,
     _annotation_landmarks,
     _draw_gene_model,
     _gene_coordinate_mapper,
@@ -15,6 +17,23 @@ from AgamCs.gene_regions import (
     annotation_from_gff,
     resolve_accession_details,
 )
+
+
+def test_species_tree_tips_align_with_all_heatmap_rows():
+    fig, axis = plt.subplots()
+    _draw_species_tree(axis)
+
+    horizontal_tip_ys = {
+        line.get_ydata()[0]
+        for line in axis.lines
+        if len(set(line.get_ydata())) == 1
+        and max(line.get_xdata()) == axis.get_xlim()[1] - 0.15
+    }
+    assert horizontal_tip_ys == {
+        index + 0.5 for index in range(len(SPECIES_LABELS))
+    }
+    assert axis.get_ylim() == (len(SPECIES_LABELS), 0)
+    plt.close(fig)
 
 
 def example_annotation():

@@ -143,7 +143,7 @@ def build_plot_bundle(
 
     if progress:
         progress(0.65, 'Rendering plots', 'Creating the heatmap')
-    create_heatmap(scores_path, heatmap_path)
+    create_heatmap(scores_path, heatmap_path, gene_annotation=gene_annotation)
 
     if progress:
         progress(0.82, 'Rendering plots', 'Creating the Cs profile')

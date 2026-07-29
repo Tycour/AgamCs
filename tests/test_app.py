@@ -25,8 +25,9 @@ def test_build_plot_bundle_fetches_once_and_renders_downloadable_outputs(
             '3R\t11\t0.2\t0.1\n'
         )
 
-    def fake_create_heatmap(input_path, output_path):
+    def fake_create_heatmap(input_path, output_path, gene_annotation=None):
         observed['heatmap_input'] = Path(input_path)
+        observed['heatmap_gene_annotation'] = gene_annotation
         Path(output_path).write_bytes(b'heatmap')
 
     annotation = {'id': 'AGAPTEST'}
@@ -64,6 +65,7 @@ def test_build_plot_bundle_fetches_once_and_renders_downloadable_outputs(
         'data_source': 'remote',
     }
     assert observed['heatmap_input'] == scores_path
+    assert observed['heatmap_gene_annotation'] == annotation
     assert observed['summary_input'] == scores_path
     assert observed['highlights'] == ['10-10']
     assert observed['gene_annotation'] == annotation
