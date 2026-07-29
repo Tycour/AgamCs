@@ -1,10 +1,12 @@
 import matplotlib
+import matplotlib.pyplot as plt
 import pandas as pd
 
 matplotlib.use('Agg')
 
 from AgamCs.create_heatmap import (
     _annotation_landmarks,
+    _draw_gene_model,
     _gene_coordinate_mapper,
     plot_cs_snp_density,
 )
@@ -43,6 +45,53 @@ def test_minus_strand_coordinates_run_from_tss_to_tes():
     positions, labels = _annotation_landmarks(annotation)
     assert positions == [0, 300, 400]
     assert labels == ['TSS / E1\n0', 'E2\n300', 'TES\n400']
+
+
+def test_squished_exon_landmark_labels_never_overlap():
+    annotation = {
+        'id': 'AGAPDENSE',
+        'chromosome': '3L',
+        'start': 100,
+        'end': 10_100,
+        'strand': 1,
+        'transcript_id': 'AGAPDENSE-RA',
+        'exons': [
+            {'start': 100, 'end': 200},
+            {'start': 5_000, 'end': 5_020},
+            {'start': 5_050, 'end': 5_070},
+            {'start': 5_100, 'end': 5_120},
+            {'start': 5_150, 'end': 5_170},
+            {'start': 10_000, 'end': 10_100},
+        ],
+        'cds_start': 150,
+        'cds_end': 10_050,
+    }
+    fig, ax = plt.subplots(figsize=(9, 2))
+    _draw_gene_model(ax, annotation, (0, 10_000))
+    fig.canvas.draw()
+
+    renderer = fig.canvas.get_renderer()
+    labels = [artist for artist in ax.texts if artist.get_gid() == 'gene-landmark-label']
+    bounds = [label.get_window_extent(renderer) for label in labels]
+    assert len({round(label.get_window_extent(renderer).y0) for label in labels}) > 1
+    assert all(
+        not first.overlaps(second)
+        for index, first in enumerate(bounds)
+        for second in bounds[index + 1:]
+    )
+    assert [text.get_text() for text in ax.get_legend().get_texts()] == ['UTR', 'CDS']
+    plt.close(fig)
+
+
+def test_non_coding_transcript_legend_uses_exon_label():
+    annotation = example_annotation()
+    annotation.pop('cds_start')
+    annotation.pop('cds_end')
+    fig, ax = plt.subplots(figsize=(6, 2))
+    _draw_gene_model(ax, annotation, (0, 400))
+
+    assert [text.get_text() for text in ax.get_legend().get_texts()] == ['Exon']
+    plt.close(fig)
 
 
 def test_expanded_ensembl_record_uses_canonical_transcript():

@@ -25,7 +25,7 @@ setup(
     },
     entry_points={
         'console_scripts': [
-            'AgamCs=AgamCs.main:main',
+            'agamcs=AgamCs.main:main',
         ],
     },
 )
