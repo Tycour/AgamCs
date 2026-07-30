@@ -25,6 +25,11 @@ cache hits, and decoded-cache memory estimate. Chromium's non-standard heap
 measurement is shown when available; other browsers receive the deterministic
 decoded-buffer estimate.
 
+Client-side SHA-256 is an optional validation aid. If a browser exposes no
+`crypto.subtle` implementation, the query remains usable and reports that hash
+validation is unavailable rather than treating successful data retrieval as a
+benchmark failure.
+
 ## Results (30 July 2026)
 
 The pinned 1,685-base interval passed in both tested desktop engines:

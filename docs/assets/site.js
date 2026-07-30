@@ -153,9 +153,10 @@ benchmarkForm.addEventListener('submit', async (event) => {
     });
     const validation = await validationPromise;
     const matchingFixture = validation.region === `${chromosome}:${start}-${end}`;
-    const hashesMatch = matchingFixture && Object.entries(validation.arrays).every(
+    const hashesMatch = matchingFixture && result.hashAvailable && Object.entries(validation.arrays).every(
       ([name, expected]) => result.hashes[name] === expected.sha256_le_float32 && result.values[name].length === expected.count,
     );
+    const hashUnavailable = matchingFixture && !result.hashAvailable;
     const heapDelta = beforeMemory && performance.memory?.usedJSHeapSize
       ? Math.max(0, performance.memory.usedJSHeapSize - beforeMemory)
       : null;
@@ -168,12 +169,14 @@ benchmarkForm.addEventListener('submit', async (event) => {
       ? `${formatBytes(result.cold.decodedCacheBytes)} decoded estimate`
       : `${formatBytes(result.cold.decodedCacheBytes)} decoded; ${formatBytes(heapDelta)} observed heap change`;
     document.querySelector('#metric-validation').textContent = matchingFixture
-      ? (hashesMatch ? 'Exact SHA-256 match' : 'FAILED')
+      ? (hashesMatch ? 'Exact SHA-256 match' : hashUnavailable ? 'Hash unavailable; values retrieved' : 'FAILED')
       : 'No pinned local fixture for this interval';
     benchmarkMetrics.hidden = false;
     benchmarkStatus.textContent = hashesMatch
       ? 'Query complete; both arrays exactly match the local HDF5 fixture.'
-      : 'Query complete. Inspect the validation status before using these values.';
+      : hashUnavailable
+        ? 'Query complete; data retrieved, but browser hash validation is unavailable.'
+        : 'Query complete. Inspect the validation status before using these values.';
 
     if (benchmarkDownloadUrl) URL.revokeObjectURL(benchmarkDownloadUrl);
     benchmarkDownloadUrl = URL.createObjectURL(new Blob([buildTsv(result)], { type: 'text/tab-separated-values' }));

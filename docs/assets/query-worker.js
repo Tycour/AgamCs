@@ -108,7 +108,7 @@ async function query(chromosome, start, end) {
 }
 
 async function digest(values) {
-  const hash = await crypto.subtle.digest('SHA-256', values.buffer);
+  const hash = await globalThis.crypto.subtle.digest('SHA-256', values.buffer);
   return [...new Uint8Array(hash)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
@@ -118,8 +118,11 @@ self.addEventListener('message', async ({ data }) => {
     cache.clear();
     const cold = await query(data.chromosome, data.start, data.end);
     const warm = await query(data.chromosome, data.start, data.end);
+    const canHash = Boolean(globalThis.crypto?.subtle?.digest);
     const hashes = {};
-    for (const name of ARRAYS) hashes[name] = await digest(cold.values[name]);
+    if (canHash) {
+      for (const name of ARRAYS) hashes[name] = await digest(cold.values[name]);
+    }
     const transfer = ARRAYS.map((name) => cold.values[name].buffer);
     self.postMessage({
       ok: true,
@@ -128,6 +131,7 @@ self.addEventListener('message', async ({ data }) => {
       end: data.end,
       values: cold.values,
       hashes,
+      hashAvailable: canHash,
       cold: cold.metrics,
       warm: warm.metrics,
     }, transfer);
