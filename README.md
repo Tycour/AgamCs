@@ -143,6 +143,12 @@ and the rebuild procedure are in
 
 ## Web app
 
+Try the no-install, static GitHub Pages prototype from `docs/index.html`. It
+shows a precomputed example and the current plot outputs; arbitrary live
+queries still require the CLI or Shiny app. Publishing instructions and the
+prototype boundary are documented in
+[`docs/github-pages-prototype.md`](docs/github-pages-prototype.md).
+
 Start the local Shiny interface with:
 
 ```commandline

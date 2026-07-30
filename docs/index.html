@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="A static prototype of the AgamCs conservation-score explorer.">
+  <title>AgamCs conservation explorer</title>
+  <link rel="stylesheet" href="assets/site.css">
+  <script src="assets/site.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="AgamCs home">
+      <span class="brand-mark" aria-hidden="true">A</span>
+      <span>AgamCs</span>
+    </a>
+    <nav aria-label="Primary navigation">
+      <a href="#explorer">Explorer</a>
+      <a href="#interpretation">Interpretation</a>
+      <a href="https://github.com/Tycour/AgamCs">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <p class="eyebrow">AgamP4 conservation scores</p>
+        <h1>Inspect conservation around a mosquito gene.</h1>
+        <p class="lede">A browser-friendly preview of the AgamCs pipeline. Explore a precomputed gene result without installing Python or downloading the 3.7 GB source archive.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#explorer">Open the demo</a>
+          <a class="button secondary" href="https://github.com/Tycour/AgamCs#quick-start">Run your own query</a>
+        </div>
+      </div>
+      <aside class="hero-note" aria-label="Prototype status">
+        <span class="status-dot" aria-hidden="true"></span>
+        <div>
+          <strong>Static prototype</strong>
+          <p>GitHub Pages serves this interface. The current demo result is precomputed; arbitrary live queries still use the Python CLI or Shiny app.</p>
+        </div>
+      </aside>
+    </section>
+
+    <section class="workspace" id="explorer" aria-labelledby="explorer-title">
+      <form class="query-panel" id="query-form">
+        <div>
+          <p class="eyebrow">Query</p>
+          <h2 id="explorer-title">Choose a result</h2>
+        </div>
+
+        <fieldset>
+          <legend>Find scores by</legend>
+          <label class="radio-card">
+            <input type="radio" name="query-mode" value="accession" checked>
+            <span>Gene accession</span>
+          </label>
+          <label class="radio-card muted" title="Coordinate examples will be added in the next prototype.">
+            <input type="radio" name="query-mode" value="region" disabled>
+            <span>Genomic region</span>
+          </label>
+        </fieldset>
+
+        <label for="accession">Gene accession</label>
+        <select id="accession" name="accession">
+          <option value="AGAP006241">AGAP006241</option>
+        </select>
+        <p class="field-help">This prototype includes one representative, precomputed result.</p>
+
+        <label for="padding">Padding</label>
+        <select id="padding" name="padding">
+          <option value="0">0 bp</option>
+        </select>
+
+        <button class="button primary full" type="submit">Show result</button>
+        <p class="privacy-note">No query or analytics data leaves your browser.</p>
+      </form>
+
+      <div class="results-panel" aria-live="polite">
+        <div class="result-heading">
+          <div>
+            <p class="eyebrow">Demo result</p>
+            <h2>AGAP006241</h2>
+          </div>
+          <span class="ready-badge" id="result-status">Ready</span>
+        </div>
+
+        <dl class="metadata">
+          <div><dt>Assembly</dt><dd>AgamP4</dd></div>
+          <div><dt>Source</dt><dd>Precomputed</dd></div>
+          <div><dt>SNP QC</dt><dd>Accessibility-aware</dd></div>
+        </dl>
+
+        <div class="tabs" role="tablist" aria-label="Result figures">
+          <button role="tab" aria-selected="true" aria-controls="profile-panel" id="profile-tab" data-tab="profile-panel">Cs profile</button>
+          <button role="tab" aria-selected="false" aria-controls="heatmap-panel" id="heatmap-tab" data-tab="heatmap-panel">Heatmap</button>
+        </div>
+
+        <div class="figure-panel" id="profile-panel" role="tabpanel" aria-labelledby="profile-tab">
+          <img src="assets/AGAP006241_cs_snp_summary.png" alt="Binned conservation score and SNP-density profile for AGAP006241">
+          <a class="download-link" href="assets/AGAP006241_cs_snp_summary.png" download>Download profile PNG</a>
+        </div>
+        <div class="figure-panel" id="heatmap-panel" role="tabpanel" aria-labelledby="heatmap-tab" hidden>
+          <img src="assets/AGAP006241_heatmap.png" alt="Cross-species conservation heatmap for AGAP006241">
+          <a class="download-link" href="assets/AGAP006241_heatmap.png" download>Download heatmap PNG</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="interpretation" id="interpretation">
+      <div>
+        <p class="eyebrow">Read the evidence carefully</p>
+        <h2>Conservation and callability are separate signals.</h2>
+      </div>
+      <div class="explain-grid">
+        <article>
+          <span class="metric cs" aria-hidden="true"></span>
+          <h3>Conservation score</h3>
+          <p>The blue profile summarizes Cs across the displayed interval. Ribbons show within-bin variation rather than measurement uncertainty.</p>
+        </article>
+        <article>
+          <span class="metric snp" aria-hidden="true"></span>
+          <h3>SNP density</h3>
+          <p>Green is the archived 20 bp sliding-window SNP density. It is shown unchanged where quality allows interpretation.</p>
+        </article>
+        <article>
+          <span class="metric unknown" aria-hidden="true"></span>
+          <h3>Unknown positions</h3>
+          <p>Grey positions failed the accessibility mask. They are unknown—not confirmed invariant and not zero-density evidence.</p>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>AgamCs is an open-source research tool. Use the CLI for reproducible analysis and larger queries.</p>
+    <a href="https://doi.org/10.5281/zenodo.4304586">Source dataset on Zenodo</a>
+  </footer>
+</body>
+</html>
