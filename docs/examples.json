@@ -1,0 +1,125 @@
+{
+  "schema_version": 1,
+  "assembly": "AgamP4",
+  "examples": [
+    {
+      "accession": "AGAP006241",
+      "region": "2L:28585064-28586748",
+      "transcript_id": "AGAP006241-RA",
+      "strand": "+",
+      "feature_summary": "Three-exon coding transcript",
+      "description": "Compact plus-strand coding transcript used as a baseline example.",
+      "qc_note": "Accessibility-aware SNP-density display",
+      "annotation": {
+        "id": "AGAP006241",
+        "assembly": "AgamP4",
+        "chromosome": "2L",
+        "start": 28585064,
+        "end": 28586748,
+        "strand": 1,
+        "transcript_id": "AGAP006241-RA",
+        "exons": [
+          {"start": 28585064, "end": 28585457},
+          {"start": 28585566, "end": 28585757},
+          {"start": 28585828, "end": 28586748}
+        ],
+        "cds_start": 28585208,
+        "cds_end": 28586546
+      },
+      "assets": {
+        "summary": "examples/AGAP006241/cs_snp_summary.png",
+        "heatmap": "examples/AGAP006241/heatmap.png"
+      }
+    },
+    {
+      "accession": "AGAP008118",
+      "region": "3R:5886340-5904286",
+      "transcript_id": "AGAP008118-RA",
+      "strand": "−",
+      "feature_summary": "Seven-exon coding transcript",
+      "description": "Longer minus-strand transcript displayed in its 5′→3′ transcriptional orientation.",
+      "qc_note": "Mixed accessibility; failed positions remain unknown",
+      "annotation": {
+        "id": "AGAP008118",
+        "assembly": "AgamP4",
+        "chromosome": "3R",
+        "start": 5886340,
+        "end": 5904286,
+        "strand": -1,
+        "transcript_id": "AGAP008118-RA",
+        "exons": [
+          {"start": 5903941, "end": 5904286},
+          {"start": 5893337, "end": 5893558},
+          {"start": 5893009, "end": 5893232},
+          {"start": 5892751, "end": 5892928},
+          {"start": 5892379, "end": 5892521},
+          {"start": 5889619, "end": 5889825},
+          {"start": 5886340, "end": 5887383}
+        ],
+        "cds_start": 5886695,
+        "cds_end": 5893452
+      },
+      "assets": {
+        "summary": "examples/AGAP008118/cs_snp_summary.png",
+        "heatmap": "examples/AGAP008118/heatmap.png"
+      }
+    },
+    {
+      "accession": "AGAP011065",
+      "region": "3L:16180434-16185732",
+      "transcript_id": "AGAP011065-RA",
+      "strand": "−",
+      "feature_summary": "Four-exon coding transcript",
+      "description": "A minus-strand coding example with inaccessible positions, showing why a zero SNP-density value cannot be treated as confirmed invariance.",
+      "qc_note": "SNP density is unknown where the accessibility mask fails",
+      "annotation": {
+        "id": "AGAP011065",
+        "assembly": "AgamP4",
+        "chromosome": "3L",
+        "start": 16180434,
+        "end": 16185732,
+        "strand": -1,
+        "transcript_id": "AGAP011065-RA",
+        "exons": [
+          {"start": 16185247, "end": 16185732},
+          {"start": 16183094, "end": 16183282},
+          {"start": 16182178, "end": 16183027},
+          {"start": 16180434, "end": 16181021}
+        ],
+        "cds_start": 16180892,
+        "cds_end": 16185355
+      },
+      "assets": {
+        "summary": "examples/AGAP011065/cs_snp_summary.png",
+        "heatmap": "examples/AGAP011065/heatmap.png"
+      }
+    },
+    {
+      "accession": "AGAP013705",
+      "region": "3L:2905395-2905525",
+      "transcript_id": "AGAP013705-RA",
+      "strand": "+",
+      "feature_summary": "Single-exon non-coding transcript",
+      "description": "Short non-coding example: its annotation is drawn as an exon model rather than CDS and UTR blocks.",
+      "qc_note": "All positions in this displayed interval pass the companion accessibility track",
+      "annotation": {
+        "id": "AGAP013705",
+        "assembly": "AgamP4",
+        "chromosome": "3L",
+        "start": 2905395,
+        "end": 2905525,
+        "strand": 1,
+        "transcript_id": "AGAP013705-RA",
+        "exons": [
+          {"start": 2905395, "end": 2905525}
+        ],
+        "cds_start": null,
+        "cds_end": null
+      },
+      "assets": {
+        "summary": "examples/AGAP013705/cs_snp_summary.png",
+        "heatmap": "examples/AGAP013705/heatmap.png"
+      }
+    }
+  ]
+}

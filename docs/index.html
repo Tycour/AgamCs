@@ -3,8 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="A static prototype of the AgamCs conservation-score explorer.">
+  <meta name="description" content="An early research prototype for browsing precomputed AgamP4 conservation-score results.">
+  <meta name="theme-color" content="#0c675a">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="AgamCs conservation explorer">
+  <meta property="og:description" content="An early research prototype for browsing precomputed AgamP4 conservation-score results.">
+  <meta property="og:url" content="https://tycour.github.io/AgamCs/">
+  <meta property="og:image" content="https://tycour.github.io/AgamCs/assets/examples/AGAP006241/cs_snp_summary.png">
+  <meta name="twitter:card" content="summary_large_image">
   <title>AgamCs conservation explorer</title>
+  <link rel="canonical" href="https://tycour.github.io/AgamCs/">
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/site.css">
   <script src="assets/site.js" defer></script>
 </head>
@@ -35,8 +44,8 @@
       <aside class="hero-note" aria-label="Prototype status">
         <span class="status-dot" aria-hidden="true"></span>
         <div>
-          <strong>Static prototype</strong>
-          <p>GitHub Pages serves this interface. The current demo result is precomputed; arbitrary live queries still use the Python CLI or Shiny app.</p>
+          <strong>Early research prototype</strong>
+          <p>This static demonstration uses precomputed output from the AgamP4 conservation archive. Features, example results, and presentation may change; use the CLI for reproducible analysis.</p>
         </div>
       </aside>
     </section>
@@ -64,7 +73,7 @@
         <select id="accession" name="accession">
           <option value="AGAP006241">AGAP006241</option>
         </select>
-        <p class="field-help">This prototype includes one representative, precomputed result.</p>
+        <p class="field-help" id="catalogue-help">Loading the precomputed example catalogue…</p>
 
         <label for="padding">Padding</label>
         <select id="padding" name="padding">
@@ -79,15 +88,17 @@
         <div class="result-heading">
           <div>
             <p class="eyebrow">Demo result</p>
-            <h2>AGAP006241</h2>
+            <h2 id="result-title">AGAP006241</h2>
           </div>
           <span class="ready-badge" id="result-status">Ready</span>
         </div>
+        <p class="result-description" id="result-description">Compact plus-strand coding transcript used as a baseline example.</p>
 
         <dl class="metadata">
           <div><dt>Assembly</dt><dd>AgamP4</dd></div>
-          <div><dt>Source</dt><dd>Precomputed</dd></div>
-          <div><dt>SNP QC</dt><dd>Accessibility-aware</dd></div>
+          <div><dt>Region</dt><dd id="result-region">2L:28585064-28586748</dd></div>
+          <div><dt>Transcript</dt><dd id="result-transcript">AGAP006241-RA (+)</dd></div>
+          <div><dt>SNP QC</dt><dd id="result-qc">Accessibility-aware SNP-density display</dd></div>
         </dl>
 
         <div class="tabs" role="tablist" aria-label="Result figures">
@@ -96,12 +107,12 @@
         </div>
 
         <div class="figure-panel" id="profile-panel" role="tabpanel" aria-labelledby="profile-tab">
-          <img src="assets/AGAP006241_cs_snp_summary.png" alt="Binned conservation score and SNP-density profile for AGAP006241">
-          <a class="download-link" href="assets/AGAP006241_cs_snp_summary.png" download>Download profile PNG</a>
+          <img id="profile-image" src="assets/examples/AGAP006241/cs_snp_summary.png" alt="Binned conservation score and SNP-density profile for AGAP006241">
+          <a class="download-link" id="profile-download" href="assets/examples/AGAP006241/cs_snp_summary.png" download>Download profile PNG</a>
         </div>
         <div class="figure-panel" id="heatmap-panel" role="tabpanel" aria-labelledby="heatmap-tab" hidden>
-          <img src="assets/AGAP006241_heatmap.png" alt="Cross-species conservation heatmap for AGAP006241">
-          <a class="download-link" href="assets/AGAP006241_heatmap.png" download>Download heatmap PNG</a>
+          <img id="heatmap-image" src="assets/examples/AGAP006241/heatmap.png" alt="Cross-species conservation heatmap for AGAP006241">
+          <a class="download-link" id="heatmap-download" href="assets/examples/AGAP006241/heatmap.png" download>Download heatmap PNG</a>
         </div>
       </div>
     </section>
@@ -132,7 +143,7 @@
   </main>
 
   <footer>
-    <p>AgamCs is an open-source research tool. Use the CLI for reproducible analysis and larger queries.</p>
+    <p>Early research prototype. AgamCs is an open-source research tool; use the CLI for reproducible analysis and larger queries.</p>
     <a href="https://doi.org/10.5281/zenodo.4304586">Source dataset on Zenodo</a>
   </footer>
 </body>

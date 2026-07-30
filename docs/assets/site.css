@@ -85,6 +85,7 @@ select { width: 100%; height: 44px; margin-bottom: 4px; padding: 0 12px; color: 
 .result-heading h2 { margin-bottom: 0; }
 .ready-badge { padding: 5px 11px; color: #235729; background: #dfefdf; border-radius: 99px; font-size: 12px; font-weight: 800; }
 .ready-badge.refresh { color: #725015; background: #f5e7c9; }
+.result-description { max-width: 700px; margin: 16px 0 0; color: var(--muted); font-size: 15px; }
 .metadata { display: flex; flex-wrap: wrap; gap: 32px; margin: 26px 0 32px; padding: 16px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .metadata div { min-width: 120px; }
 .metadata dt { color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
@@ -107,6 +108,11 @@ select { width: 100%; height: 44px; margin-bottom: 4px; padding: 0 12px; color: 
 footer { display: flex; justify-content: space-between; gap: 30px; padding: 30px 0 42px; color: var(--muted); border-top: 1px solid var(--line); font-size: 13px; }
 footer p { margin: 0; }
 footer a { color: var(--teal); font-weight: 700; }
+.error-page { min-height: 100vh; display: grid; place-items: center; }
+.not-found { width: min(620px, calc(100% - 40px)); padding: 48px 0; }
+.not-found .brand { margin-bottom: 84px; }
+.not-found h1 { margin-bottom: 22px; font-size: clamp(48px, 10vw, 82px); }
+.not-found .lede { margin-bottom: 32px; }
 :focus-visible { outline: 3px solid #dd9d3c; outline-offset: 3px; }
 
 @media (max-width: 800px) {
