@@ -1,15 +1,25 @@
 import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
+import pytest
 
 matplotlib.use('Agg')
 
 from AgamCs.create_heatmap import (
+    CDS_FACE_COLOR,
+    SPECIES_GENOME_CODES,
     SPECIES_LABELS,
+    _cds_boundary_positions,
+    _cds_segments,
+    _draw_cds_boundary_guides,
+    _draw_cds_strip,
     _draw_species_tree,
     _annotation_landmarks,
     _draw_gene_model,
     _gene_coordinate_mapper,
+    _heatmap_colormap,
+    _ordered_sequence_identity,
+    create_heatmap,
     plot_cs_snp_density,
 )
 from AgamCs.gene_regions import (
@@ -34,6 +44,33 @@ def test_species_tree_tips_align_with_all_heatmap_rows():
     }
     assert axis.get_ylim() == (len(SPECIES_LABELS), 0)
     plt.close(fig)
+
+
+def test_sequence_identity_rows_follow_genome_codes_not_tsv_column_order():
+    columns = {
+        f'stack_{code}': [index, index + 100]
+        for index, code in enumerate(reversed(SPECIES_GENOME_CODES))
+    }
+    data = pd.DataFrame(columns)
+
+    matrix = _ordered_sequence_identity(data, position_order=[1, 0])
+
+    assert matrix.index.tolist() == SPECIES_GENOME_CODES
+    assert matrix.loc['AchrA1'].tolist() == [115, 15]
+    assert matrix.loc['AsinC2'].tolist() == [114, 14]
+    assert matrix.loc['AepiE1'].tolist() == [113, 13]
+
+
+def test_species_rows_retain_taxonomy_aware_cladogram_order():
+    assert SPECIES_GENOME_CODES[-3:] == ['AaegL5', 'CpipJ2', 'DmelP6']
+    assert SPECIES_GENOME_CODES.index('CpipJ2') > SPECIES_GENOME_CODES.index('AalbS2')
+
+
+def test_sequence_identity_rows_require_all_metadata_species():
+    data = pd.DataFrame({'stack_AcolM1': [100]})
+
+    with pytest.raises(ValueError, match='missing expected stack rows'):
+        _ordered_sequence_identity(data, position_order=[0])
 
 
 def example_annotation():
@@ -64,6 +101,66 @@ def test_minus_strand_coordinates_run_from_tss_to_tes():
     positions, labels = _annotation_landmarks(annotation)
     assert positions == [0, 300, 400]
     assert labels == ['TSS / E1\n0', 'E2\n300', 'TES\n400']
+
+
+def test_cds_boundary_guides_repeat_across_panels():
+    fig, axes = plt.subplots(2, 1)
+    positions = _cds_boundary_positions(example_annotation())
+
+    guides = _draw_cds_boundary_guides(axes, example_annotation())
+
+    assert positions == [50, 100, 300, 350]
+    assert len(guides) == len(positions) * len(axes)
+    assert all(guide.get_gid() == 'cds-boundary-guide' for guide in guides)
+    assert all(guide.get_linewidth() == 0.85 for guide in guides)
+    assert {
+        float(guide.get_xdata()[0]) for guide in guides
+    } == set(positions)
+    plt.close(fig)
+
+
+def test_cds_boundaries_bracket_every_coding_segment():
+    annotation = {
+        'start': 100,
+        'end': 700,
+        'strand': 1,
+        'cds_start': 150,
+        'cds_end': 650,
+        'exons': [
+            {'start': 100, 'end': 200},
+            {'start': 300, 'end': 400},
+            {'start': 600, 'end': 700},
+        ],
+    }
+
+    assert _cds_boundary_positions(annotation) == [50, 100, 200, 300, 500, 550]
+
+
+def test_heatmap_cds_strip_matches_coding_segments():
+    fig, axis = plt.subplots()
+
+    patches = _draw_cds_strip(axis, example_annotation())
+
+    assert _cds_segments(example_annotation()) == [(50, 100), (300, 350)]
+    assert [(patch.get_x(), patch.get_width()) for patch in patches] == [
+        (50, 50),
+        (300, 50),
+    ]
+    assert all(patch.get_gid() == 'cds-strip' for patch in patches)
+    assert all(patch.get_facecolor() == matplotlib.colors.to_rgba(CDS_FACE_COLOR)
+               for patch in patches)
+    plt.close(fig)
+
+
+def test_cds_boundary_guides_are_omitted_without_cds_annotation():
+    annotation = example_annotation()
+    annotation['cds_start'] = None
+    annotation['cds_end'] = None
+    fig, axis = plt.subplots()
+
+    assert _cds_boundary_positions(annotation) == []
+    assert _draw_cds_boundary_guides((axis,), annotation) == []
+    plt.close(fig)
 
 
 def test_squished_exon_landmark_labels_never_overlap():
@@ -110,6 +207,18 @@ def test_non_coding_transcript_legend_uses_exon_label():
     _draw_gene_model(ax, annotation, (0, 400))
 
     assert [text.get_text() for text in ax.get_legend().get_texts()] == ['Exon']
+    plt.close(fig)
+
+
+def test_gene_model_draws_introns_only_between_exons():
+    fig, ax = plt.subplots(figsize=(6, 2))
+
+    _draw_gene_model(ax, example_annotation(), (0, 400))
+
+    introns = [line for line in ax.lines if line.get_gid() == 'intron-line']
+    assert len(introns) == 1
+    assert introns[0].get_xdata().tolist() == [100, 300]
+    assert len(set(introns[0].get_ydata())) == 1
     plt.close(fig)
 
 
@@ -213,4 +322,21 @@ def test_annotation_plot_renders_with_genomic_highlights(tmp_path):
         gene_annotation=example_annotation(),
     )
 
+    assert output_path.stat().st_size > 0
+
+
+def test_heatmap_renders_with_viridis(tmp_path):
+    input_path = tmp_path / 'scores.tsv'
+    output_path = tmp_path / 'heatmap.png'
+    frame = pd.DataFrame({
+        'chromosome': ['3L', '3L'],
+        'pos': [100, 101],
+    })
+    for index, code in enumerate(reversed(SPECIES_GENOME_CODES)):
+        frame[f'stack_{code}'] = [0, 70 + index]
+    frame.to_csv(input_path, sep='\t', index=False)
+
+    create_heatmap(input_path, output_path)
+
+    assert _heatmap_colormap().name == 'viridis'
     assert output_path.stat().st_size > 0

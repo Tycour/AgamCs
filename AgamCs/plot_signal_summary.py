@@ -16,6 +16,7 @@ from matplotlib.ticker import FuncFormatter, MaxNLocator
 
 from .create_heatmap import (
     _accessibility_mask,
+    _draw_cds_boundary_guides,
     _draw_gene_model,
     _gene_coordinate_mapper,
     _shade_inaccessible,
@@ -182,8 +183,8 @@ def plot_cs_snp_summary(
     )
 
     if gene_annotation:
-        fig = plt.figure(figsize=(9, 6), layout='constrained')
-        grid = fig.add_gridspec(3, 1, height_ratios=(4.2, 1.25, 1.55), hspace=0.05)
+        fig = plt.figure(figsize=(9, 5.5), layout='constrained')
+        grid = fig.add_gridspec(3, 1, height_ratios=(4.2, 1.25, 0.9), hspace=0.01)
         cs_ax = fig.add_subplot(grid[0])
         snp_ax = fig.add_subplot(grid[1], sharex=cs_ax)
         gene_ax = fig.add_subplot(grid[2], sharex=cs_ax)
@@ -230,18 +231,6 @@ def plot_cs_snp_summary(
     cs_ax.set_ylim(0, 1)
     cs_ax.set_ylabel('Conservation score')
     cs_ax.set_title('Binned conservation profile and SNP density')
-    cs_ax.legend(
-        handles=[
-            Line2D([0], [0], color=CONSERVATION_COLOR, linewidth=1.5, label='Median'),
-            Patch(facecolor=CONSERVATION_MID_COLOR, alpha=0.45, label='25th–75th percentile'),
-            Patch(facecolor=CONSERVATION_OUTER_COLOR, alpha=0.5, label='10th–90th percentile'),
-        ],
-        loc='upper left',
-        frameon=False,
-        fontsize=8,
-        ncol=3,
-    )
-
     x_snp = snp_summary['position'].to_numpy()
     snp_mean = snp_summary['mean'].to_numpy()
     snp_ax.fill_between(x_snp, 0, snp_mean, color=SNP_COLOR, alpha=0.25, linewidth=0)
@@ -249,14 +238,31 @@ def plot_cs_snp_summary(
     _shade_inaccessible(snp_ax, plot_positions, accessible)
     snp_ax.set_ylim(0, 1)
     snp_ax.set_ylabel('SNP\ndensity')
-    snp_ax.text(
-        0.01,
-        0.82,
-        'Mean over accessible bases; grey marks QC-failed bases',
-        transform=snp_ax.transAxes,
+    cs_ax.legend(
+        handles=[
+            Line2D([0], [0], color=CONSERVATION_COLOR, linewidth=1.5,
+                   label='Median Cs'),
+            Patch(facecolor=CONSERVATION_MID_COLOR, alpha=0.45,
+                  label='Cs 25th–75th'),
+            Patch(facecolor=CONSERVATION_OUTER_COLOR, alpha=0.5,
+                  label='Cs 10th–90th'),
+        ],
+        loc='upper left',
+        frameon=False,
         fontsize=8,
-        color='#4d4d4d',
-        va='top',
+        ncol=3,
+    )
+    snp_ax.legend(
+        handles=[
+            Line2D([0], [0], color=SNP_COLOR, linewidth=1.3,
+                   label='Mean SNP'),
+            Patch(facecolor='#969696', alpha=0.22, edgecolor='none',
+                  label='QC failed (SNP unknown)'),
+        ],
+        loc='upper left',
+        frameon=False,
+        fontsize=8,
+        ncol=2,
     )
     finite_snp_means = snp_summary['mean'].dropna()
     if finite_snp_means.empty:
@@ -290,6 +296,7 @@ def plot_cs_snp_summary(
     if gene_ax is not None:
         snp_ax.tick_params(axis='x', which='both', bottom=False, labelbottom=False)
         _draw_gene_model(gene_ax, gene_annotation, x_limits)
+        _draw_cds_boundary_guides((cs_ax, snp_ax), gene_annotation)
     else:
         snp_ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _pos: f'{int(x):,}'))
         snp_ax.xaxis.set_major_locator(

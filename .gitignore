@@ -11,8 +11,15 @@ data/VectorBase-68_AgambiaePEST_Genome.fasta.fai
 data/accession_annotation_cache.json
 data/accession_region_cache.json
 
-# Generated plot outputs and intermediate score files
-results/
+# Generated plot outputs and intermediate score files. Keep only the stable
+# AGAP006241 README examples: rerunning the documented command refreshes them.
+results/*
+!results/AGAP006241/
+results/AGAP006241/*
+!results/AGAP006241/AGAP006241/
+results/AGAP006241/AGAP006241/*
+!results/AGAP006241/AGAP006241/AGAP006241_cs_snp_summary.png
+!results/AGAP006241/AGAP006241/AGAP006241_heatmap.png
 
 # Local analysis and reference files not consumed by the plotting package
 notebooks/

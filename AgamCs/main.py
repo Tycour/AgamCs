@@ -45,7 +45,11 @@ def process_region(
     )
 
     heatmap_path = os.path.join(results_dir, f"{output_name}_heatmap.png")
-    create_heatmap(tsv_filename, heatmap_path, gene_annotation=gene_annotation)
+    create_heatmap(
+        tsv_filename,
+        heatmap_path,
+        gene_annotation=gene_annotation,
+    )
 
     cs_snp_density_output_path = os.path.join(results_dir, f"{output_name}_cs_snp_density.png")
     plot_cs_snp_density(

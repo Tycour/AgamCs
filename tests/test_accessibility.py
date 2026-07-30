@@ -1,8 +1,10 @@
 import h5py
 import numpy as np
+import pandas as pd
 import pytest
 
 from AgamCs import accessibility, fetch_score
+from AgamCs.create_heatmap import _accessibility_mask
 from tools.build_accessibility_track import build_track
 
 
@@ -98,3 +100,19 @@ def test_scores_dataframe_adds_status_without_changing_density_values(tmp_path):
         False,
         'LowCoverage',
     ]
+
+
+def test_old_score_table_recovers_qc_mask_instead_of_assuming_pass(tmp_path):
+    source_path = tmp_path / 'source.h5'
+    track_path = tmp_path / 'track.h5'
+    make_accessibility_source(source_path)
+    build_track(source_path, track_path, chromosomes=('3R',))
+    old_table = pd.DataFrame({
+        'chromosome': ['3R', '3R', '3R'],
+        'pos': [1, 2, 4],
+        'snp_density_s': [0.0, 0.0, 0.0],
+    })
+
+    mask = _accessibility_mask(old_table, accessibility_file=track_path)
+
+    assert mask.tolist() == [True, False, True]

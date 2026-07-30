@@ -1,115 +1,17 @@
 # AgamCs
 
-## Description
-This package fetches conservation scores and creates a heatmap based on genomic coordinates.
+AgamCs retrieves conservation data for the *Anopheles gambiae* AgamP4 genome
+and turns it into readable gene- or region-level figures. You can query an
+`AGAP...` gene accession or genomic coordinates and generate:
 
-## Example Usage
+- a binned conservation (Cs) and SNP-density summary;
+- the original base-level Cs/SNP plot; and
+- a cross-species identity heatmap with an aligned transcript model.
 
-Generate the current set of plots for a gene accession:
+## Quick start
 
-```commandline
-agamcs --accessions AGAP006241 --output AGAP006241
-```
-
-The binned summary shows the median conservation score and its percentile
-ribbons, mean SNP density, and the representative transcript model:
-
-![Binned conservation and SNP-density summary for AGAP006241](data/AGAP006241_cs_snp_summary.png)
-
-The same run also produces the cross-species sequence-identity heatmap:
-
-![Cross-species sequence-identity heatmap for AGAP006241](data/AGAP006241_heatmap.png)
-
-AgamCs now uses the local HDF5 file when it is present and otherwise streams
-only the compressed chunks required for the requested interval from the
-Zenodo archive:
-
-```commandline
-agamcs --data-source remote --region 3R:5886340-5889928 --output AGAP008118
-```
-
-The web prototype requests only the three arrays consumed by its plot: `Cs`,
-`snp_density`, and the 21-row `stack`. The CLI retains its six original score
-families. Neither mode downloads or caches the full 3.7 GB HDF5 file.
-
-## SNP-density accessibility and QC
-
-Every queried TSV now includes two companion columns from the Ag1000G Phase 2
-AR1 AgamP4 accessibility map:
-
-- `is_accessible` is true only where the published site mask is PASS.
-- `quality_status` is `PASS` or lists the published FILTER reason(s), such as
-  `LowCoverage`, `HighMQ0`, or `RepeatDUST`.
-
-The archived `snp_density_s` column is preserved exactly. A stored value of
-zero is interpreted as a callable zero only when `is_accessible` is true. At
-inaccessible or QC-failed positions the plots mask SNP density and use grey to
-show that the value is missing/uncertain; the stored zero is not plotted as
-evidence of no variation. A non-PASS quality status is a site-level QC result,
-not a confirmed variant call.
-
-The bundled 5.6 MB read-only companion track packs `is_accessible` and the
-seven published `filter_*` arrays into one byte per base before chunked gzip
-compression. It covers AgamP4 chromosome arms 2L, 2R, 3L, 3R, and X and is
-queried locally in both local and remote conservation-data modes. See
-[`docs/accessibility-track.md`](docs/accessibility-track.md) for the bit schema,
-source provenance, validation, and rebuild procedure.
-
-## Batch accession usage
-
-To process genes by accession number, pass one or more `AGAP...` IDs. AgamCs
-will query Ensembl/VectorBase to resolve each accession to genomic coordinates
-and retrieve its canonical transcript annotation:
-
-```commandline
-agamcs --accessions AGAP008118 AGAP001234 --output accession_batch
-```
-
-You can also provide the accessions in a text file, one per line:
-
-```commandline
-agamcs --accessions-file accessions.txt --output accession_batch
-```
-
-Each accession is written to its own directory under `results/<output>/`.
-Use `--padding 500` to add bases on both sides of accession-derived regions.
-
-Each run keeps the original base-level Cs/SNP plot and also writes a
-`*_cs_snp_summary.png` companion. The companion bins the conservation signal,
-showing its median with 25th–75th and 10th–90th percentile ribbons, and places
-mean SNP density in a separate aligned panel. This makes high local variability
-visible as ribbon width rather than as a solid block of connected blue lines.
-
-For accession-based runs, the Cs/SNP plot is oriented from 5′ to 3′ even when
-the gene is on the minus strand. Its x-axis is anchored at the transcription
-start site (TSS), exon starts, and transcription end site (TES), with an aligned
-transcript track showing exons/UTRs and CDS segments. Direct `--region` runs do
-not assume a gene; their x-axis starts at 0 bp relative to the plotted interval.
-`--highlight` values remain absolute genomic coordinates in both modes.
-
-For offline or pinned-coordinate workflows, you can still provide an annotation
-file with `--annotation`. A VectorBase-style GFF3 supplies both coordinates and
-the exon/CDS track. A CSV/TSV supplies coordinates only; use either a `region`
-column:
-
-```text
-accession	region
-AGAP008118	3R:5886340-5889928
-```
-
-or coordinate columns:
-
-```text
-accession	chromosome	start	end
-AGAP008118	3R	5886340	5889928
-```
-
-## Setup
-
-### 1. Install the required packages
-
-For development, use a project-specific virtual environment so the web and
-test dependencies do not modify another environment:
+AgamCs requires Python 3.11 or newer. For development, install it in a virtual
+environment:
 
 ```commandline
 python -m venv .venv
@@ -118,99 +20,123 @@ python -m pip install --upgrade pip
 python -m pip install -e ".[web,test]"
 ```
 
-On Windows PowerShell, activate it with `.venv\Scripts\Activate.ps1`.
+On Windows PowerShell, activate the environment with
+`.venv\Scripts\Activate.ps1`.
 
-### 2. Choose remote or local data
-
-No data download is required for the remote prototype. `--data-source auto`
-is the default: it uses a local dataset when one is available, then falls back
-to the bundled Kerchunk index and Zenodo range requests.
-
-To work offline, download the archival file:
-
-Download the `AgamP4_conservation.h5` file from the following link:
-[Download AgamP4_conservation.h5](https://zenodo.org/record/4304586/files/AgamP4_conservation.h5)
-
-Place the downloaded `AgamP4_conservation.h5` file in the `data` directory within the project.
-
-Force either mode when testing:
+Query a gene by accession:
 
 ```commandline
-agamcs --data-source remote --region 3R:5886340-5889928 --output remote_test
-agamcs --data-source local --region 3R:5886340-5889928 --output local_test
+agamcs --accessions AGAP006241 --output AGAP006241
 ```
 
-### 3. Run the lab web demo
+Or query a one-based, inclusive AgamP4 region:
 
-The Shiny app uses the remote source by default and keeps each browser
-session's generated files isolated in a temporary directory:
+```commandline
+agamcs --region 3R:5886340-5889928 --output my_region
+```
+
+Results are written below `results/<output>/`. Gene accessions are resolved
+online through Ensembl/VectorBase and include the representative transcript
+model. Use `--padding 500` to include flanking bases.
+
+## Example figures
+
+![Binned conservation and SNP-density summary for AGAP006241](results/AGAP006241/AGAP006241/AGAP006241_cs_snp_summary.png)
+
+![AGAP006241 cross-species identity heatmap](results/AGAP006241/AGAP006241/AGAP006241_heatmap.png)
+
+### How to read the plots
+
+Cs is calculated at each genomic base, while SNP density is a 20 bp sliding-
+window average assigned to each base. This summary then groups the displayed
+region into up to 240 bins: the dark-blue line is median Cs, the blue ribbons
+show the 25th–75th and 10th–90th percentiles, and green is mean SNP density over
+QC-passing bases in each bin. Grey marks bases that failed the Ag1000G
+accessibility mask; their SNP density is unknown, not zero. The compact
+transcript uses outlined light-blue UTRs, taller dark-blue CDS blocks, and thin
+lines for introns. Dashed guides bracket every CDS segment in both signal
+panels.
+
+[CNEr](https://doi.org/10.1371/journal.pcbi.1006940) is a toolkit that finds
+highly conserved regions by scanning genome alignments for windows above chosen
+sequence-identity thresholds. Here it used 30 bp and 50 bp windows; detected
+interval identities were then mapped onto every covered AgamP4 base. The
+heatmap therefore has per-base columns, but neighbouring bases can share one
+window-derived identity value. Viridis shows the assigned identity percentage;
+charcoal means no interval was detected, not measured 0% identity. Thin
+dark-blue blocks and dashed guides mark CDS segments. Species-label colours
+progress from the *A. gambiae* complex through other *Anopheles* to the
+outgroups; these are broad visual groups, not numeric distance bins.
+
+The tree is a compact, unscaled cladogram. It shows broad branching and group
+membership only: horizontal branch lengths are arbitrary and must not be read
+as evolutionary time or substitutions per site. The four label colours are:
+dark purple = *gambiae* complex; purple = other *Anopheles*; pink = New World
+*Anopheles*; orange = outgroups.
+
+Method details are available in the
+[original paper](https://doi.org/10.3390/insects12020097) and the
+[source-pipeline documentation](https://github.com/nkran/AgamP4_conservation_score#storage).
+
+## Batch queries and highlights
+
+Process several genes at once:
+
+```commandline
+agamcs --accessions AGAP008118 AGAP001234 --output accession_batch
+agamcs --accessions-file accessions.txt --output accession_batch
+```
+
+The accession file should contain one `AGAP...` ID per line. Each gene gets its
+own subdirectory. `--highlight` accepts absolute genomic `start-end` ranges.
+
+For accession queries, figures are displayed 5′→3′ and positions are relative
+to the transcription start site, including minus-strand genes. Coordinate-only
+queries start at 0 bp relative to the requested interval.
+
+## Data and SNP quality control
+
+By default, AgamCs uses a local `data/AgamP4_conservation.h5` if present and
+otherwise reads only the requested interval from the public Zenodo archive.
+For fully offline use, download
+[`AgamP4_conservation.h5`](https://zenodo.org/record/4304586/files/AgamP4_conservation.h5)
+to the `data` directory and use `--data-source local`.
+
+Every new query also carries the published Ag1000G Phase 2 AR1 accessibility
+status. AgamCs never changes the archived SNP-density values: it masks failed
+QC positions only in the figure and shades them grey. Older TSVs without QC
+columns are matched back to the bundled accessibility track when plotted, so
+missing QC metadata is never silently treated as PASS. Technical provenance
+and the rebuild procedure are in
+[`docs/accessibility-track.md`](docs/accessibility-track.md).
+
+## Web app
+
+Start the local Shiny interface with:
 
 ```commandline
 shiny run AgamCs.app:app
 ```
 
-Open `http://127.0.0.1:8000` and choose one query mode:
+Open `http://127.0.0.1:8000`, choose a gene accession or genomic region, and
+generate downloadable plots and a source TSV. The web app limits requests to
+250,000 bp to keep interactive sessions responsive; use the CLI for larger
+intervals.
 
-- **Gene accession** resolves an `AGAP...` identifier, applies optional padding,
-  and adds the representative transcript model to the Cs profile.
-- **Genomic region** accepts a one-based inclusive AgamP4 interval such as
-  `3R:5886340-5889928` and plots it without assuming a transcript.
+## Optional annotation files
 
-Optional highlight ranges use absolute genomic `start-end` coordinates. Enter
-multiple ranges with commas, spaces, semicolons, or new lines. After clicking
-**Generate plots**, the app reports progress and shows either a concise error or
-the resolved interval. Successful runs provide tabs for the annotated Cs
-profile and heatmap plus download buttons for both PNGs and the source TSV.
+Online accession lookup is the normal workflow. For offline or pinned
+coordinates, `--annotation` accepts a VectorBase-style GFF3 (including
+exon/CDS structure) or a CSV/TSV with either a `region` column or
+`chromosome`, `start`, and `end` columns.
 
-The web demo limits a request to 250,000 bp to keep browser sessions responsive
-and bound remote reads. The CLI remains available for larger intervals. Select
-**Local HDF5** only when `data/AgamP4_conservation.h5` exists on the machine
-running Shiny; other users should leave **Zenodo (remote)** selected.
+```text
+accession	region
+AGAP008118	3R:5886340-5889928
+```
 
-Run the automated checks with:
+## Tests
 
 ```commandline
 python -m pytest -q
 ```
-
-### GitHub Pages compatibility
-
-The current app is server-backed and cannot be copied directly to GitHub Pages,
-which only serves static files. A separate Shinylive build is the intended
-static-hosting experiment: it would run Shiny and Python in each visitor's
-browser while continuing to range-read the HDF5 data from Zenodo.
-
-Before publishing that build, the accession lookup must be changed from
-`urllib.request` to a browser-compatible request path, and the remote Zarr
-reader must be tested against Shinylive's Pyodide package versions. Keep the
-server-backed app as the reference implementation until accession lookup,
-range reads, plots, and downloads all pass an exported Shinylive smoke test.
-
-## Kerchunk index maintenance
-
-The committed reference JSON contains byte offsets and compression metadata,
-not conservation data. It is about 700 KB and points at the immutable Zenodo
-record. Rebuild it only when the archived HDF5 source changes:
-
-```commandline
-python tools/build_kerchunk_reference.py
-```
-
-The generator publishes the CLI's six score arrays by default. It also divides
-the otherwise-contiguous `phyloP` byte range into 65,536-base virtual chunks,
-so a small remote query does not transfer an entire chromosome. Pass an
-explicit list with `--arrays` to build a narrower index. After rebuilding,
-compare a remote interval with the local HDF5 before publishing the new index.
-
-## Accessibility-track maintenance
-
-The companion track is derived from the public Ag1000G Phase 2 AR1
-`accessibility/accessibility.h5` file. Rebuild and revalidate it with:
-
-```commandline
-python tools/build_accessibility_track.py
-python -m pytest -q
-```
-
-Use `--source /path/to/accessibility.h5` for an offline source and
-`--accessibility-file /path/to/track.h5` to query an explicitly rebuilt track.
