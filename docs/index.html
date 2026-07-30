@@ -9,7 +9,7 @@
   <meta property="og:title" content="AgamCs conservation explorer">
   <meta property="og:description" content="An early research prototype for browsing precomputed AgamP4 conservation-score results.">
   <meta property="og:url" content="https://tycour.github.io/AgamCs/">
-  <meta property="og:image" content="https://tycour.github.io/AgamCs/assets/AGAP006241_cs_snp_summary.png">
+  <meta property="og:image" content="https://tycour.github.io/AgamCs/assets/examples/AGAP006241/cs_snp_summary.png">
   <meta name="twitter:card" content="summary_large_image">
   <title>AgamCs conservation explorer</title>
   <link rel="canonical" href="https://tycour.github.io/AgamCs/">
@@ -73,7 +73,7 @@
         <select id="accession" name="accession">
           <option value="AGAP006241">AGAP006241</option>
         </select>
-        <p class="field-help">This prototype includes one representative, precomputed result.</p>
+        <p class="field-help" id="catalogue-help">Loading the precomputed example catalogue…</p>
 
         <label for="padding">Padding</label>
         <select id="padding" name="padding">
@@ -88,15 +88,17 @@
         <div class="result-heading">
           <div>
             <p class="eyebrow">Demo result</p>
-            <h2>AGAP006241</h2>
+            <h2 id="result-title">AGAP006241</h2>
           </div>
           <span class="ready-badge" id="result-status">Ready</span>
         </div>
+        <p class="result-description" id="result-description">Compact plus-strand coding transcript used as a baseline example.</p>
 
         <dl class="metadata">
           <div><dt>Assembly</dt><dd>AgamP4</dd></div>
-          <div><dt>Source</dt><dd>Precomputed</dd></div>
-          <div><dt>SNP QC</dt><dd>Accessibility-aware</dd></div>
+          <div><dt>Region</dt><dd id="result-region">2L:28585064-28586748</dd></div>
+          <div><dt>Transcript</dt><dd id="result-transcript">AGAP006241-RA (+)</dd></div>
+          <div><dt>SNP QC</dt><dd id="result-qc">Accessibility-aware SNP-density display</dd></div>
         </dl>
 
         <div class="tabs" role="tablist" aria-label="Result figures">
@@ -105,12 +107,12 @@
         </div>
 
         <div class="figure-panel" id="profile-panel" role="tabpanel" aria-labelledby="profile-tab">
-          <img src="assets/AGAP006241_cs_snp_summary.png" alt="Binned conservation score and SNP-density profile for AGAP006241">
-          <a class="download-link" href="assets/AGAP006241_cs_snp_summary.png" download>Download profile PNG</a>
+          <img id="profile-image" src="assets/examples/AGAP006241/cs_snp_summary.png" alt="Binned conservation score and SNP-density profile for AGAP006241">
+          <a class="download-link" id="profile-download" href="assets/examples/AGAP006241/cs_snp_summary.png" download>Download profile PNG</a>
         </div>
         <div class="figure-panel" id="heatmap-panel" role="tabpanel" aria-labelledby="heatmap-tab" hidden>
-          <img src="assets/AGAP006241_heatmap.png" alt="Cross-species conservation heatmap for AGAP006241">
-          <a class="download-link" href="assets/AGAP006241_heatmap.png" download>Download heatmap PNG</a>
+          <img id="heatmap-image" src="assets/examples/AGAP006241/heatmap.png" alt="Cross-species conservation heatmap for AGAP006241">
+          <a class="download-link" id="heatmap-download" href="assets/examples/AGAP006241/heatmap.png" download>Download heatmap PNG</a>
         </div>
       </div>
     </section>

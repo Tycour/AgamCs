@@ -23,6 +23,23 @@ python3 tools/check_pages_site.py
 GitHub Actions runs the same check for relevant pull requests and after Pages
 changes reach `main`.
 
+## Rebuild the example catalogue
+
+[`examples.json`](examples.json) pins each accession's AgamP4 coordinates and
+representative transcript structure. It therefore avoids an online accession
+lookup and does not silently change when upstream annotations are updated.
+With a Python 3.11+ environment containing AgamCs' normal plotting
+dependencies and a local HDF5 file, rebuild every example with:
+
+```bash
+.venv/bin/python tools/build_pages_examples.py --data-source local
+```
+
+The command writes only the profile and heatmap PNGs below
+`docs/assets/examples/`. To rebuild one accession, add for example
+`--accession AGAP008118`; to check the committed assets without reading score
+data, use `--verify`.
+
 ## Publish from GitHub
 
 After these files are merged into the repository's default branch:

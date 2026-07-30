@@ -5,6 +5,7 @@ on:
     paths:
       - 'docs/**'
       - 'tools/check_pages_site.py'
+      - 'tools/build_pages_examples.py'
       - '.github/workflows/pages-static-checks.yml'
   push:
     branches:
@@ -12,6 +13,7 @@ on:
     paths:
       - 'docs/**'
       - 'tools/check_pages_site.py'
+      - 'tools/build_pages_examples.py'
       - '.github/workflows/pages-static-checks.yml'
 
 permissions:

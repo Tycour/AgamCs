@@ -6,9 +6,12 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+from build_pages_examples import load_catalogue, verify_assets
+
 
 ROOT = Path(__file__).resolve().parents[1] / 'docs'
 PAGES = (ROOT / 'index.html', ROOT / '404.html')
+EXAMPLES_PATH = ROOT / 'examples.json'
 REQUIRED_META_NAMES = {'description', 'theme-color', 'twitter:card'}
 REQUIRED_META_PROPERTIES = {'og:type', 'og:title', 'og:description', 'og:url', 'og:image'}
 
@@ -105,6 +108,16 @@ def validate_page(page: Path) -> list[str]:
     return errors
 
 
+def validate_examples() -> list[str]:
+    """Ensure every catalogue example points to committed image assets."""
+    try:
+        catalogue = load_catalogue(EXAMPLES_PATH)
+    except (OSError, ValueError) as error:
+        return [f'could not read examples.json: {error}']
+    return [f'missing generated asset: {path.relative_to(ROOT)}'
+            for path in verify_assets(catalogue['examples'], ROOT / 'assets')]
+
+
 def main() -> None:
     errors: list[str] = []
     for page in PAGES:
@@ -112,6 +125,7 @@ def main() -> None:
             errors.append(f'missing required page: {page.name}')
         else:
             errors.extend(validate_page(page))
+    errors.extend(validate_examples())
     if errors:
         raise SystemExit('\n'.join(errors))
     print(f'Validated {len(PAGES)} Pages documents and their local assets.')
