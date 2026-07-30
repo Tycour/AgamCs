@@ -10,22 +10,30 @@ and turns it into readable gene- or region-level figures. You can query an
 
 ## Quick start
 
-AgamCs is installed from the GitHub source tree for now. On macOS or Linux,
-start with Python 3.11 or newer and `git`.
+AgamCs is installed from the GitHub source tree for now. On macOS or Linux, the
+simplest route is to create a fresh Conda environment so AgamCs and its
+dependencies do not affect your other Python projects:
 
 ```commandline
+conda create -n agamcs python=3.12 pip
+conda activate agamcs
 git clone https://github.com/Tycour/AgamCs.git
 cd AgamCs
-python3.11 -m venv .venv
-source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e .
 ```
 
-If your system calls Python 3.11 by another name, use that command instead:
-`python3.12`, `python3`, or the full path to a Python 3.11+ interpreter are all
-fine. The `.venv` directory belongs only to your machine; it is not part of
-AgamCs itself.
+If you do not use Conda, create a virtual environment with any Python 3.11 or
+newer interpreter:
+
+```commandline
+git clone https://github.com/Tycour/AgamCs.git
+cd AgamCs
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install -e .
+```
 
 Check that the command was installed:
 
