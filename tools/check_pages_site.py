@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlparse
@@ -12,6 +13,13 @@ from build_pages_examples import load_catalogue, verify_assets
 ROOT = Path(__file__).resolve().parents[1] / 'docs'
 PAGES = (ROOT / 'index.html', ROOT / '404.html')
 EXAMPLES_PATH = ROOT / 'examples.json'
+QUERY_ASSETS = (
+    ROOT / 'assets/data/score-reference.json',
+    ROOT / 'assets/data/query-validation.json',
+    ROOT / 'assets/query-worker.js',
+)
+QUERY_ARRAYS = {'Cs', 'snp_density'}
+QUERY_CHROMOSOMES = {'2L', '2R', '3L', '3R', 'X'}
 REQUIRED_META_NAMES = {'description', 'theme-color', 'twitter:card'}
 REQUIRED_META_PROPERTIES = {'og:type', 'og:title', 'og:description', 'og:url', 'og:image'}
 
@@ -126,6 +134,35 @@ def main() -> None:
         else:
             errors.extend(validate_page(page))
     errors.extend(validate_examples())
+    for asset in QUERY_ASSETS:
+        if not asset.exists() or asset.stat().st_size == 0:
+            errors.append(f'missing browser-query asset: {asset.relative_to(ROOT)}')
+    if all(asset.exists() for asset in QUERY_ASSETS[:2]):
+        reference = json.loads(QUERY_ASSETS[0].read_text())
+        validation = json.loads(QUERY_ASSETS[1].read_text())
+        if not str(reference.get('templates', {}).get('source', '')).startswith('https://'):
+            errors.append('browser-query source must use HTTPS')
+        expected_metadata = {
+            f'{chromosome}/{array}/.zarray'
+            for chromosome in QUERY_CHROMOSOMES
+            for array in QUERY_ARRAYS
+        }
+        if not expected_metadata.issubset(reference.get('refs', {})):
+            errors.append('browser-query index is missing required array metadata')
+        exposed = {
+            key.split('/')[1]
+            for key in reference.get('refs', {})
+            if len(key.split('/')) >= 3
+        }
+        if exposed != QUERY_ARRAYS:
+            errors.append(f'browser-query index exposes unexpected arrays: {sorted(exposed)}')
+        validation_arrays = validation.get('arrays', {})
+        if set(validation_arrays) != QUERY_ARRAYS:
+            errors.append('browser-query validation fixture has unexpected arrays')
+        for name, details in validation_arrays.items():
+            digest = details.get('sha256_le_float32', '')
+            if len(digest) != 64 or any(character not in '0123456789abcdef' for character in digest):
+                errors.append(f'invalid browser-query SHA-256 for {name}')
     if errors:
         raise SystemExit('\n'.join(errors))
     print(f'Validated {len(PAGES)} Pages documents and their local assets.')

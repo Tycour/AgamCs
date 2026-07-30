@@ -58,7 +58,18 @@ No secret, server, package install, or JavaScript build is required.
 - Not included: arbitrary accessions or coordinates, live Ensembl lookup,
   server-side plotting, or direct browser reads from the large HDF5 archive.
 
-The next practical increment is a small catalogue of precomputed examples and
-their TSV files. Arbitrary live queries should remain in the CLI/Shiny service
-until the data is repackaged into a browser-efficient format and the plotting
-logic is intentionally ported to JavaScript or WebAssembly.
+The example catalogue is now accompanied by an isolated Stage 5 feasibility
+reader. It accepts a coordinate interval of at most 20,000 bases, reads only
+the `Cs` and unchanged `snp_density` chunks through HTTP range requests, and
+reports cold/warm performance. It does not yet replace the precomputed explorer.
+
+Rebuild its compact reference and pinned local validation hashes with:
+
+```bash
+.venv/bin/python tools/build_pages_query_assets.py
+```
+
+Use `--verify` to confirm that committed query assets match the bundled
+Kerchunk reference and, when available, the local HDF5. The outcome and the
+decision gate for any browser-optimized derivative are documented in
+[`browser-hdf5-feasibility.md`](browser-hdf5-feasibility.md).

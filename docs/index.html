@@ -117,6 +117,38 @@
       </div>
     </section>
 
+    <section class="benchmark" id="live-benchmark" aria-labelledby="benchmark-title">
+      <div class="benchmark-intro">
+        <p class="eyebrow">Direct HDF5 feasibility test</p>
+        <h2 id="benchmark-title">Query a genomic interval from Zenodo.</h2>
+        <p>This experimental reader requests only the compressed HDF5 chunks containing the interval. It reports transfer and cache costs before this approach is considered for the main explorer.</p>
+      </div>
+      <form class="benchmark-form" id="benchmark-form">
+        <label for="benchmark-chromosome">Chromosome</label>
+        <select id="benchmark-chromosome" name="chromosome">
+          <option>2L</option><option>2R</option><option>3L</option><option>3R</option><option>X</option>
+        </select>
+        <label for="benchmark-start">Start (1-based)</label>
+        <input id="benchmark-start" name="start" type="number" min="1" value="28585064" required>
+        <label for="benchmark-end">End (inclusive)</label>
+        <input id="benchmark-end" name="end" type="number" min="1" value="28586748" required>
+        <button class="button primary" type="submit">Run cold + warm benchmark</button>
+      </form>
+      <div class="benchmark-results" id="benchmark-results" aria-live="polite">
+        <p id="benchmark-status">Ready to test the pinned AGAP006241 interval.</p>
+        <dl class="benchmark-metrics" id="benchmark-metrics" hidden>
+          <div><dt>Cold query</dt><dd id="metric-cold">—</dd></div>
+          <div><dt>Warm query</dt><dd id="metric-warm">—</dd></div>
+          <div><dt>HTTP ranges</dt><dd id="metric-requests">—</dd></div>
+          <div><dt>Transferred</dt><dd id="metric-bytes">—</dd></div>
+          <div><dt>Decoded cache</dt><dd id="metric-memory">—</dd></div>
+          <div><dt>Local validation</dt><dd id="metric-validation">—</dd></div>
+        </dl>
+        <a class="download-link" id="benchmark-download" hidden download="AgamCs-browser-query.tsv">Download exact TSV values</a>
+        <p class="field-help">The source archive is never downloaded in full. This Stage 5 test reads only Cs and unmodified SNP density; accessibility and plotting remain outside the benchmark.</p>
+      </div>
+    </section>
+
     <section class="interpretation" id="interpretation">
       <div>
         <p class="eyebrow">Read the evidence carefully</p>
