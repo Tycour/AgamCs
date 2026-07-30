@@ -14,6 +14,15 @@ python3 -m http.server 8000 --directory docs
 
 Then open `http://127.0.0.1:8000`.
 
+Before committing a Pages change, verify the documents and local assets:
+
+```bash
+python3 tools/check_pages_site.py
+```
+
+GitHub Actions runs the same check for relevant pull requests and after Pages
+changes reach `main`.
+
 ## Publish from GitHub
 
 After these files are merged into the repository's default branch:
