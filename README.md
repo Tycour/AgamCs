@@ -10,18 +10,28 @@ and turns it into readable gene- or region-level figures. You can query an
 
 ## Quick start
 
-AgamCs requires Python 3.11 or newer. For development, install it in a virtual
-environment:
+AgamCs is installed from the GitHub source tree for now. On macOS or Linux,
+start with Python 3.11 or newer and `git`.
 
 ```commandline
-python -m venv .venv
+git clone https://github.com/Tycour/AgamCs.git
+cd AgamCs
+python3.11 -m venv .venv
 source .venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install -e ".[web,test]"
+python -m pip install -e .
 ```
 
-On Windows PowerShell, activate the environment with
-`.venv\Scripts\Activate.ps1`.
+If your system calls Python 3.11 by another name, use that command instead:
+`python3.12`, `python3`, or the full path to a Python 3.11+ interpreter are all
+fine. The `.venv` directory belongs only to your machine; it is not part of
+AgamCs itself.
+
+Check that the command was installed:
+
+```commandline
+agamcs --help
+```
 
 Query a gene by accession:
 
@@ -38,6 +48,19 @@ agamcs --region 3R:5886340-5889928 --output my_region
 Results are written below `results/<output>/`. Gene accessions are resolved
 online through Ensembl/VectorBase and include the representative transcript
 model. Use `--padding 500` to include flanking bases.
+
+To install the optional web interface in the same environment, run:
+
+```commandline
+python -m pip install -e ".[web]"
+```
+
+For development and tests, install both optional groups:
+
+```commandline
+python -m pip install -e ".[web,test]"
+python -m pytest
+```
 
 ## Example figures
 
