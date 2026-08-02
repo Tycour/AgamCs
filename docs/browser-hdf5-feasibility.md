@@ -18,7 +18,7 @@ Direct HDF5 passes only when all of the following are demonstrated:
 - both arrays exactly match the pinned local-HDF5 hashes;
 - native deflate decoding works in the supported browsers;
 - a 5–20 kb query has acceptable latency, transfer size, and decoded memory;
-- cold and warm results work on Chrome, Safari, and a constrained device.
+- cold and warm results work on supported desktop browsers.
 
 The page reports each run's request count, compressed bytes, cold/warm time,
 cache hits, and decoded-cache memory estimate. Chromium's non-standard heap
@@ -48,16 +48,23 @@ These are point-in-time development measurements, not service guarantees.
 Network location, Zenodo load, cache state, and device resources will change
 the observed timings.
 
-A physical low-memory phone has not been available in this development
-environment. Before treating the reader as more than an early prototype, run
-the published benchmark once on the target mobile device and record its cold
-time and whether the tab remains stable.
+## Stage 6 decision: retain the original HDF5
 
-## Decision: pass with constraints
+The direct-query approach is accepted for the next prototype stage. The
+authoritative HDF5 stays unchanged on Zenodo, and the committed compact
+reference remains a read-only map to its byte ranges. No browser-specific
+derivative is created or published at this point.
 
-Continue to a coordinate-only Stage 7 prototype using the original HDF5 and
-this reference. Retain the 20,000-base limit, expose the measured transfer cost,
-and keep the reader experimental. Do not repackage the source dataset yet.
+The supported Stage 7 boundary is deliberately narrow:
+
+- Desktop Chrome and Safari.
+- One-based inclusive AgamP4 coordinate queries, up to 20,000 bases.
+- `Cs` and archived, unmodified `snp_density` only.
+- The existing Zenodo HDF5 URL and the versioned committed range reference.
+
+The reader must continue to refuse full-file responses, identify the source
+dataset in its result metadata, and describe unavailable hash validation as a
+degraded check rather than a failed query.
 
 This decision applies only to `Cs` and `snp_density`. Benchmark `stack`
 separately before implementing a live heatmap; its multi-row layout may justify

@@ -54,14 +54,17 @@ No secret, server, package install, or JavaScript build is required.
 ## Prototype boundary
 
 - Included: responsive interface, one precomputed accession, both current plot
-  types, PNG downloads, interpretation/QC guidance, and keyboard-accessible tabs.
+  types, PNG downloads, interpretation/QC guidance, keyboard-accessible tabs,
+  and an isolated direct-HDF5 benchmark for small coordinate intervals.
 - Not included: arbitrary accessions or coordinates, live Ensembl lookup,
-  server-side plotting, or direct browser reads from the large HDF5 archive.
+  server-side plotting, or a full interactive browser query experience.
 
 The example catalogue is now accompanied by an isolated Stage 5 feasibility
 reader. It accepts a coordinate interval of at most 20,000 bases, reads only
 the `Cs` and unchanged `snp_density` chunks through HTTP range requests, and
-reports cold/warm performance. It does not yet replace the precomputed explorer.
+reports cold/warm performance. Stage 6 accepts this direct HDF5 route for the
+next coordinate-only prototype without repackaging the source archive; it does
+not yet replace the precomputed explorer.
 
 Rebuild its compact reference and pinned local validation hashes with:
 
