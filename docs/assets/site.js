@@ -101,7 +101,14 @@ const benchmarkForm = document.querySelector('#benchmark-form');
 const benchmarkStatus = document.querySelector('#benchmark-status');
 const benchmarkMetrics = document.querySelector('#benchmark-metrics');
 const benchmarkDownload = document.querySelector('#benchmark-download');
+const benchmarkSubmit = document.querySelector('#benchmark-submit');
+const querySummary = document.querySelector('#query-summary');
+const queryPreview = document.querySelector('#query-preview');
+const queryWorker = new Worker('assets/query-worker.js');
+const pendingQueries = new Map();
+let queryRequestId = 0;
 let benchmarkDownloadUrl;
+let queryManifestPromise;
 
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -115,6 +122,38 @@ async function loadValidation() {
   return response.json();
 }
 
+async function loadQueryManifest() {
+  if (!queryManifestPromise) {
+    queryManifestPromise = fetch('assets/data/query-manifest.json').then((response) => {
+      if (!response.ok) throw new Error(`Query manifest request failed (${response.status}).`);
+      return response.json();
+    });
+  }
+  return queryManifestPromise;
+}
+
+function workerQuery(chromosome, start, end) {
+  queryRequestId += 1;
+  const requestId = queryRequestId;
+  return new Promise((resolve, reject) => {
+    pendingQueries.set(requestId, { resolve, reject });
+    queryWorker.postMessage({ action: 'query', requestId, chromosome, start, end });
+  });
+}
+
+queryWorker.addEventListener('message', ({ data }) => {
+  const pending = pendingQueries.get(data.requestId);
+  if (!pending) return;
+  pendingQueries.delete(data.requestId);
+  if (data.ok) pending.resolve(data);
+  else pending.reject(new Error(data.message));
+});
+
+queryWorker.addEventListener('error', () => {
+  pendingQueries.forEach(({ reject }) => reject(new Error('The query worker stopped unexpectedly.')));
+  pendingQueries.clear();
+});
+
 function buildTsv(data) {
   const lines = ['chromosome\tpos\tCs_C\tsnp_density_s'];
   for (let index = 0; index < data.values.Cs.length; index += 1) {
@@ -123,6 +162,59 @@ function buildTsv(data) {
   return `${lines.join('\n')}\n`;
 }
 
+function mean(values) {
+  let total = 0;
+  let count = 0;
+  for (const value of values) {
+    if (Number.isFinite(value)) {
+      total += value;
+      count += 1;
+    }
+  }
+  return count ? total / count : Number.NaN;
+}
+
+function displayNumber(value) {
+  return Number.isFinite(value) ? value.toPrecision(6) : 'NA';
+}
+
+function renderQuerySummary(result) {
+  document.querySelector('#summary-count').textContent = result.values.Cs.length.toLocaleString();
+  document.querySelector('#summary-cs').textContent = displayNumber(mean(result.values.Cs));
+  document.querySelector('#summary-snp').textContent = displayNumber(mean(result.values.snp_density));
+  const rows = [];
+  const previewLength = Math.min(5, result.values.Cs.length);
+  for (let index = 0; index < previewLength; index += 1) {
+    const row = document.createElement('tr');
+    for (const value of [
+      String(result.start + index),
+      displayNumber(result.values.Cs[index]),
+      displayNumber(result.values.snp_density[index]),
+    ]) {
+      const cell = document.createElement('td');
+      cell.textContent = value;
+      row.append(cell);
+    }
+    rows.push(row);
+  }
+  queryPreview.replaceChildren(...rows);
+  querySummary.hidden = false;
+}
+
+function configureQueryMetadata(manifest) {
+  document.querySelector('#query-assembly').textContent = manifest.assembly;
+  document.querySelector('#query-coordinate-convention').textContent = manifest.coordinate_convention;
+  document.querySelector('#query-arrays').textContent = manifest.arrays.join(', ');
+  document.querySelector('#query-accessibility').textContent = manifest.accessibility.note;
+  const source = document.querySelector('#query-source');
+  source.href = manifest.source.doi;
+  source.textContent = manifest.source.filename;
+}
+
+loadQueryManifest().then(configureQueryMetadata).catch((error) => {
+  benchmarkStatus.textContent = `Live query unavailable: ${error.message}`;
+});
+
 benchmarkForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const form = new FormData(benchmarkForm);
@@ -130,44 +222,54 @@ benchmarkForm.addEventListener('submit', async (event) => {
   const start = Number(form.get('start'));
   const end = Number(form.get('end'));
   const length = end - start + 1;
+  benchmarkMetrics.hidden = true;
+  benchmarkDownload.hidden = true;
+  querySummary.hidden = true;
+  let manifest;
+  try {
+    manifest = await loadQueryManifest();
+  } catch (error) {
+    benchmarkStatus.textContent = `Live query unavailable: ${error.message}`;
+    return;
+  }
+  if (!(chromosome in manifest.chromosomes)) {
+    benchmarkStatus.textContent = `Chromosome ${chromosome} is not available in ${manifest.assembly}.`;
+    return;
+  }
   if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < start) {
     benchmarkStatus.textContent = 'Coordinates must satisfy 1 ≤ start ≤ end.';
     return;
   }
-  if (length > 20000) {
-    benchmarkStatus.textContent = 'Stage 5 limits queries to 20,000 bases.';
+  if (end > manifest.chromosomes[chromosome].length) {
+    benchmarkStatus.textContent = `End coordinate ${end.toLocaleString()} exceeds ${chromosome} length ${manifest.chromosomes[chromosome].length.toLocaleString()}.`;
+    return;
+  }
+  if (length > manifest.maximum_query_bases) {
+    benchmarkStatus.textContent = `Queries are limited to ${manifest.maximum_query_bases.toLocaleString()} bases.`;
     return;
   }
 
   benchmarkStatus.textContent = `Reading ${chromosome}:${start}-${end} from Zenodo…`;
-  benchmarkMetrics.hidden = true;
-  benchmarkDownload.hidden = true;
-  const worker = new Worker('assets/query-worker.js');
-  const beforeMemory = performance.memory?.usedJSHeapSize;
+  benchmarkSubmit.disabled = true;
   try {
-    const validationPromise = loadValidation();
-    const result = await new Promise((resolve, reject) => {
-      worker.addEventListener('message', ({ data }) => data.ok ? resolve(data) : reject(new Error(data.message)), { once: true });
-      worker.addEventListener('error', () => reject(new Error('The query worker stopped unexpectedly.')), { once: true });
-      worker.postMessage({ action: 'benchmark', chromosome, start, end });
-    });
-    const validation = await validationPromise;
+    const [result, validation] = await Promise.all([
+      workerQuery(chromosome, start, end),
+      loadValidation(),
+    ]);
     const matchingFixture = validation.region === `${chromosome}:${start}-${end}`;
     const hashesMatch = matchingFixture && result.hashAvailable && Object.entries(validation.arrays).every(
       ([name, expected]) => result.hashes[name] === expected.sha256_le_float32 && result.values[name].length === expected.count,
     );
     const hashUnavailable = matchingFixture && !result.hashAvailable;
-    const heapDelta = beforeMemory && performance.memory?.usedJSHeapSize
-      ? Math.max(0, performance.memory.usedJSHeapSize - beforeMemory)
-      : null;
+    if (matchingFixture && result.hashAvailable && !hashesMatch) {
+      throw new Error('Local validation failed; returned values do not match the pinned HDF5 fixture.');
+    }
 
-    document.querySelector('#metric-cold').textContent = `${result.cold.totalMs.toFixed(0)} ms`;
-    document.querySelector('#metric-warm').textContent = `${result.warm.totalMs.toFixed(1)} ms (${result.warm.cacheHits} cache hits)`;
-    document.querySelector('#metric-requests').textContent = String(result.cold.requests);
-    document.querySelector('#metric-bytes').textContent = formatBytes(result.cold.transferredBytes);
-    document.querySelector('#metric-memory').textContent = heapDelta === null
-      ? `${formatBytes(result.cold.decodedCacheBytes)} decoded estimate`
-      : `${formatBytes(result.cold.decodedCacheBytes)} decoded; ${formatBytes(heapDelta)} observed heap change`;
+    document.querySelector('#metric-time').textContent = `${result.metrics.totalMs.toFixed(0)} ms`;
+    document.querySelector('#metric-cache-hits').textContent = String(result.metrics.cacheHits);
+    document.querySelector('#metric-requests').textContent = String(result.metrics.requests);
+    document.querySelector('#metric-bytes').textContent = formatBytes(result.metrics.transferredBytes);
+    document.querySelector('#metric-memory').textContent = formatBytes(result.metrics.decodedCacheBytes);
     document.querySelector('#metric-validation').textContent = matchingFixture
       ? (hashesMatch ? 'Exact SHA-256 match' : hashUnavailable ? 'Hash unavailable; values retrieved' : 'FAILED')
       : 'No pinned local fixture for this interval';
@@ -176,7 +278,8 @@ benchmarkForm.addEventListener('submit', async (event) => {
       ? 'Query complete; both arrays exactly match the local HDF5 fixture.'
       : hashUnavailable
         ? 'Query complete; data retrieved, but browser hash validation is unavailable.'
-        : 'Query complete. Inspect the validation status before using these values.';
+        : `Query complete: ${chromosome}:${start}-${end}.`;
+    renderQuerySummary(result);
 
     if (benchmarkDownloadUrl) URL.revokeObjectURL(benchmarkDownloadUrl);
     benchmarkDownloadUrl = URL.createObjectURL(new Blob([buildTsv(result)], { type: 'text/tab-separated-values' }));
@@ -184,8 +287,8 @@ benchmarkForm.addEventListener('submit', async (event) => {
     benchmarkDownload.download = `AgamCs_${chromosome}_${start}-${end}.tsv`;
     benchmarkDownload.hidden = false;
   } catch (error) {
-    benchmarkStatus.textContent = `Benchmark failed: ${error.message}`;
+    benchmarkStatus.textContent = `Query failed: ${error.message}`;
   } finally {
-    worker.terminate();
+    benchmarkSubmit.disabled = false;
   }
 });

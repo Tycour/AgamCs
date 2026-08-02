@@ -71,6 +71,19 @@ separately before implementing a live heatmap; its multi-row layout may justify
 a browser-optimized derivative even if the two one-dimensional tracks remain
 direct HDF5 reads.
 
+## Stage 7 implementation
+
+The accepted route is implemented as a coordinate-query engine. Its worker
+keeps a least-recently-used decoded-chunk cache capped at 64 MiB for the page
+session. The client validates chromosome membership, coordinate ordering,
+chromosome bounds, and the 20,000-base limit before sending a request. Results
+include exact typed arrays, transfer/cache diagnostics, source provenance, a
+five-position preview, and an exact TSV download.
+
+The pinned AGAP006241 interval retains its local-HDF5 SHA-256 check. Other
+valid intervals are not labelled as locally validated, and any range, decode,
+or pinned-fixture failure is shown as a query error.
+
 ## Engineering finding
 
 The reference metadata maps both requested arrays to zlib-compressed HDF5

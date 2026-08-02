@@ -145,9 +145,9 @@ and the rebuild procedure are in
 
 Try the no-install, static GitHub Pages prototype from `docs/index.html`. It
 shows a precomputed example and the current plot outputs. An isolated
-coordinate benchmark can also read `Cs` and raw SNP-density chunks directly
-from the Zenodo HDF5, but arbitrary live plots still require the CLI or Shiny
-app. Publishing instructions and the prototype boundary are documented in
+coordinate query can also read and download exact `Cs` and raw SNP-density
+values directly from the Zenodo HDF5, but arbitrary live plots still require
+the CLI or Shiny app. Publishing instructions and the prototype boundary are documented in
 [`docs/github-pages-prototype.md`](docs/github-pages-prototype.md).
 
 Start the local Shiny interface with:

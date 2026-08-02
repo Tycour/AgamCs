@@ -53,18 +53,23 @@ No secret, server, package install, or JavaScript build is required.
 
 ## Prototype boundary
 
-- Included: responsive interface, one precomputed accession, both current plot
-  types, PNG downloads, interpretation/QC guidance, keyboard-accessible tabs,
-  and an isolated direct-HDF5 benchmark for small coordinate intervals.
-- Not included: arbitrary accessions or coordinates, live Ensembl lookup,
-  server-side plotting, or a full interactive browser query experience.
+- Included: responsive interface, four precomputed accessions, both current
+  plot types, PNG downloads, interpretation/QC guidance, keyboard-accessible
+  tabs, and exact live `Cs`/SNP-density coordinate queries up to 20,000 bases.
+- Not included: arbitrary accession lookup, live Ensembl lookup, live
+  accessibility/QC, live plots, or server-side plotting.
 
-The example catalogue is now accompanied by an isolated Stage 5 feasibility
-reader. It accepts a coordinate interval of at most 20,000 bases, reads only
-the `Cs` and unchanged `snp_density` chunks through HTTP range requests, and
-reports cold/warm performance. Stage 6 accepts this direct HDF5 route for the
-next coordinate-only prototype without repackaging the source archive; it does
-not yet replace the precomputed explorer.
+The example catalogue is accompanied by the Stage 7 coordinate-query engine.
+It accepts an AgamP4 interval of at most 20,000 bases and reads only the `Cs`
+and unchanged `snp_density` chunks through HTTP range requests. Decoding runs
+in a persistent worker with a bounded in-memory chunk cache, so repeat and
+nearby queries can reuse data without freezing the interface. Exact values are
+previewed and downloadable as TSV.
+
+The browser reads a generated manifest for chromosome bounds, array names,
+coordinate convention, source provenance, and the query limit. Accessibility
+is explicitly reported as unavailable in this stage; SNP density is never
+rewritten or presented as proof of callability.
 
 Rebuild its compact reference and pinned local validation hashes with:
 

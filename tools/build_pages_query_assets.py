@@ -15,6 +15,8 @@ import numpy as np
 CHROMOSOMES = ('2L', '2R', '3L', '3R', 'X')
 ARRAYS = ('Cs', 'snp_density')
 DEFAULT_REGION = ('2L', 28_585_064, 28_586_748)
+MAX_QUERY_BASES = 20_000
+SOURCE_DOI = 'https://doi.org/10.5281/zenodo.4304586'
 
 
 def compact_reference(source: dict) -> dict:
@@ -55,6 +57,31 @@ def validation_fixture(hdf5_path: Path) -> dict:
     }
 
 
+def query_manifest(reference: dict) -> dict:
+    """Describe the stable public contract consumed by the Pages client."""
+    chromosomes = {}
+    for chromosome in CHROMOSOMES:
+        metadata = json.loads(reference['refs'][f'{chromosome}/Cs/.zarray'])
+        chromosomes[chromosome] = {'length': int(metadata['shape'][1])}
+    return {
+        'schema_version': 1,
+        'assembly': 'AgamP4',
+        'coordinate_convention': '1-based inclusive',
+        'maximum_query_bases': MAX_QUERY_BASES,
+        'arrays': list(ARRAYS),
+        'chromosomes': chromosomes,
+        'source': {
+            'filename': 'AgamP4_conservation.h5',
+            'doi': SOURCE_DOI,
+            'url': reference['templates']['source'],
+        },
+        'accessibility': {
+            'available': False,
+            'note': 'Not joined in Stage 7; SNP density is archived and unmodified.',
+        },
+    }
+
+
 def serialized(value: dict) -> str:
     return json.dumps(value, separators=(',', ':'), sort_keys=True) + '\n'
 
@@ -78,6 +105,7 @@ def main() -> None:
     reference = compact_reference(json.loads(args.source_reference.read_text()))
     outputs = {
         args.output_directory / 'score-reference.json': serialized(reference),
+        args.output_directory / 'query-manifest.json': serialized(query_manifest(reference)),
     }
     if args.hdf5.exists():
         outputs[args.output_directory / 'query-validation.json'] = serialized(

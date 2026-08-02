@@ -15,6 +15,7 @@ PAGES = (ROOT / 'index.html', ROOT / '404.html')
 EXAMPLES_PATH = ROOT / 'examples.json'
 QUERY_ASSETS = (
     ROOT / 'assets/data/score-reference.json',
+    ROOT / 'assets/data/query-manifest.json',
     ROOT / 'assets/data/query-validation.json',
     ROOT / 'assets/query-worker.js',
 )
@@ -137,9 +138,10 @@ def main() -> None:
     for asset in QUERY_ASSETS:
         if not asset.exists() or asset.stat().st_size == 0:
             errors.append(f'missing browser-query asset: {asset.relative_to(ROOT)}')
-    if all(asset.exists() for asset in QUERY_ASSETS[:2]):
+    if all(asset.exists() for asset in QUERY_ASSETS[:3]):
         reference = json.loads(QUERY_ASSETS[0].read_text())
-        validation = json.loads(QUERY_ASSETS[1].read_text())
+        manifest = json.loads(QUERY_ASSETS[1].read_text())
+        validation = json.loads(QUERY_ASSETS[2].read_text())
         if not str(reference.get('templates', {}).get('source', '')).startswith('https://'):
             errors.append('browser-query source must use HTTPS')
         expected_metadata = {
@@ -156,6 +158,18 @@ def main() -> None:
         }
         if exposed != QUERY_ARRAYS:
             errors.append(f'browser-query index exposes unexpected arrays: {sorted(exposed)}')
+        if manifest.get('assembly') != 'AgamP4':
+            errors.append('browser-query manifest has an unexpected assembly')
+        if manifest.get('coordinate_convention') != '1-based inclusive':
+            errors.append('browser-query manifest has an unexpected coordinate convention')
+        if manifest.get('maximum_query_bases') != 20_000:
+            errors.append('browser-query manifest has an unexpected query limit')
+        if set(manifest.get('chromosomes', {})) != QUERY_CHROMOSOMES:
+            errors.append('browser-query manifest has unexpected chromosomes')
+        if set(manifest.get('arrays', ())) != QUERY_ARRAYS:
+            errors.append('browser-query manifest has unexpected arrays')
+        if manifest.get('accessibility', {}).get('available') is not False:
+            errors.append('browser-query manifest must not claim live accessibility')
         validation_arrays = validation.get('arrays', {})
         if set(validation_arrays) != QUERY_ARRAYS:
             errors.append('browser-query validation fixture has unexpected arrays')

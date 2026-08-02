@@ -1,6 +1,8 @@
 const REFERENCE_URL = 'data/score-reference.json';
 const ARRAYS = ['Cs', 'snp_density'];
+const MAX_CACHE_BYTES = 64 * 1024 * 1024;
 const cache = new Map();
+let cacheBytes = 0;
 let referencePromise;
 
 function parseMetadata(value) {
@@ -27,8 +29,11 @@ async function inflate(buffer) {
 
 async function readChunk(reference, key, expectedBytes, metrics) {
   if (cache.has(key)) {
+    const cached = cache.get(key);
+    cache.delete(key);
+    cache.set(key, cached);
     metrics.cacheHits += 1;
-    return cache.get(key);
+    return cached;
   }
   const entry = reference.refs[key];
   if (!Array.isArray(entry) || entry.length !== 3) {
@@ -55,7 +60,13 @@ async function readChunk(reference, key, expectedBytes, metrics) {
   metrics.requests += 1;
   metrics.transferredBytes += compressed.byteLength;
   metrics.networkAndDecodeMs += performance.now() - started;
+  while (cache.size && cacheBytes + decoded.byteLength > MAX_CACHE_BYTES) {
+    const oldestKey = cache.keys().next().value;
+    cacheBytes -= cache.get(oldestKey).byteLength;
+    cache.delete(oldestKey);
+  }
   cache.set(key, decoded);
+  cacheBytes += decoded.byteLength;
   return decoded;
 }
 
@@ -103,7 +114,7 @@ async function query(chromosome, start, end) {
     values[name] = await readArray(reference, chromosome, name, start, end, metrics);
   }
   metrics.totalMs = performance.now() - started;
-  metrics.decodedCacheBytes = [...cache.values()].reduce((total, item) => total + item.byteLength, 0);
+  metrics.decodedCacheBytes = cacheBytes;
   return { values, metrics };
 }
 
@@ -113,29 +124,51 @@ async function digest(values) {
 }
 
 self.addEventListener('message', async ({ data }) => {
-  if (data.action !== 'benchmark') return;
-  try {
+  if (data.action === 'clear-cache') {
     cache.clear();
-    const cold = await query(data.chromosome, data.start, data.end);
-    const warm = await query(data.chromosome, data.start, data.end);
+    cacheBytes = 0;
+    self.postMessage({ ok: true, action: data.action, requestId: data.requestId });
+    return;
+  }
+  if (!['query', 'benchmark'].includes(data.action)) return;
+  try {
+    if (data.action === 'benchmark') {
+      cache.clear();
+      cacheBytes = 0;
+    }
+    const result = await query(data.chromosome, data.start, data.end);
+    const warm = data.action === 'benchmark'
+      ? await query(data.chromosome, data.start, data.end)
+      : null;
     const canHash = Boolean(globalThis.crypto?.subtle?.digest);
     const hashes = {};
     if (canHash) {
-      for (const name of ARRAYS) hashes[name] = await digest(cold.values[name]);
+      for (const name of ARRAYS) hashes[name] = await digest(result.values[name]);
     }
-    const transfer = ARRAYS.map((name) => cold.values[name].buffer);
-    self.postMessage({
+    const transfer = ARRAYS.map((name) => result.values[name].buffer);
+    const response = {
       ok: true,
+      action: data.action,
+      requestId: data.requestId,
       chromosome: data.chromosome,
       start: data.start,
       end: data.end,
-      values: cold.values,
+      values: result.values,
       hashes,
       hashAvailable: canHash,
-      cold: cold.metrics,
-      warm: warm.metrics,
-    }, transfer);
+      metrics: result.metrics,
+    };
+    if (data.action === 'benchmark') {
+      response.cold = result.metrics;
+      response.warm = warm.metrics;
+    }
+    self.postMessage(response, transfer);
   } catch (error) {
-    self.postMessage({ ok: false, message: error instanceof Error ? error.message : String(error) });
+    self.postMessage({
+      ok: false,
+      action: data.action,
+      requestId: data.requestId,
+      message: error instanceof Error ? error.message : String(error),
+    });
   }
 });
