@@ -15,6 +15,7 @@
   <link rel="canonical" href="https://tycour.github.io/AgamCs/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/site.css">
+  <script src="assets/live-plots.js" defer></script>
   <script src="assets/site.js" defer></script>
 </head>
 <body>
@@ -122,7 +123,7 @@
       <div class="benchmark-intro">
         <p class="eyebrow">Live coordinate query</p>
         <h2 id="benchmark-title">Read an AgamP4 interval from Zenodo.</h2>
-        <p>Enter one-based inclusive coordinates. The browser requests only the compressed HDF5 chunks needed for exact Cs and archived SNP-density values; decoded chunks are reused during this page visit.</p>
+        <p>Enter one-based inclusive coordinates. The browser requests only the compressed HDF5 chunks needed for Cs, archived SNP density, the 21-species conserved-interval matrix, and the separate accessibility companion; decoded chunks are reused during this page visit.</p>
       </div>
       <form class="benchmark-form" id="benchmark-form">
         <label for="benchmark-chromosome">Chromosome</label>
@@ -140,9 +141,9 @@
         <dl class="query-provenance" id="query-provenance">
           <div><dt>Assembly</dt><dd id="query-assembly">AgamP4</dd></div>
           <div><dt>Coordinates</dt><dd id="query-coordinate-convention">1-based inclusive</dd></div>
-          <div><dt>Arrays</dt><dd id="query-arrays">Cs, SNP density</dd></div>
+          <div><dt>Arrays</dt><dd id="query-arrays">Cs, SNP density, species stack</dd></div>
           <div><dt>Source</dt><dd><a id="query-source" href="https://doi.org/10.5281/zenodo.4304586">Zenodo 4304586</a></dd></div>
-          <div><dt>Accessibility/QC</dt><dd id="query-accessibility">Not joined; SNP density remains raw</dd></div>
+          <div><dt>Accessibility/QC</dt><dd id="query-accessibility">Separate companion track</dd></div>
         </dl>
         <dl class="benchmark-metrics" id="benchmark-metrics" hidden>
           <div><dt>Query time</dt><dd id="metric-time">—</dd></div>
@@ -157,18 +158,39 @@
           <div class="summary-grid">
             <div><span>Positions</span><strong id="summary-count">—</strong></div>
             <div><span>Mean Cs</span><strong id="summary-cs">—</strong></div>
-            <div><span>Mean SNP density</span><strong id="summary-snp">—</strong></div>
+            <div><span>Mean SNP (accessible)</span><strong id="summary-snp">—</strong></div>
+            <div><span>Accessible bases</span><strong id="summary-accessible">—</strong></div>
           </div>
           <div class="preview-table-wrap">
             <table class="preview-table">
               <caption>First five returned positions</caption>
-              <thead><tr><th>Position</th><th>Cs</th><th>SNP density</th></tr></thead>
+              <thead><tr><th>Position</th><th>Cs</th><th>Raw SNP density</th><th>QC status</th></tr></thead>
               <tbody id="query-preview"></tbody>
             </table>
           </div>
         </div>
+        <div class="live-visuals" id="live-visuals" hidden>
+          <div class="live-visual-heading">
+            <div>
+              <p class="eyebrow">Query-derived figures</p>
+              <h3>Interactive browser plots</h3>
+            </div>
+            <p id="live-annotation-note">Genomic-coordinate view.</p>
+          </div>
+          <div class="tabs live-tabs" role="tablist" aria-label="Live query figures">
+            <button role="tab" aria-selected="true" aria-controls="live-signals-panel" id="live-signals-tab">Cs + SNP/QC</button>
+            <button role="tab" aria-selected="false" aria-controls="live-heatmap-panel" id="live-heatmap-tab">Species heatmap</button>
+          </div>
+          <div class="live-plot-panel" id="live-signals-panel" role="tabpanel" aria-labelledby="live-signals-tab">
+            <div class="live-plot" id="live-signal-plot"></div>
+          </div>
+          <div class="live-plot-panel" id="live-heatmap-panel" role="tabpanel" aria-labelledby="live-heatmap-tab" hidden>
+            <div class="live-plot" id="live-heatmap-plot"></div>
+          </div>
+          <p class="plot-method-note" id="plot-method-note">Plots use display-only bins. Hover for query values; the TSV retains every exact base and every species row.</p>
+        </div>
         <a class="download-link" id="benchmark-download" hidden download="AgamCs-browser-query.tsv">Download exact TSV values</a>
-        <p class="field-help">Maximum interval: 20,000 bases. The archive is never downloaded in full. Live accessibility/QC is not yet joined, so SNP-density values are returned unchanged and must not be interpreted as callable or invariant without the companion track.</p>
+        <p class="field-help">Maximum interval: 20,000 bases. The conservation archive is never downloaded in full. Raw SNP-density values are never rewritten; failed accessibility/QC positions are shown separately as unknown.</p>
       </div>
     </section>
 

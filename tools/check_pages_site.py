@@ -15,11 +15,15 @@ PAGES = (ROOT / 'index.html', ROOT / '404.html')
 EXAMPLES_PATH = ROOT / 'examples.json'
 QUERY_ASSETS = (
     ROOT / 'assets/data/score-reference.json',
+    ROOT / 'assets/data/accessibility-reference.json',
     ROOT / 'assets/data/query-manifest.json',
     ROOT / 'assets/data/query-validation.json',
+    ROOT / 'assets/data/plot-validation.json',
     ROOT / 'assets/query-worker.js',
+    ROOT / 'assets/live-plots.js',
 )
-QUERY_ARRAYS = {'Cs', 'snp_density'}
+QUERY_ARRAYS = {'Cs', 'snp_density', 'stack'}
+VALIDATION_ARRAYS = QUERY_ARRAYS | {'status'}
 QUERY_CHROMOSOMES = {'2L', '2R', '3L', '3R', 'X'}
 REQUIRED_META_NAMES = {'description', 'theme-color', 'twitter:card'}
 REQUIRED_META_PROPERTIES = {'og:type', 'og:title', 'og:description', 'og:url', 'og:image'}
@@ -138,10 +142,12 @@ def main() -> None:
     for asset in QUERY_ASSETS:
         if not asset.exists() or asset.stat().st_size == 0:
             errors.append(f'missing browser-query asset: {asset.relative_to(ROOT)}')
-    if all(asset.exists() for asset in QUERY_ASSETS[:3]):
+    if all(asset.exists() for asset in QUERY_ASSETS[:5]):
         reference = json.loads(QUERY_ASSETS[0].read_text())
-        manifest = json.loads(QUERY_ASSETS[1].read_text())
-        validation = json.loads(QUERY_ASSETS[2].read_text())
+        accessibility_reference = json.loads(QUERY_ASSETS[1].read_text())
+        manifest = json.loads(QUERY_ASSETS[2].read_text())
+        validation = json.loads(QUERY_ASSETS[3].read_text())
+        plot_validation = json.loads(QUERY_ASSETS[4].read_text())
         if not str(reference.get('templates', {}).get('source', '')).startswith('https://'):
             errors.append('browser-query source must use HTTPS')
         expected_metadata = {
@@ -158,6 +164,14 @@ def main() -> None:
         }
         if exposed != QUERY_ARRAYS:
             errors.append(f'browser-query index exposes unexpected arrays: {sorted(exposed)}')
+        expected_status_metadata = {
+            f'{chromosome}/status/.zarray'
+            for chromosome in QUERY_CHROMOSOMES
+        }
+        if not expected_status_metadata.issubset(accessibility_reference.get('refs', {})):
+            errors.append('accessibility index is missing required status metadata')
+        if not str(accessibility_reference.get('templates', {}).get('source', '')).startswith('https://'):
+            errors.append('accessibility source must use HTTPS')
         if manifest.get('assembly') != 'AgamP4':
             errors.append('browser-query manifest has an unexpected assembly')
         if manifest.get('coordinate_convention') != '1-based inclusive':
@@ -168,15 +182,28 @@ def main() -> None:
             errors.append('browser-query manifest has unexpected chromosomes')
         if set(manifest.get('arrays', ())) != QUERY_ARRAYS:
             errors.append('browser-query manifest has unexpected arrays')
-        if manifest.get('accessibility', {}).get('available') is not False:
-            errors.append('browser-query manifest must not claim live accessibility')
+        accessibility = manifest.get('accessibility', {})
+        if accessibility.get('available') is not True:
+            errors.append('browser-query manifest must expose live accessibility')
+        if len(accessibility.get('sha256', '')) != 64:
+            errors.append('browser-query manifest has an invalid accessibility checksum')
+        stack = manifest.get('stack', {})
+        if len(stack.get('rows', ())) != 21 or len(stack.get('species', ())) != 21:
+            errors.append('browser-query manifest has invalid stack metadata')
         validation_arrays = validation.get('arrays', {})
-        if set(validation_arrays) != QUERY_ARRAYS:
+        if set(validation_arrays) != VALIDATION_ARRAYS:
             errors.append('browser-query validation fixture has unexpected arrays')
         for name, details in validation_arrays.items():
-            digest = details.get('sha256_le_float32', '')
+            digest = details.get('sha256_bytes', '')
             if len(digest) != 64 or any(character not in '0123456789abcdef' for character in digest):
                 errors.append(f'invalid browser-query SHA-256 for {name}')
+        if plot_validation.get('region') != validation.get('region'):
+            errors.append('plot-validation fixture does not match query validation region')
+        if len(plot_validation.get('cs', ())) != 240:
+            errors.append('plot-validation fixture has unexpected Cs display bins')
+        heatmap = plot_validation.get('heatmap', ())
+        if len(heatmap) != 21 or any(len(row) != 500 for row in heatmap):
+            errors.append('plot-validation fixture has unexpected heatmap dimensions')
     if errors:
         raise SystemExit('\n'.join(errors))
     print(f'Validated {len(PAGES)} Pages documents and their local assets.')

@@ -96,3 +96,35 @@ whether this is acceptable or a browser-optimized derivative is warranted.
 Accessibility is deliberately excluded from this experiment. Raw SNP density
 is never masked or rewritten; accessibility remains a separate companion track
 for a later, separately reviewed stage.
+
+## Stage 8 interactive plots (2 August 2026)
+
+The browser client now extends the same direct-query route to the 21-row raw
+`stack` matrix. The existing compact accessibility/QC HDF5 is queried as a
+separate, immutable companion; the conservation HDF5 remains unchanged and no
+browser derivative has been created.
+
+For the pinned 1,685-base AGAP006241 interval, development Chromium requested
+24 byte ranges, transferred 1.92 MiB, and completed in 1.84 s. SHA-256 checks
+matched the local HDF5 values for `Cs`, raw `snp_density`, `stack`, and the
+accessibility status byte. The browser's 240-bin signal summaries matched the
+existing Python summary functions, and its 21 × 500 heatmap display cells
+matched a Python fixture generated from the same exact `stack` slice and
+display reducer.
+
+The live figures preserve the current plotting semantics:
+
+- median Cs with 25th–75th and 10th–90th percentile ribbons;
+- mean SNP density over accessible bases, with QC-failed bases shaded as
+  unknown rather than converted to zero;
+- metadata-ordered species labels and an explicit categorical colour for no
+  detected CNEr interval;
+- pinned plus- and minus-strand gene models shown 5′→3′ with aligned exon and
+  CDS landmarks;
+- display-only downsampling, while the TSV retains every queried base, the raw
+  QC status byte, and all 21 exact `stack` values.
+
+The pinned minus-strand AGAP008118 interval and an arbitrary unannotated
+coordinate interval were also exercised successfully. Cross-browser
+publication regression testing remains part of Stage 10 rather than this
+implementation step.
