@@ -7,12 +7,14 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+from build_pages_accession_index import validate_index
 from build_pages_examples import load_catalogue, verify_assets
 
 
 ROOT = Path(__file__).resolve().parents[1] / 'docs'
 PAGES = (ROOT / 'index.html', ROOT / '404.html')
 EXAMPLES_PATH = ROOT / 'examples.json'
+ACCESSION_INDEX_PATH = ROOT / 'assets/data/accession-index.json'
 QUERY_ASSETS = (
     ROOT / 'assets/data/score-reference.json',
     ROOT / 'assets/data/accessibility-reference.json',
@@ -21,6 +23,8 @@ QUERY_ASSETS = (
     ROOT / 'assets/data/plot-validation.json',
     ROOT / 'assets/query-worker.js',
     ROOT / 'assets/live-plots.js',
+    ROOT / 'assets/accession-lookup.js',
+    ACCESSION_INDEX_PATH,
 )
 QUERY_ARRAYS = {'Cs', 'snp_density', 'stack'}
 VALIDATION_ARRAYS = QUERY_ARRAYS | {'status'}
@@ -118,6 +122,12 @@ def validate_page(page: Path) -> list[str]:
             errors.append(f'index.html: missing Open Graph properties: {sorted(missing_properties)}')
         if 'Early research prototype' not in page.read_text(encoding='utf-8'):
             errors.append('index.html: early prototype status is not stated')
+        required_ids = {
+            'benchmark-form', 'live-accession', 'accession-query-panel',
+            'coordinate-query-panel', 'resolved-accession',
+        }
+        if missing_ids := required_ids - checker.ids:
+            errors.append(f'index.html: missing live-query controls: {sorted(missing_ids)}')
     return errors
 
 
@@ -131,6 +141,31 @@ def validate_examples() -> list[str]:
             for path in verify_assets(catalogue['examples'], ROOT / 'assets')]
 
 
+def validate_accessions() -> list[str]:
+    """Validate the pinned index and its overlap with precomputed examples."""
+    try:
+        index = json.loads(ACCESSION_INDEX_PATH.read_text(encoding='utf-8'))
+        validate_index(index)
+        catalogue = load_catalogue(EXAMPLES_PATH)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return [f'could not validate accession index: {error}']
+
+    errors = []
+    if len(index['accessions']) != 15:
+        errors.append('accession index must contain the 15 reviewed prototype records')
+    for example in catalogue['examples']:
+        accession = example['accession']
+        record = index['accessions'].get(accession)
+        if record is None:
+            errors.append(f'precomputed example is missing from accession index: {accession}')
+            continue
+        if record['region'] != example['region']:
+            errors.append(f'accession-index region disagrees with example: {accession}')
+        if record['annotation'] != example['annotation']:
+            errors.append(f'accession-index annotation disagrees with example: {accession}')
+    return errors
+
+
 def main() -> None:
     errors: list[str] = []
     for page in PAGES:
@@ -139,6 +174,7 @@ def main() -> None:
         else:
             errors.extend(validate_page(page))
     errors.extend(validate_examples())
+    errors.extend(validate_accessions())
     for asset in QUERY_ASSETS:
         if not asset.exists() or asset.stat().st_size == 0:
             errors.append(f'missing browser-query asset: {asset.relative_to(ROOT)}')

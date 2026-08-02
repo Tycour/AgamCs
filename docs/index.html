@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="An early research prototype for browsing precomputed AgamP4 conservation-score results.">
+  <meta name="description" content="An early research prototype for live, accession-aware AgamP4 conservation queries.">
   <meta name="theme-color" content="#0c675a">
   <meta property="og:type" content="website">
   <meta property="og:title" content="AgamCs conservation explorer">
-  <meta property="og:description" content="An early research prototype for browsing precomputed AgamP4 conservation-score results.">
+  <meta property="og:description" content="An early research prototype for live, accession-aware AgamP4 conservation queries.">
   <meta property="og:url" content="https://tycour.github.io/AgamCs/">
   <meta property="og:image" content="https://tycour.github.io/AgamCs/assets/examples/AGAP006241/cs_snp_summary.png">
   <meta name="twitter:card" content="summary_large_image">
@@ -16,6 +16,7 @@
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="assets/site.css">
   <script src="assets/live-plots.js" defer></script>
+  <script src="assets/accession-lookup.js" defer></script>
   <script src="assets/site.js" defer></script>
 </head>
 <body>
@@ -37,7 +38,7 @@
       <div>
         <p class="eyebrow">AgamP4 conservation scores</p>
         <h1>Inspect conservation around a mosquito gene.</h1>
-        <p class="lede">A browser-friendly preview of the AgamCs pipeline. Explore a precomputed gene result without installing Python or downloading the 3.7 GB source archive.</p>
+        <p class="lede">A browser-friendly preview of the AgamCs pipeline. Explore precomputed examples or query a pinned gene without installing Python or downloading the 3.7 GB source archive.</p>
         <div class="hero-actions">
           <a class="button primary" href="#explorer">Open the demo</a>
           <a class="button secondary" href="https://github.com/Tycour/AgamCs#quick-start">Run your own query</a>
@@ -47,7 +48,7 @@
         <span class="status-dot" aria-hidden="true"></span>
         <div>
           <strong>Early research prototype</strong>
-          <p>This static demonstration uses precomputed output from the AgamP4 conservation archive. Features, example results, and presentation may change; use the CLI for reproducible analysis.</p>
+          <p>This static client reads selected AgamP4 archive chunks and a separate QC companion directly in your browser. Features, results, and presentation may change; use the CLI for established workflows.</p>
         </div>
       </aside>
     </section>
@@ -121,23 +122,55 @@
 
     <section class="benchmark" id="live-query" aria-labelledby="benchmark-title">
       <div class="benchmark-intro">
-        <p class="eyebrow">Live coordinate query</p>
-        <h2 id="benchmark-title">Read an AgamP4 interval from Zenodo.</h2>
-        <p>Enter one-based inclusive coordinates. The browser requests only the compressed HDF5 chunks needed for Cs, archived SNP density, the 21-species conserved-interval matrix, and the separate accessibility companion; decoded chunks are reused during this page visit.</p>
+        <p class="eyebrow">Live browser query</p>
+        <h2 id="benchmark-title">Query a pinned gene or AgamP4 interval.</h2>
+        <p>Gene accessions resolve through a versioned local AgamP4.14 index; manual one-based inclusive coordinates remain available independently. The browser requests only the compressed HDF5 chunks needed for Cs, archived SNP density, the 21-species conserved-interval matrix, and the separate accessibility companion.</p>
       </div>
       <form class="benchmark-form" id="benchmark-form">
-        <label for="benchmark-chromosome">Chromosome</label>
-        <select id="benchmark-chromosome" name="chromosome">
-          <option>2L</option><option>2R</option><option>3L</option><option>3R</option><option>X</option>
-        </select>
-        <label for="benchmark-start">Start (1-based)</label>
-        <input id="benchmark-start" name="start" type="number" min="1" value="28585064" required>
-        <label for="benchmark-end">End (inclusive)</label>
-        <input id="benchmark-end" name="end" type="number" min="1" value="28586748" required>
+        <fieldset class="query-mode-switch">
+          <legend>Query by</legend>
+          <label class="query-mode-control">
+            <input type="radio" name="live-query-mode" value="accession" checked>
+            <span>Pinned gene accession</span>
+          </label>
+          <label class="query-mode-control">
+            <input type="radio" name="live-query-mode" value="coordinates">
+            <span>Manual coordinates</span>
+          </label>
+        </fieldset>
+        <div class="query-input-panel accession-query-panel" id="accession-query-panel">
+          <label for="live-accession">Gene accession</label>
+          <input id="live-accession" name="live-accession" list="live-accession-list" value="AGAP006241" autocomplete="off" spellcheck="false">
+          <datalist id="live-accession-list"></datalist>
+          <p class="field-help" id="accession-index-help">Loading the pinned accession index…</p>
+        </div>
+        <div class="query-input-panel coordinate-query-panel" id="coordinate-query-panel" hidden>
+          <div>
+            <label for="benchmark-chromosome">Chromosome</label>
+            <select id="benchmark-chromosome" name="chromosome">
+              <option>2L</option><option>2R</option><option>3L</option><option>3R</option><option>X</option>
+            </select>
+          </div>
+          <div>
+            <label for="benchmark-start">Start (1-based)</label>
+            <input id="benchmark-start" name="start" type="number" min="1" value="28585064">
+          </div>
+          <div>
+            <label for="benchmark-end">End (inclusive)</label>
+            <input id="benchmark-end" name="end" type="number" min="1" value="28586748">
+          </div>
+        </div>
         <button class="button primary" id="benchmark-submit" type="submit">Query exact values</button>
       </form>
       <div class="benchmark-results" id="benchmark-results" aria-live="polite">
         <p id="benchmark-status">Ready to query the pinned AGAP006241 interval.</p>
+        <dl class="resolved-accession" id="resolved-accession" hidden>
+          <div><dt>Accession</dt><dd id="resolved-accession-id">—</dd></div>
+          <div><dt>Transcript</dt><dd id="resolved-transcript">—</dd></div>
+          <div><dt>Strand</dt><dd id="resolved-strand">—</dd></div>
+          <div><dt>Annotation</dt><dd id="resolved-annotation">—</dd></div>
+          <div><dt>Index</dt><dd id="resolved-index-version">—</dd></div>
+        </dl>
         <dl class="query-provenance" id="query-provenance">
           <div><dt>Assembly</dt><dd id="query-assembly">AgamP4</dd></div>
           <div><dt>Coordinates</dt><dd id="query-coordinate-convention">1-based inclusive</dd></div>
@@ -190,7 +223,7 @@
           <p class="plot-method-note" id="plot-method-note">Plots use display-only bins. Hover for query values; the TSV retains every exact base and every species row.</p>
         </div>
         <a class="download-link" id="benchmark-download" hidden download="AgamCs-browser-query.tsv">Download exact TSV values</a>
-        <p class="field-help">Maximum interval: 20,000 bases. The conservation archive is never downloaded in full. Raw SNP-density values are never rewritten; failed accessibility/QC positions are shown separately as unknown.</p>
+        <p class="field-help">Maximum interval: 20,000 bases. Unknown, retired, or ambiguous accessions never fall through to a live service; use manual coordinates instead. The conservation archive is never downloaded in full. Raw SNP-density values are never rewritten; failed accessibility/QC positions are shown separately as unknown.</p>
       </div>
     </section>
 

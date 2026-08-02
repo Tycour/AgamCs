@@ -1,0 +1,450 @@
+{
+  "schema_version": 1,
+  "index_version": "agamcs-agamp4.14-v1",
+  "assembly": "AgamP4",
+  "coordinate_convention": "1-based inclusive",
+  "annotation": {
+    "gene_build": "AgamP4.14",
+    "released": "2022-08",
+    "source": "VEuPathDB VectorBase via Ensembl Metazoa",
+    "source_url": "https://metazoa.ensembl.org/Anopheles_gambiae/Info/Annotation",
+    "verified_on": "2026-08-02",
+    "verification": "All pinned coordinates, strands, representative transcripts, exons, and CDS bounds matched expanded Ensembl REST records.",
+    "source_snapshot_sha256": "9fca19263ee90a28e41d9ce06679d28fa1d267c70ca5a64ca0a2ac6251ec1bfb"
+  },
+  "refresh_policy": {
+    "mode": "manual review only",
+    "statement": "Never refresh silently. Re-verify every record, review annotation changes, and bump index_version before publication."
+  },
+  "live_lookup": {
+    "enabled": false,
+    "statement": "Live Ensembl lookup is intentionally disabled in this prototype."
+  },
+  "accessions": {
+    "AGAP005025": {
+      "status": "current",
+      "region": "2L:8460463-8460873",
+      "annotation": {
+        "assembly": "AgamP4",
+        "cds_end": 8460873,
+        "cds_start": 8460463,
+        "chromosome": "2L",
+        "end": 8460873,
+        "exons": [
+          {
+            "end": 8460873,
+            "start": 8460463
+          }
+        ],
+        "id": "AGAP005025",
+        "start": 8460463,
+        "strand": -1,
+        "transcript_id": "AGAP005025-RA"
+      }
+    },
+    "AGAP006098": {
+      "status": "current",
+      "region": "2L:26644176-26645592",
+      "annotation": {
+        "assembly": "AgamP4",
+        "cds_end": 26645442,
+        "cds_start": 26644469,
+        "chromosome": "2L",
+        "end": 26645592,
+        "exons": [
+          {
+            "end": 26644377,
+            "start": 26644176
+          },
+          {
+            "end": 26644930,
+            "start": 26644461
+          },
+          {
+            "end": 26645592,
+            "start": 26645125
+          }
+        ],
+        "id": "AGAP006098",
+        "start": 26644176,
+        "strand": 1,
+        "transcript_id": "AGAP006098-RA"
+      }
+    },
+    "AGAP006241": {
+      "status": "current",
+      "region": "2L:28585064-28586748",
+      "annotation": {
+        "assembly": "AgamP4",
+        "cds_end": 28586546,
+        "cds_start": 28585208,
+        "chromosome": "2L",
+        "end": 28586748,
+        "exons": [
+          {
+            "end": 28585457,
+            "start": 28585064
+          },
+          {
+            "end": 28585757,
+            "start": 28585566
+          },
+          {
+            "end": 28586748,
+            "start": 28585828
+          }
+        ],
+        "id": "AGAP006241",
+        "start": 28585064,
+        "strand": 1,
+        "transcript_id": "AGAP006241-RA"
+      }
+    },
+    "AGAP008118": {
+      "status": "current",
+      "region": "3R:5886340-5904286",
+      "annotation": {
+        "assembly": "AgamP4",
+        "cds_end": 5893452,
+        "cds_start": 5886695,
+        "chromosome": "3R",
+        "end": 5904286,
+        "exons": [
+          {
+            "end": 5904286,
+            "start": 5903941
+          },
+          {
+            "end": 5893558,
+            "start": 5893337
+          },
+          {
+            "end": 5893232,
+            "start": 5893009
+          },
+          {
+            "end": 5892928,
+            "start": 5892751
+          },
+          {
+            "end": 5892521,
+            "start": 5892379
+          },
+          {
+            "end": 5889825,
+            "start": 5889619
+          },
+          {
+            "end": 5887383,
+            "start": 5886340
+          }
+        ],
+        "id": "AGAP008118",
+        "start": 5886340,
+        "strand": -1,
+        "transcript_id": "AGAP008118-RA"
+      }
+    },
+    "AGAP009365": {
+      "status": "current",
+      "region": "3R:31804486-31805861",
+      "annotation": {
+        "assembly": "AgamP4",
+        "cds_end": 31805861,
+        "cds_start": 31804498,
+        "chromosome": "3R",
+        "end": 31805861,
+        "exons": [
+          {
+            "end": 31804678,
+            "start": 31804486
+          },
+          {
+            "end": 31804885,
+            "start": 31804791
+          },
+          {
+            "end": 31805106,
+            "start": 31804953
+          },
+          {
+            "end": 31805500,
+            "start": 31805196
+          },
+          {
+            "end": 31805731,
+            "start": 31805581
+          },
+          {
+            "end": 31805861,
+            "start": 31805818
+          }
+        ],
+        "id": "AGAP009365",
+        "start": 31804486,
+        "strand": 1,
+        "transcript_id": "AGAP009365-RA"
+      }
+    },
+    "AGAP011065": {
+      "status": "current",
+      "region": "3L:16180434-16185732",
+      "annotation": {
+        "assembly": "AgamP4",
+        "cds_end": 16185355,
+        "cds_start": 16180892,
+        "chromosome": "3L",
+        "end": 16185732,
+        "exons": [
+          {
+            "end": 16185732,
+            "start": 16185247
+          },
+          {
+            "end": 16183282,
+            "start": 16183094
+          },
+          {
+            "end": 16183027,
+            "start": 16182178
+          },
+          {
+            "end": 16181021,
+            "start": 16180434
+          }
+        ],
+        "id": "AGAP011065",
+        "start": 16180434,
+        "strand": -1,
+        "transcript_id": "AGAP011065-RA"
+      }
+    },
+    "AGAP011067": {
+      "status": "current",
+      "region": "3L:16218078-16221860",
+      "annotation": {
+        "assembly": "AgamP4",
+        "cds_end": 16221507,
+        "cds_start": 16218078,
+        "chromosome": "3L",
+        "end": 16221860,
+        "exons": [
+          {
+            "end": 16221860,
+            "start": 16221399
+          },
+          {
+            "end": 16219189,
+            "start": 16219001
+          },
+          {
+            "end": 16218928,
+            "start": 16218078
+          }
+        ],
+        "id": "AGAP011067",
+        "start": 16218078,
+        "strand": -1,
+        "transcript_id": "AGAP011067-RA"
+      }
+    },
+    "AGAP011592": {
+      "status": "current",
+      "region": "3L:28624239-28626209",
+      "annotation": {
+        "assembly": "AgamP4",
+        "cds_end": 28625717,
+        "cds_start": 28624835,
+        "chromosome": "3L",
+        "end": 28626209,
+        "exons": [
+          {
+            "end": 28626209,
+            "start": 28626059
+          },
+          {
+            "end": 28625901,
+            "start": 28625504
+          },
+          {
+            "end": 28625439,
+            "start": 28624239
+          }
+        ],
+        "id": "AGAP011592",
+        "start": 28624239,
+        "strand": -1,
+        "transcript_id": "AGAP011592-RA"
+      }
+    },
+    "AGAP012199": {
+      "status": "current",
+      "region": "3L:38656403-38656980",
+      "annotation": {
+        "assembly": "AgamP4",
+        "cds_end": 38656834,
+        "cds_start": 38656460,
+        "chromosome": "3L",
+        "end": 38656980,
+        "exons": [
+          {
+            "end": 38656980,
+            "start": 38656403
+          }
+        ],
+        "id": "AGAP012199",
+        "start": 38656403,
+        "strand": 1,
+        "transcript_id": "AGAP012199-RA"
+      }
+    },
+    "AGAP012201": {
+      "status": "current",
+      "region": "3L:38678790-38679501",
+      "annotation": {
+        "assembly": "AgamP4",
+        "cds_end": 38679268,
+        "cds_start": 38678894,
+        "chromosome": "3L",
+        "end": 38679501,
+        "exons": [
+          {
+            "end": 38679501,
+            "start": 38678790
+          }
+        ],
+        "id": "AGAP012201",
+        "start": 38678790,
+        "strand": 1,
+        "transcript_id": "AGAP012201-RA"
+      }
+    },
+    "AGAP013705": {
+      "status": "current",
+      "region": "3L:2905395-2905525",
+      "annotation": {
+        "assembly": "AgamP4",
+        "cds_end": null,
+        "cds_start": null,
+        "chromosome": "3L",
+        "end": 2905525,
+        "exons": [
+          {
+            "end": 2905525,
+            "start": 2905395
+          }
+        ],
+        "id": "AGAP013705",
+        "start": 2905395,
+        "strand": 1,
+        "transcript_id": "AGAP013705-RA"
+      }
+    },
+    "AGAP028112": {
+      "status": "current",
+      "region": "3R:9853625-9855857",
+      "annotation": {
+        "assembly": "AgamP4",
+        "cds_end": 9855761,
+        "cds_start": 9854489,
+        "chromosome": "3R",
+        "end": 9855857,
+        "exons": [
+          {
+            "end": 9855857,
+            "start": 9855720
+          },
+          {
+            "end": 9854569,
+            "start": 9854417
+          },
+          {
+            "end": 9854323,
+            "start": 9853625
+          }
+        ],
+        "id": "AGAP028112",
+        "start": 9853625,
+        "strand": -1,
+        "transcript_id": "AGAP028112-RA"
+      }
+    },
+    "AGAP028159": {
+      "status": "current",
+      "region": "3L:36662787-36663595",
+      "annotation": {
+        "assembly": "AgamP4",
+        "cds_end": 36663589,
+        "cds_start": 36662832,
+        "chromosome": "3L",
+        "end": 36663595,
+        "exons": [
+          {
+            "end": 36663595,
+            "start": 36663365
+          },
+          {
+            "end": 36663294,
+            "start": 36663143
+          },
+          {
+            "end": 36663066,
+            "start": 36662787
+          }
+        ],
+        "id": "AGAP028159",
+        "start": 36662787,
+        "strand": -1,
+        "transcript_id": "AGAP028159-RA"
+      }
+    },
+    "AGAP028779": {
+      "status": "current",
+      "region": "3R:42632357-42632438",
+      "annotation": {
+        "assembly": "AgamP4",
+        "cds_end": null,
+        "cds_start": null,
+        "chromosome": "3R",
+        "end": 42632438,
+        "exons": [
+          {
+            "end": 42632438,
+            "start": 42632357
+          }
+        ],
+        "id": "AGAP028779",
+        "start": 42632357,
+        "strand": 1,
+        "transcript_id": "AGAP028779-RA"
+      }
+    },
+    "AGAP029252": {
+      "status": "current",
+      "region": "3L:36056502-36057621",
+      "annotation": {
+        "assembly": "AgamP4",
+        "cds_end": 36057399,
+        "cds_start": 36056719,
+        "chromosome": "3L",
+        "end": 36057621,
+        "exons": [
+          {
+            "end": 36056619,
+            "start": 36056502
+          },
+          {
+            "end": 36057621,
+            "start": 36056696
+          }
+        ],
+        "id": "AGAP029252",
+        "start": 36056502,
+        "strand": 1,
+        "transcript_id": "AGAP029252-RA"
+      }
+    }
+  },
+  "aliases": {},
+  "retired": {}
+}

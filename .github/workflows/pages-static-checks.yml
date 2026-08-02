@@ -7,6 +7,8 @@ on:
       - 'tools/check_pages_site.py'
       - 'tools/build_pages_examples.py'
       - 'tools/build_pages_query_assets.py'
+      - 'tools/build_pages_accession_index.py'
+      - 'tests/accession-lookup.test.js'
       - '.github/workflows/pages-static-checks.yml'
   push:
     branches:
@@ -16,6 +18,8 @@ on:
       - 'tools/check_pages_site.py'
       - 'tools/build_pages_examples.py'
       - 'tools/build_pages_query_assets.py'
+      - 'tools/build_pages_accession_index.py'
+      - 'tests/accession-lookup.test.js'
       - '.github/workflows/pages-static-checks.yml'
 
 permissions:
@@ -29,4 +33,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - run: python tools/check_pages_site.py
+      - run: node --check docs/assets/accession-lookup.js
+      - run: node --check docs/assets/site.js
+      - run: node --test tests/accession-lookup.test.js

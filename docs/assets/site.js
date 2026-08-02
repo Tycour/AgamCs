@@ -107,11 +107,18 @@ const liveVisuals = document.querySelector('#live-visuals');
 const liveSignalPlot = document.querySelector('#live-signal-plot');
 const liveHeatmapPlot = document.querySelector('#live-heatmap-plot');
 const liveAnnotationNote = document.querySelector('#live-annotation-note');
+const accessionQueryPanel = document.querySelector('#accession-query-panel');
+const coordinateQueryPanel = document.querySelector('#coordinate-query-panel');
+const liveAccession = document.querySelector('#live-accession');
+const liveAccessionList = document.querySelector('#live-accession-list');
+const accessionIndexHelp = document.querySelector('#accession-index-help');
+const resolvedAccession = document.querySelector('#resolved-accession');
 const queryWorker = new Worker('assets/query-worker.js');
 const pendingQueries = new Map();
 let queryRequestId = 0;
 let benchmarkDownloadUrl;
 let queryManifestPromise;
+let accessionIndexPromise;
 
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
@@ -130,6 +137,53 @@ async function loadPlotValidation() {
   if (!response.ok) throw new Error(`Plot validation fixture request failed (${response.status}).`);
   return response.json();
 }
+
+async function loadAccessionIndex() {
+  if (!accessionIndexPromise) {
+    accessionIndexPromise = fetch('assets/data/accession-index.json').then(async (response) => {
+      if (!response.ok) throw new Error(`Accession index request failed (${response.status}).`);
+      const index = await response.json();
+      if (index.schema_version !== 1 || index.assembly !== 'AgamP4' || !index.accessions) {
+        throw new Error('The pinned accession index is not compatible with this client.');
+      }
+      return index;
+    });
+  }
+  return accessionIndexPromise;
+}
+
+function configureAccessionIndex(index) {
+  liveAccessionList.replaceChildren(...Object.entries(index.accessions).map(([accession, record]) => {
+    const option = document.createElement('option');
+    option.value = accession;
+    option.label = `${record.region}; ${record.annotation.transcript_id}`;
+    return option;
+  }));
+  const count = Object.keys(index.accessions).length;
+  accessionIndexHelp.textContent = `${count} pinned genes · ${index.annotation.gene_build} · ${index.index_version} · live lookup off.`;
+}
+
+function setLiveQueryMode(mode) {
+  const byAccession = mode === 'accession';
+  accessionQueryPanel.hidden = !byAccession;
+  coordinateQueryPanel.hidden = byAccession;
+  benchmarkMetrics.hidden = true;
+  benchmarkDownload.hidden = true;
+  querySummary.hidden = true;
+  liveVisuals.hidden = true;
+  resolvedAccession.hidden = true;
+  benchmarkStatus.textContent = byAccession
+    ? 'Ready to resolve a gene from the pinned accession index.'
+    : 'Ready for an independent manual AgamP4 coordinate query.';
+}
+
+document.querySelectorAll('input[name="live-query-mode"]').forEach((input) => {
+  input.addEventListener('change', () => setLiveQueryMode(input.value));
+});
+
+loadAccessionIndex().then(configureAccessionIndex).catch((error) => {
+  accessionIndexHelp.textContent = `Pinned accession lookup unavailable: ${error.message} Manual coordinates still work.`;
+});
 
 async function loadQueryManifest() {
   if (!queryManifestPromise) {
@@ -248,14 +302,25 @@ function findPinnedAnnotation(chromosome, start, end) {
   return examples.find((example) => example.region === region) || null;
 }
 
-function renderLivePlots(result) {
-  const pinned = findPinnedAnnotation(result.chromosome, result.start, result.end);
-  const annotation = pinned?.annotation || null;
+function renderResolvedAccession(resolution, index) {
+  const annotation = resolution.annotation;
+  document.querySelector('#resolved-accession-id').textContent = resolution.accession;
+  document.querySelector('#resolved-transcript').textContent = annotation.transcript_id;
+  document.querySelector('#resolved-strand').textContent = Number(annotation.strand) === -1 ? '− (minus)' : '+ (plus)';
+  document.querySelector('#resolved-annotation').textContent = `${index.annotation.gene_build} (${index.annotation.released})`;
+  document.querySelector('#resolved-index-version').textContent = index.index_version;
+  resolvedAccession.hidden = false;
+}
+
+function renderLivePlots(result, providedAnnotation = null, providedAccession = null) {
+  const pinned = providedAnnotation ? null : findPinnedAnnotation(result.chromosome, result.start, result.end);
+  const annotation = providedAnnotation || pinned?.annotation || null;
+  const accession = providedAccession || pinned?.accession || null;
   globalThis.AgamCsPlots.renderSignalPlot(liveSignalPlot, result, annotation);
   globalThis.AgamCsPlots.renderHeatmap(liveHeatmapPlot, result, annotation);
-  liveAnnotationNote.textContent = pinned
-    ? `${pinned.accession} annotation applied; ${pinned.transcript_id} is shown 5′→3′.`
-    : 'Genomic-coordinate view. Pinned gene annotation is applied only to an exact catalogue interval.';
+  liveAnnotationNote.textContent = annotation
+    ? `${accession} annotation applied; ${annotation.transcript_id} is shown 5′→3′.`
+    : 'Genomic-coordinate view. Gene annotation is applied when querying by accession or an exact precomputed catalogue interval.';
   liveVisuals.hidden = false;
 }
 
@@ -304,14 +369,35 @@ loadQueryManifest().then(configureQueryMetadata).catch((error) => {
 benchmarkForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   const form = new FormData(benchmarkForm);
-  const chromosome = String(form.get('chromosome'));
-  const start = Number(form.get('start'));
-  const end = Number(form.get('end'));
-  const length = end - start + 1;
+  const mode = String(form.get('live-query-mode') || 'accession');
+  let chromosome;
+  let start;
+  let end;
+  let accessionIndex = null;
+  let resolution = null;
   benchmarkMetrics.hidden = true;
   benchmarkDownload.hidden = true;
   querySummary.hidden = true;
   liveVisuals.hidden = true;
+  resolvedAccession.hidden = true;
+
+  if (mode === 'accession') {
+    try {
+      accessionIndex = await loadAccessionIndex();
+      resolution = globalThis.AgamCsAccessions.resolve(accessionIndex, form.get('live-accession'));
+      ({ chromosome, start, end } = resolution.annotation);
+      liveAccession.value = resolution.accession;
+    } catch (error) {
+      benchmarkStatus.textContent = `Accession lookup stopped: ${error.message}`;
+      return;
+    }
+  } else {
+    chromosome = String(form.get('chromosome'));
+    start = Number(form.get('start'));
+    end = Number(form.get('end'));
+  }
+
+  const length = end - start + 1;
   let manifest;
   try {
     manifest = await loadQueryManifest();
@@ -332,11 +418,13 @@ benchmarkForm.addEventListener('submit', async (event) => {
     return;
   }
   if (length > manifest.maximum_query_bases) {
-    benchmarkStatus.textContent = `Queries are limited to ${manifest.maximum_query_bases.toLocaleString()} bases.`;
+    const subject = resolution ? `${resolution.accession} spans ${length.toLocaleString()} bases. ` : '';
+    benchmarkStatus.textContent = `${subject}Queries are limited to ${manifest.maximum_query_bases.toLocaleString()} bases; use manual coordinates for a smaller interval.`;
     return;
   }
 
-  benchmarkStatus.textContent = `Reading ${chromosome}:${start}-${end} from Zenodo and the QC companion…`;
+  const querySubject = resolution ? `${resolution.accession} (${chromosome}:${start}-${end})` : `${chromosome}:${start}-${end}`;
+  benchmarkStatus.textContent = `Reading ${querySubject} from Zenodo and the QC companion…`;
   benchmarkSubmit.disabled = true;
   try {
     const [result, validation, plotValidation] = await Promise.all([
@@ -345,7 +433,9 @@ benchmarkForm.addEventListener('submit', async (event) => {
       loadPlotValidation(),
       cataloguePromise,
     ]);
-    const pinned = findPinnedAnnotation(chromosome, start, end);
+    const pinned = resolution ? null : findPinnedAnnotation(chromosome, start, end);
+    const annotation = resolution?.annotation || pinned?.annotation || null;
+    const annotationAccession = resolution?.accession || pinned?.accession || null;
     const matchingFixture = validation.region === `${chromosome}:${start}-${end}`;
     const hashesMatch = matchingFixture && result.hashAvailable && Object.entries(validation.arrays).every(
       ([name, expected]) => result.hashes[name] === expected.sha256_bytes && result.values[name].length === expected.count,
@@ -355,7 +445,7 @@ benchmarkForm.addEventListener('submit', async (event) => {
       throw new Error('Local validation failed; returned values do not match the pinned HDF5 fixture.');
     }
     const plotSummariesMatch = matchingFixture
-      && validatePlotSummaries(result, plotValidation, pinned?.annotation || null);
+      && validatePlotSummaries(result, plotValidation, annotation);
     if (matchingFixture && !plotSummariesMatch) {
       throw new Error('Plot validation failed; browser summaries do not match the Python plotting fixture.');
     }
@@ -377,14 +467,17 @@ benchmarkForm.addEventListener('submit', async (event) => {
       ? 'Query complete; exact arrays and browser plot summaries match the Python fixtures.'
       : hashUnavailable
         ? 'Query complete; data retrieved, but browser hash validation is unavailable.'
-        : `Query complete: ${chromosome}:${start}-${end}.`;
+        : `Query complete: ${querySubject}.`;
     renderQuerySummary(result);
-    renderLivePlots(result);
+    if (resolution) renderResolvedAccession(resolution, accessionIndex);
+    renderLivePlots(result, annotation, annotationAccession);
 
     if (benchmarkDownloadUrl) URL.revokeObjectURL(benchmarkDownloadUrl);
     benchmarkDownloadUrl = URL.createObjectURL(new Blob([buildTsv(result)], { type: 'text/tab-separated-values' }));
     benchmarkDownload.href = benchmarkDownloadUrl;
-    benchmarkDownload.download = `AgamCs_${chromosome}_${start}-${end}.tsv`;
+    benchmarkDownload.download = resolution
+      ? `AgamCs_${resolution.accession}_${chromosome}_${start}-${end}.tsv`
+      : `AgamCs_${chromosome}_${start}-${end}.tsv`;
     benchmarkDownload.hidden = false;
   } catch (error) {
     benchmarkStatus.textContent = `Query failed: ${error.message}`;
