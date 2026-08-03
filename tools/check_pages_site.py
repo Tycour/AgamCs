@@ -50,6 +50,7 @@ class PageChecker(HTMLParser):
         self.meta_names: set[str] = set()
         self.meta_properties: set[str] = set()
         self.title = ''
+        self.form_count = 0
         self._in_title = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -64,6 +65,8 @@ class PageChecker(HTMLParser):
             self.errors.append('document language must be English (lang="en")')
         if tag == 'title':
             self._in_title = True
+        if tag == 'form':
+            self.form_count += 1
         if tag == 'img' and not attributes.get('alt'):
             self.errors.append('image is missing alternative text')
         if tag == 'meta':
@@ -129,11 +132,22 @@ def validate_page(page: Path) -> list[str]:
         if 'Early research prototype' not in page.read_text(encoding='utf-8'):
             errors.append('index.html: early prototype status is not stated')
         required_ids = {
-            'benchmark-form', 'live-accession', 'accession-query-panel',
-            'coordinate-query-panel', 'resolved-accession',
+            'explorer', 'benchmark-form', 'live-accession', 'example-select',
+            'accession-query-panel', 'coordinate-query-panel',
+            'results-portal', 'resolved-accession',
         }
         if missing_ids := required_ids - checker.ids:
             errors.append(f'index.html: missing live-query controls: {sorted(missing_ids)}')
+        obsolete_ids = {'query-form', 'live-query', 'profile-panel', 'heatmap-panel'}
+        if retained_ids := obsolete_ids & checker.ids:
+            errors.append(f'index.html: duplicate demo/live-query UI remains: {sorted(retained_ids)}')
+        page_text = page.read_text(encoding='utf-8')
+        if 'Precomputed examples' not in page_text:
+            errors.append('index.html: precomputed examples must remain a labelled query shortcut')
+        if 'Demo result' in page_text:
+            errors.append('index.html: obsolete demo-result presentation remains')
+        if checker.form_count != 1:
+            errors.append(f'index.html: expected one query form, found {checker.form_count}')
     return errors
 
 

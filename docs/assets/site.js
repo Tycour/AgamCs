@@ -1,22 +1,9 @@
-const PAGES_RELEASE = '2026-08-03-rc4';
+const PAGES_RELEASE = '2026-08-03-rc5';
 
 function versionedAsset(path) {
   const separator = path.includes('?') ? '&' : '?';
   return `${path}${separator}v=${PAGES_RELEASE}`;
 }
-
-const accessionSelect = document.querySelector('#accession');
-const catalogueHelp = document.querySelector('#catalogue-help');
-const resultTitle = document.querySelector('#result-title');
-const resultDescription = document.querySelector('#result-description');
-const resultRegion = document.querySelector('#result-region');
-const resultTranscript = document.querySelector('#result-transcript');
-const resultQc = document.querySelector('#result-qc');
-const profileImage = document.querySelector('#profile-image');
-const profileDownload = document.querySelector('#profile-download');
-const heatmapImage = document.querySelector('#heatmap-image');
-const heatmapDownload = document.querySelector('#heatmap-download');
-let examples = [];
 
 document.querySelectorAll('[role="tablist"]').forEach((tablist) => {
   const tabs = [...tablist.querySelectorAll('[role="tab"]')];
@@ -42,67 +29,6 @@ document.querySelectorAll('[role="tablist"]').forEach((tablist) => {
   });
 });
 
-function assetUrl(path) {
-  return versionedAsset(`assets/${path}`);
-}
-
-function renderExample(accession) {
-  const example = examples.find((candidate) => candidate.accession === accession);
-  if (!example) return;
-
-  resultTitle.textContent = example.accession;
-  resultDescription.textContent = example.description;
-  resultRegion.textContent = example.region;
-  resultTranscript.textContent = `${example.transcript_id} (${example.strand})`;
-  resultQc.textContent = example.qc_note;
-
-  const profileUrl = assetUrl(example.assets.summary);
-  const heatmapUrl = assetUrl(example.assets.heatmap);
-  profileImage.src = profileUrl;
-  profileImage.alt = `Binned conservation score and SNP-density profile for ${example.accession}`;
-  profileDownload.href = profileUrl;
-  heatmapImage.src = heatmapUrl;
-  heatmapImage.alt = `Cross-species conservation heatmap for ${example.accession}`;
-  heatmapDownload.href = heatmapUrl;
-}
-
-async function loadCatalogue() {
-  try {
-    const response = await fetch(versionedAsset('examples.json'));
-    if (!response.ok) throw new Error(`Catalogue request failed (${response.status})`);
-    const catalogue = await response.json();
-    examples = catalogue.examples;
-    accessionSelect.replaceChildren(...examples.map((example) => {
-      const option = document.createElement('option');
-      option.value = example.accession;
-      option.textContent = `${example.accession} — ${example.feature_summary}`;
-      return option;
-    }));
-    catalogueHelp.textContent = `${examples.length} precomputed examples; choose one to update the displayed result.`;
-    renderExample(accessionSelect.value);
-  } catch (error) {
-    catalogueHelp.textContent = 'The example catalogue could not be loaded; showing the default result.';
-    console.error(error);
-  }
-}
-
-accessionSelect.addEventListener('change', () => renderExample(accessionSelect.value));
-
-document.querySelector('#query-form').addEventListener('submit', (event) => {
-  event.preventDefault();
-  renderExample(accessionSelect.value);
-  const status = document.querySelector('#result-status');
-  status.textContent = 'Loaded locally';
-  status.classList.add('refresh');
-  document.querySelector('.results-panel').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  window.setTimeout(() => {
-    status.textContent = 'Ready';
-    status.classList.remove('refresh');
-  }, 1200);
-});
-
-const cataloguePromise = loadCatalogue();
-
 const benchmarkForm = document.querySelector('#benchmark-form');
 const benchmarkStatus = document.querySelector('#benchmark-status');
 const benchmarkMetrics = document.querySelector('#benchmark-metrics');
@@ -120,8 +46,13 @@ const liveAccession = document.querySelector('#live-accession');
 const liveAccessionList = document.querySelector('#live-accession-list');
 const accessionIndexHelp = document.querySelector('#accession-index-help');
 const resolvedAccession = document.querySelector('#resolved-accession');
+const exampleSelect = document.querySelector('#example-select');
+const catalogueHelp = document.querySelector('#catalogue-help');
+const resultTitle = document.querySelector('#result-title');
+const resultStatus = document.querySelector('#result-status');
 const queryWorker = new Worker(versionedAsset('assets/query-worker.js'));
 const pendingQueries = new Map();
+let examples = [];
 let queryRequestId = 0;
 let benchmarkDownloadUrl;
 let queryManifestPromise;
@@ -170,6 +101,13 @@ function configureAccessionIndex(index) {
   accessionIndexHelp.textContent = `${count} pinned genes · ${index.annotation.gene_build} · ${index.index_version} · live lookup off.`;
 }
 
+function setPortalState(title, status, tone = 'ready') {
+  resultTitle.textContent = title;
+  resultStatus.textContent = status;
+  resultStatus.classList.toggle('loading', tone === 'loading');
+  resultStatus.classList.toggle('error', tone === 'error');
+}
+
 function setLiveQueryMode(mode) {
   const byAccession = mode === 'accession';
   accessionQueryPanel.hidden = !byAccession;
@@ -179,6 +117,7 @@ function setLiveQueryMode(mode) {
   querySummary.hidden = true;
   liveVisuals.hidden = true;
   resolvedAccession.hidden = true;
+  setPortalState('Ready for a query', 'Ready');
   benchmarkStatus.textContent = byAccession
     ? 'Ready to resolve a gene from the pinned accession index.'
     : 'Ready for an independent manual AgamP4 coordinate query.';
@@ -187,6 +126,40 @@ function setLiveQueryMode(mode) {
 document.querySelectorAll('input[name="live-query-mode"]').forEach((input) => {
   input.addEventListener('change', () => setLiveQueryMode(input.value));
 });
+
+async function loadCatalogue() {
+  try {
+    const response = await fetch(versionedAsset('examples.json'));
+    if (!response.ok) throw new Error(`Catalogue request failed (${response.status})`);
+    const catalogue = await response.json();
+    examples = catalogue.examples;
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Choose a reviewed example…';
+    exampleSelect.replaceChildren(placeholder, ...examples.map((example) => {
+      const option = document.createElement('option');
+      option.value = example.accession;
+      option.textContent = `${example.accession} — ${example.feature_summary}`;
+      return option;
+    }));
+    catalogueHelp.textContent = `${examples.length} reviewed precomputed examples. Selecting one uses this same live query portal.`;
+  } catch (error) {
+    catalogueHelp.textContent = 'The precomputed example shortcuts could not be loaded; accession and coordinate queries still work.';
+    console.error(error);
+  }
+}
+
+exampleSelect.addEventListener('change', () => {
+  if (!exampleSelect.value) return;
+  const accessionMode = document.querySelector('input[name="live-query-mode"][value="accession"]');
+  accessionMode.checked = true;
+  setLiveQueryMode('accession');
+  liveAccession.value = exampleSelect.value;
+  setPortalState(`Ready to query ${exampleSelect.value}`, 'Ready');
+  benchmarkStatus.textContent = `${exampleSelect.value} selected from the precomputed examples. Run the live query to retrieve its exact values.`;
+});
+
+const cataloguePromise = loadCatalogue();
 
 loadAccessionIndex().then(configureAccessionIndex).catch((error) => {
   accessionIndexHelp.textContent = `Pinned accession lookup unavailable: ${error.message} Manual coordinates still work.`;
@@ -402,6 +375,7 @@ benchmarkForm.addEventListener('submit', async (event) => {
       ({ chromosome, start, end } = resolution.annotation);
       liveAccession.value = resolution.accession;
     } catch (error) {
+      setPortalState('Query not run', 'Check input', 'error');
       benchmarkStatus.textContent = `Accession lookup stopped: ${error.message}`;
       return;
     }
@@ -415,6 +389,7 @@ benchmarkForm.addEventListener('submit', async (event) => {
   try {
     manifest = await loadQueryManifest();
   } catch (error) {
+    setPortalState('Query unavailable', 'Unavailable', 'error');
     benchmarkStatus.textContent = `Live query unavailable: ${error.message}`;
     return;
   }
@@ -429,11 +404,13 @@ benchmarkForm.addEventListener('submit', async (event) => {
     const guidance = error.code === 'maximum-length' && resolution
       ? ' Use manual coordinates for a smaller interval.'
       : '';
+    setPortalState('Query not run', 'Check input', 'error');
     benchmarkStatus.textContent = `${subject}${error.message}${guidance}`;
     return;
   }
 
   const querySubject = resolution ? `${resolution.accession} (${chromosome}:${start}-${end})` : `${chromosome}:${start}-${end}`;
+  setPortalState(resolution?.accession || `${chromosome}:${start}-${end}`, 'Loading', 'loading');
   benchmarkStatus.textContent = `Reading ${querySubject} from Zenodo and the QC companion…`;
   benchmarkSubmit.disabled = true;
   try {
@@ -478,6 +455,7 @@ benchmarkForm.addEventListener('submit', async (event) => {
           : 'FAILED')
       : 'No pinned local fixture for this interval';
     benchmarkMetrics.hidden = false;
+    setPortalState(resolution?.accession || `${chromosome}:${start}-${end}`, 'Complete');
     benchmarkStatus.textContent = hashesMatch && plotSummariesMatch
       ? 'Query complete; exact arrays and browser plot summaries match the Python fixtures.'
       : hashesMatch
@@ -497,6 +475,7 @@ benchmarkForm.addEventListener('submit', async (event) => {
       : `AgamCs_${chromosome}_${start}-${end}.tsv`;
     benchmarkDownload.hidden = false;
   } catch (error) {
+    setPortalState(resolution?.accession || `${chromosome}:${start}-${end}`, 'Failed', 'error');
     benchmarkStatus.textContent = `Query failed: ${error.message}`;
   } finally {
     benchmarkSubmit.disabled = false;

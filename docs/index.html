@@ -14,11 +14,11 @@
   <title>AgamCs conservation explorer</title>
   <link rel="canonical" href="https://tycour.github.io/AgamCs/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/site.css?v=2026-08-03-rc4">
-  <script src="assets/live-plots.js?v=2026-08-03-rc4" defer></script>
-  <script src="assets/accession-lookup.js?v=2026-08-03-rc4" defer></script>
-  <script src="assets/query-contract.js?v=2026-08-03-rc4" defer></script>
-  <script src="assets/site.js?v=2026-08-03-rc4" defer></script>
+  <link rel="stylesheet" href="assets/site.css?v=2026-08-03-rc5">
+  <script src="assets/live-plots.js?v=2026-08-03-rc5" defer></script>
+  <script src="assets/accession-lookup.js?v=2026-08-03-rc5" defer></script>
+  <script src="assets/query-contract.js?v=2026-08-03-rc5" defer></script>
+  <script src="assets/site.js?v=2026-08-03-rc5" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -28,7 +28,6 @@
     </a>
     <nav aria-label="Primary navigation">
       <a href="#explorer">Explorer</a>
-      <a href="#live-query">Live query</a>
       <a href="#interpretation">Interpretation</a>
       <a href="https://github.com/Tycour/AgamCs">GitHub</a>
     </nav>
@@ -41,8 +40,8 @@
         <h1>Inspect conservation around a mosquito gene.</h1>
         <p class="lede">A browser-friendly preview of the AgamCs pipeline. Explore precomputed examples or query a pinned gene without installing Python or downloading the 3.7 GB source archive.</p>
         <div class="hero-actions">
-          <a class="button primary" href="#explorer">Open the demo</a>
-          <a class="button secondary" href="https://github.com/Tycour/AgamCs#quick-start">Run your own query</a>
+          <a class="button primary" href="#explorer">Open the explorer</a>
+          <a class="button secondary" href="https://github.com/Tycour/AgamCs#quick-start">Use the CLI</a>
         </div>
       </div>
       <aside class="hero-note" aria-label="Prototype status">
@@ -55,79 +54,12 @@
     </section>
 
     <section class="workspace" id="explorer" aria-labelledby="explorer-title">
-      <form class="query-panel" id="query-form">
+      <form class="query-panel benchmark-form" id="benchmark-form">
         <div>
-          <p class="eyebrow">Query</p>
-          <h2 id="explorer-title">Choose a result</h2>
+          <p class="eyebrow">Live query</p>
+          <h2 id="explorer-title">Choose a gene or interval.</h2>
+          <p class="query-intro">Read exact AgamP4 values directly from the published archive without downloading it in full.</p>
         </div>
-
-        <fieldset>
-          <legend>Find scores by</legend>
-          <label class="radio-card">
-            <input type="radio" name="query-mode" value="accession" checked>
-            <span>Gene accession</span>
-          </label>
-          <label class="radio-card muted" title="Coordinate examples will be added in the next prototype.">
-            <input type="radio" name="query-mode" value="region" disabled>
-            <span>Genomic region</span>
-          </label>
-        </fieldset>
-
-        <label for="accession">Gene accession</label>
-        <select id="accession" name="accession">
-          <option value="AGAP006241">AGAP006241</option>
-        </select>
-        <p class="field-help" id="catalogue-help">Loading the precomputed example catalogue…</p>
-
-        <label for="padding">Padding</label>
-        <select id="padding" name="padding">
-          <option value="0">0 bp</option>
-        </select>
-
-        <button class="button primary full" type="submit">Show result</button>
-        <p class="privacy-note">No query or analytics data leaves your browser.</p>
-      </form>
-
-      <div class="results-panel" aria-live="polite">
-        <div class="result-heading">
-          <div>
-            <p class="eyebrow">Demo result</p>
-            <h2 id="result-title">AGAP006241</h2>
-          </div>
-          <span class="ready-badge" id="result-status">Ready</span>
-        </div>
-        <p class="result-description" id="result-description">Compact plus-strand coding transcript used as a baseline example.</p>
-
-        <dl class="metadata">
-          <div><dt>Assembly</dt><dd>AgamP4</dd></div>
-          <div><dt>Region</dt><dd id="result-region">2L:28585064-28586748</dd></div>
-          <div><dt>Transcript</dt><dd id="result-transcript">AGAP006241-RA (+)</dd></div>
-          <div><dt>SNP QC</dt><dd id="result-qc">Accessibility-aware SNP-density display</dd></div>
-        </dl>
-
-        <div class="tabs" role="tablist" aria-label="Result figures">
-          <button role="tab" aria-selected="true" aria-controls="profile-panel" id="profile-tab" data-tab="profile-panel">Cs profile</button>
-          <button role="tab" aria-selected="false" aria-controls="heatmap-panel" id="heatmap-tab" data-tab="heatmap-panel">Heatmap</button>
-        </div>
-
-        <div class="figure-panel" id="profile-panel" role="tabpanel" aria-labelledby="profile-tab">
-          <img id="profile-image" src="assets/examples/AGAP006241/cs_snp_summary.png" alt="Binned conservation score and SNP-density profile for AGAP006241">
-          <a class="download-link" id="profile-download" href="assets/examples/AGAP006241/cs_snp_summary.png" download>Download profile PNG</a>
-        </div>
-        <div class="figure-panel" id="heatmap-panel" role="tabpanel" aria-labelledby="heatmap-tab" hidden>
-          <img id="heatmap-image" src="assets/examples/AGAP006241/heatmap.png" alt="Cross-species conservation heatmap for AGAP006241">
-          <a class="download-link" id="heatmap-download" href="assets/examples/AGAP006241/heatmap.png" download>Download heatmap PNG</a>
-        </div>
-      </div>
-    </section>
-
-    <section class="benchmark" id="live-query" aria-labelledby="benchmark-title">
-      <div class="benchmark-intro">
-        <p class="eyebrow">Live browser query</p>
-        <h2 id="benchmark-title">Query a pinned gene or AgamP4 interval.</h2>
-        <p>Gene accessions resolve through a versioned local AgamP4.14 index; manual one-based inclusive coordinates remain available independently. The browser requests only the compressed HDF5 chunks needed for Cs, archived SNP density, the 21-species conserved-interval matrix, and the separate accessibility companion.</p>
-      </div>
-      <form class="benchmark-form" id="benchmark-form">
         <fieldset class="query-mode-switch">
           <legend>Query by</legend>
           <label class="query-mode-control">
@@ -144,6 +76,13 @@
           <input id="live-accession" name="live-accession" list="live-accession-list" value="AGAP006241" autocomplete="off" spellcheck="false">
           <datalist id="live-accession-list"></datalist>
           <p class="field-help" id="accession-index-help">Loading the pinned accession index…</p>
+          <div class="example-shortcut">
+            <label for="example-select">Precomputed examples</label>
+            <select id="example-select" name="example-select">
+              <option value="">Choose a reviewed example…</option>
+            </select>
+            <p class="field-help" id="catalogue-help">Loading the precomputed example catalogue…</p>
+          </div>
         </div>
         <div class="query-input-panel coordinate-query-panel" id="coordinate-query-panel" hidden>
           <div>
@@ -161,10 +100,19 @@
             <input id="benchmark-end" name="end" type="number" min="1" value="28586748">
           </div>
         </div>
-        <button class="button primary" id="benchmark-submit" type="submit">Query exact values</button>
+        <button class="button primary full" id="benchmark-submit" type="submit">Query exact values</button>
+        <p class="privacy-note">No query or analytics data leaves your browser.</p>
       </form>
-      <div class="benchmark-results" id="benchmark-results" aria-live="polite">
-        <p id="benchmark-status">Ready to query the pinned AGAP006241 interval.</p>
+
+      <div class="results-panel" id="results-portal" aria-live="polite">
+        <div class="result-heading">
+          <div>
+            <p class="eyebrow">Query result</p>
+            <h2 id="result-title">Ready for a query</h2>
+          </div>
+          <span class="ready-badge" id="result-status">Ready</span>
+        </div>
+        <p class="result-description" id="benchmark-status">Choose a pinned accession, manual interval, or reviewed example shortcut.</p>
         <dl class="resolved-accession" id="resolved-accession" hidden>
           <div><dt>Accession</dt><dd id="resolved-accession-id">—</dd></div>
           <div><dt>Transcript</dt><dd id="resolved-transcript">—</dd></div>

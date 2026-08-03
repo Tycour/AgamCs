@@ -28,6 +28,11 @@ resolver's current, missing, retired, and ambiguous-ID behaviour with Node 22.
 It also checks coordinate bounds, full-download refusal, transient network
 handling, decoded-cache invalidation, and the final partial HDF5 chunk.
 
+The published interface has one query portal. Pinned accessions, manual
+coordinates, and the labelled precomputed-example shortcuts all use the same
+browser reader and render into the same result area; there is no separate
+static demo form.
+
 ## Rebuild the example catalogue
 
 [`examples.json`](examples.json) pins each accession's AgamP4 coordinates and

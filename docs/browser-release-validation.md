@@ -1,7 +1,7 @@
 # GitHub Pages live-query release validation
 
 This report records the Step 10 release-candidate checks for the early research
-prototype. The candidate is `2026-08-03-rc4` on
+prototype. The candidate is `2026-08-03-rc5` on
 `codex/browser-hdf5-feasibility`. It keeps the authoritative conservation HDF5
 unchanged and reads only byte ranges from the published Zenodo file.
 
@@ -43,7 +43,11 @@ and slices only the logical chromosome interval.
 - The decoded-chunk cache is bounded at 64 MiB; warm reads reuse cached chunks,
   and the explicit clear-cache action forces a new range request.
 - Release-version query strings invalidate stale CSS, JavaScript, worker,
-  manifest, index, fixture, and example-asset caches after deployment.
+  manifest, index, fixture, and example-catalogue caches after deployment.
+- The page has one functional explorer: accession, manual-coordinate, and
+  precomputed-example shortcuts all feed the same result portal and live plot
+  renderer. The obsolete static demo form and duplicate lower query UI are
+  absent.
 - The Pages payload contains no `.h5`, `.hdf5`, archive, or file over 10 MiB.
   The checked `docs` tree is about 2.8 MiB; its largest asset is the compact
   byte-range reference at about 700 KiB.
