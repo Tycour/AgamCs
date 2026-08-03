@@ -3,19 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="An early research prototype for browsing precomputed AgamP4 conservation-score results.">
+  <meta name="description" content="An early research prototype for live, accession-aware AgamP4 conservation queries.">
   <meta name="theme-color" content="#0c675a">
   <meta property="og:type" content="website">
   <meta property="og:title" content="AgamCs conservation explorer">
-  <meta property="og:description" content="An early research prototype for browsing precomputed AgamP4 conservation-score results.">
+  <meta property="og:description" content="An early research prototype for live, accession-aware AgamP4 conservation queries.">
   <meta property="og:url" content="https://tycour.github.io/AgamCs/">
   <meta property="og:image" content="https://tycour.github.io/AgamCs/assets/examples/AGAP006241/cs_snp_summary.png">
   <meta name="twitter:card" content="summary_large_image">
   <title>AgamCs conservation explorer</title>
   <link rel="canonical" href="https://tycour.github.io/AgamCs/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/site.css">
-  <script src="assets/site.js" defer></script>
+  <link rel="stylesheet" href="assets/site.css?v=2026-08-03-rc5">
+  <script src="assets/live-plots.js?v=2026-08-03-rc5" defer></script>
+  <script src="assets/accession-lookup.js?v=2026-08-03-rc5" defer></script>
+  <script src="assets/query-contract.js?v=2026-08-03-rc5" defer></script>
+  <script src="assets/site.js?v=2026-08-03-rc5" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -35,85 +38,141 @@
       <div>
         <p class="eyebrow">AgamP4 conservation scores</p>
         <h1>Inspect conservation around a mosquito gene.</h1>
-        <p class="lede">A browser-friendly preview of the AgamCs pipeline. Explore a precomputed gene result without installing Python or downloading the 3.7 GB source archive.</p>
+        <p class="lede">A browser-friendly preview of the AgamCs pipeline. Explore precomputed examples or query a pinned gene without installing Python or downloading the 3.7 GB source archive.</p>
         <div class="hero-actions">
-          <a class="button primary" href="#explorer">Open the demo</a>
-          <a class="button secondary" href="https://github.com/Tycour/AgamCs#quick-start">Run your own query</a>
+          <a class="button primary" href="#explorer">Open the explorer</a>
+          <a class="button secondary" href="https://github.com/Tycour/AgamCs#quick-start">Use the CLI</a>
         </div>
       </div>
       <aside class="hero-note" aria-label="Prototype status">
         <span class="status-dot" aria-hidden="true"></span>
         <div>
           <strong>Early research prototype</strong>
-          <p>This static demonstration uses precomputed output from the AgamP4 conservation archive. Features, example results, and presentation may change; use the CLI for reproducible analysis.</p>
+          <p>This static client reads selected AgamP4 archive chunks and a separate QC companion directly in your browser. Features, results, and presentation may change; use the CLI for established workflows.</p>
         </div>
       </aside>
     </section>
 
     <section class="workspace" id="explorer" aria-labelledby="explorer-title">
-      <form class="query-panel" id="query-form">
+      <form class="query-panel benchmark-form" id="benchmark-form">
         <div>
-          <p class="eyebrow">Query</p>
-          <h2 id="explorer-title">Choose a result</h2>
+          <p class="eyebrow">Live query</p>
+          <h2 id="explorer-title">Choose a gene or interval.</h2>
+          <p class="query-intro">Read exact AgamP4 values directly from the published archive without downloading it in full.</p>
         </div>
-
-        <fieldset>
-          <legend>Find scores by</legend>
-          <label class="radio-card">
-            <input type="radio" name="query-mode" value="accession" checked>
-            <span>Gene accession</span>
+        <fieldset class="query-mode-switch">
+          <legend>Query by</legend>
+          <label class="query-mode-control">
+            <input type="radio" name="live-query-mode" value="accession" checked>
+            <span>Pinned gene accession</span>
           </label>
-          <label class="radio-card muted" title="Coordinate examples will be added in the next prototype.">
-            <input type="radio" name="query-mode" value="region" disabled>
-            <span>Genomic region</span>
+          <label class="query-mode-control">
+            <input type="radio" name="live-query-mode" value="coordinates">
+            <span>Manual coordinates</span>
           </label>
         </fieldset>
-
-        <label for="accession">Gene accession</label>
-        <select id="accession" name="accession">
-          <option value="AGAP006241">AGAP006241</option>
-        </select>
-        <p class="field-help" id="catalogue-help">Loading the precomputed example catalogue…</p>
-
-        <label for="padding">Padding</label>
-        <select id="padding" name="padding">
-          <option value="0">0 bp</option>
-        </select>
-
-        <button class="button primary full" type="submit">Show result</button>
+        <div class="query-input-panel accession-query-panel" id="accession-query-panel">
+          <label for="live-accession">Gene accession</label>
+          <input id="live-accession" name="live-accession" list="live-accession-list" value="AGAP006241" autocomplete="off" spellcheck="false">
+          <datalist id="live-accession-list"></datalist>
+          <p class="field-help" id="accession-index-help">Loading the pinned accession index…</p>
+          <div class="example-shortcut">
+            <label for="example-select">Precomputed examples</label>
+            <select id="example-select" name="example-select">
+              <option value="">Choose a reviewed example…</option>
+            </select>
+            <p class="field-help" id="catalogue-help">Loading the precomputed example catalogue…</p>
+          </div>
+        </div>
+        <div class="query-input-panel coordinate-query-panel" id="coordinate-query-panel" hidden>
+          <div>
+            <label for="benchmark-chromosome">Chromosome</label>
+            <select id="benchmark-chromosome" name="chromosome">
+              <option>2L</option><option>2R</option><option>3L</option><option>3R</option><option>X</option>
+            </select>
+          </div>
+          <div>
+            <label for="benchmark-start">Start (1-based)</label>
+            <input id="benchmark-start" name="start" type="number" min="1" value="28585064">
+          </div>
+          <div>
+            <label for="benchmark-end">End (inclusive)</label>
+            <input id="benchmark-end" name="end" type="number" min="1" value="28586748">
+          </div>
+        </div>
+        <button class="button primary full" id="benchmark-submit" type="submit">Query exact values</button>
         <p class="privacy-note">No query or analytics data leaves your browser.</p>
       </form>
 
-      <div class="results-panel" aria-live="polite">
+      <div class="results-panel" id="results-portal" aria-live="polite">
         <div class="result-heading">
           <div>
-            <p class="eyebrow">Demo result</p>
-            <h2 id="result-title">AGAP006241</h2>
+            <p class="eyebrow">Query result</p>
+            <h2 id="result-title">Ready for a query</h2>
           </div>
           <span class="ready-badge" id="result-status">Ready</span>
         </div>
-        <p class="result-description" id="result-description">Compact plus-strand coding transcript used as a baseline example.</p>
-
-        <dl class="metadata">
-          <div><dt>Assembly</dt><dd>AgamP4</dd></div>
-          <div><dt>Region</dt><dd id="result-region">2L:28585064-28586748</dd></div>
-          <div><dt>Transcript</dt><dd id="result-transcript">AGAP006241-RA (+)</dd></div>
-          <div><dt>SNP QC</dt><dd id="result-qc">Accessibility-aware SNP-density display</dd></div>
+        <p class="result-description" id="benchmark-status">Choose a pinned accession, manual interval, or reviewed example shortcut.</p>
+        <dl class="resolved-accession" id="resolved-accession" hidden>
+          <div><dt>Accession</dt><dd id="resolved-accession-id">—</dd></div>
+          <div><dt>Transcript</dt><dd id="resolved-transcript">—</dd></div>
+          <div><dt>Strand</dt><dd id="resolved-strand">—</dd></div>
+          <div><dt>Annotation</dt><dd id="resolved-annotation">—</dd></div>
+          <div><dt>Index</dt><dd id="resolved-index-version">—</dd></div>
         </dl>
-
-        <div class="tabs" role="tablist" aria-label="Result figures">
-          <button role="tab" aria-selected="true" aria-controls="profile-panel" id="profile-tab" data-tab="profile-panel">Cs profile</button>
-          <button role="tab" aria-selected="false" aria-controls="heatmap-panel" id="heatmap-tab" data-tab="heatmap-panel">Heatmap</button>
+        <dl class="query-provenance" id="query-provenance">
+          <div><dt>Assembly</dt><dd id="query-assembly">AgamP4</dd></div>
+          <div><dt>Coordinates</dt><dd id="query-coordinate-convention">1-based inclusive</dd></div>
+          <div><dt>Arrays</dt><dd id="query-arrays">Cs, SNP density, species stack</dd></div>
+          <div><dt>Source</dt><dd><a id="query-source" href="https://doi.org/10.5281/zenodo.4304586">Zenodo 4304586</a></dd></div>
+          <div><dt>Accessibility/QC</dt><dd id="query-accessibility">Separate companion track</dd></div>
+        </dl>
+        <dl class="benchmark-metrics" id="benchmark-metrics" hidden>
+          <div><dt>Query time</dt><dd id="metric-time">—</dd></div>
+          <div><dt>Cache hits</dt><dd id="metric-cache-hits">—</dd></div>
+          <div><dt>HTTP ranges</dt><dd id="metric-requests">—</dd></div>
+          <div><dt>Transferred</dt><dd id="metric-bytes">—</dd></div>
+          <div><dt>Decoded cache</dt><dd id="metric-memory">—</dd></div>
+          <div><dt>Local validation</dt><dd id="metric-validation">—</dd></div>
+        </dl>
+        <div class="query-summary" id="query-summary" hidden>
+          <h3>Exact query result</h3>
+          <div class="summary-grid">
+            <div><span>Positions</span><strong id="summary-count">—</strong></div>
+            <div><span>Mean Cs</span><strong id="summary-cs">—</strong></div>
+            <div><span>Mean SNP (accessible)</span><strong id="summary-snp">—</strong></div>
+            <div><span>Accessible bases</span><strong id="summary-accessible">—</strong></div>
+          </div>
+          <div class="preview-table-wrap">
+            <table class="preview-table">
+              <caption>First five returned positions</caption>
+              <thead><tr><th>Position</th><th>Cs</th><th>Raw SNP density</th><th>QC status</th></tr></thead>
+              <tbody id="query-preview"></tbody>
+            </table>
+          </div>
         </div>
-
-        <div class="figure-panel" id="profile-panel" role="tabpanel" aria-labelledby="profile-tab">
-          <img id="profile-image" src="assets/examples/AGAP006241/cs_snp_summary.png" alt="Binned conservation score and SNP-density profile for AGAP006241">
-          <a class="download-link" id="profile-download" href="assets/examples/AGAP006241/cs_snp_summary.png" download>Download profile PNG</a>
+        <div class="live-visuals" id="live-visuals" hidden>
+          <div class="live-visual-heading">
+            <div>
+              <p class="eyebrow">Query-derived figures</p>
+              <h3>Interactive browser plots</h3>
+            </div>
+            <p id="live-annotation-note">Genomic-coordinate view.</p>
+          </div>
+          <div class="tabs live-tabs" role="tablist" aria-label="Live query figures">
+            <button role="tab" aria-selected="true" aria-controls="live-signals-panel" id="live-signals-tab">Cs + SNP/QC</button>
+            <button role="tab" aria-selected="false" aria-controls="live-heatmap-panel" id="live-heatmap-tab">Species heatmap</button>
+          </div>
+          <div class="live-plot-panel" id="live-signals-panel" role="tabpanel" aria-labelledby="live-signals-tab">
+            <div class="live-plot" id="live-signal-plot"></div>
+          </div>
+          <div class="live-plot-panel" id="live-heatmap-panel" role="tabpanel" aria-labelledby="live-heatmap-tab" hidden>
+            <div class="live-plot" id="live-heatmap-plot"></div>
+          </div>
+          <p class="plot-method-note" id="plot-method-note">Plots use display-only bins. Hover for query values; the TSV retains every exact base and every species row.</p>
         </div>
-        <div class="figure-panel" id="heatmap-panel" role="tabpanel" aria-labelledby="heatmap-tab" hidden>
-          <img id="heatmap-image" src="assets/examples/AGAP006241/heatmap.png" alt="Cross-species conservation heatmap for AGAP006241">
-          <a class="download-link" id="heatmap-download" href="assets/examples/AGAP006241/heatmap.png" download>Download heatmap PNG</a>
-        </div>
+        <a class="download-link" id="benchmark-download" hidden download="AgamCs-browser-query.tsv">Download exact TSV values</a>
+        <p class="field-help">Maximum interval: 20,000 bases. Unknown, retired, or ambiguous accessions never fall through to a live service; use manual coordinates instead. The conservation archive is never downloaded in full. Raw SNP-density values are never rewritten; failed accessibility/QC positions are shown separately as unknown.</p>
       </div>
     </section>
 

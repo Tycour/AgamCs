@@ -6,6 +6,11 @@ on:
       - 'docs/**'
       - 'tools/check_pages_site.py'
       - 'tools/build_pages_examples.py'
+      - 'tools/build_pages_query_assets.py'
+      - 'tools/build_pages_accession_index.py'
+      - 'tests/accession-lookup.test.js'
+      - 'tests/query-contract.test.js'
+      - 'tests/query-worker.test.js'
       - '.github/workflows/pages-static-checks.yml'
   push:
     branches:
@@ -14,6 +19,11 @@ on:
       - 'docs/**'
       - 'tools/check_pages_site.py'
       - 'tools/build_pages_examples.py'
+      - 'tools/build_pages_query_assets.py'
+      - 'tools/build_pages_accession_index.py'
+      - 'tests/accession-lookup.test.js'
+      - 'tests/query-contract.test.js'
+      - 'tests/query-worker.test.js'
       - '.github/workflows/pages-static-checks.yml'
 
 permissions:
@@ -27,4 +37,13 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
       - run: python tools/check_pages_site.py
+      - run: node --check docs/assets/accession-lookup.js
+      - run: node --check docs/assets/query-contract.js
+      - run: node --check docs/assets/query-worker.js
+      - run: node --check docs/assets/live-plots.js
+      - run: node --check docs/assets/site.js
+      - run: node --test tests/*.test.js

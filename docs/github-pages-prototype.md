@@ -23,6 +23,16 @@ python3 tools/check_pages_site.py
 GitHub Actions runs the same check for relevant pull requests and after Pages
 changes reach `main`.
 
+The Pages workflow also checks the browser JavaScript and the accession
+resolver's current, missing, retired, and ambiguous-ID behaviour with Node 22.
+It also checks coordinate bounds, full-download refusal, transient network
+handling, decoded-cache invalidation, and the final partial HDF5 chunk.
+
+The published interface has one query portal. Pinned accessions, manual
+coordinates, and the labelled precomputed-example shortcuts all use the same
+browser reader and render into the same result area; there is no separate
+static demo form.
+
 ## Rebuild the example catalogue
 
 [`examples.json`](examples.json) pins each accession's AgamP4 coordinates and
@@ -51,14 +61,58 @@ After these files are merged into the repository's default branch:
 
 No secret, server, package install, or JavaScript build is required.
 
+Every Pages release must bump the shared version in `index.html`, `site.js`,
+and `query-worker.js`. These query-string versions prevent an older cached
+worker or manifest from surviving a normal deployment refresh.
+
+## Refresh the pinned accession index
+
+The live browser form defaults to a committed 15-record accession index built
+from AgamP4.14 annotations. It does not contact Ensembl at query time. To
+regenerate the index from the reviewed local annotation snapshot:
+
+```bash
+.venv/bin/python tools/build_pages_accession_index.py
+```
+
+Use `--verify` to validate the committed index without requiring the ignored
+source cache. Refreshes are manual: compare every record with the intended
+annotation source, review coordinate/transcript changes, bump `index_version`,
+and publish the change through normal review. Never update the committed index
+silently. Unknown accessions stay unresolved; retired and ambiguous mappings
+must be recorded explicitly before they can produce tailored messages.
+
 ## Prototype boundary
 
-- Included: responsive interface, one precomputed accession, both current plot
-  types, PNG downloads, interpretation/QC guidance, and keyboard-accessible tabs.
-- Not included: arbitrary accessions or coordinates, live Ensembl lookup,
-  server-side plotting, or direct browser reads from the large HDF5 archive.
+- Included: four precomputed examples; a versioned 15-gene AgamP4.14 accession
+  index; independent manual coordinates; live `Cs`, unchanged SNP density,
+  species-stack and accessibility/QC queries up to 20,000 bases; interactive
+  browser plots; exact TSV downloads; and explicit annotation provenance.
+- Not included: accessions outside the pinned index, live Ensembl lookup,
+  intervals over 20,000 bases, or server-side plotting.
 
-The next practical increment is a small catalogue of precomputed examples and
-their TSV files. Arbitrary live queries should remain in the CLI/Shiny service
-until the data is repackaged into a browser-efficient format and the plotting
-logic is intentionally ported to JavaScript or WebAssembly.
+The example catalogue is accompanied by the Stage 7–9 browser client. It
+accepts a pinned gene accession or an independent AgamP4 interval of at most
+20,000 bases. It reads only the required `Cs`, unchanged `snp_density`, species
+`stack`, and separate accessibility chunks through HTTP range requests.
+Decoding runs in a persistent worker with a bounded in-memory chunk cache, so
+repeat and nearby queries can reuse data without freezing the interface. Exact
+values are previewed, plotted interactively, and downloadable as TSV.
+
+The browser reads a generated manifest for chromosome bounds, array names,
+coordinate convention, source provenance, and the query limit. Accessibility
+is kept separate from raw SNP density; inaccessible positions are presented as
+unknown and never rewritten as zeros or proof of invariance.
+
+Rebuild its compact reference and pinned local validation hashes with:
+
+```bash
+.venv/bin/python tools/build_pages_query_assets.py
+```
+
+Use `--verify` to confirm that committed query assets match the bundled
+Kerchunk reference and, when available, the local HDF5. The outcome and the
+decision gate for any browser-optimized derivative are documented in
+[`browser-hdf5-feasibility.md`](browser-hdf5-feasibility.md).
+The Step 10 release matrix and remaining publication gate are recorded in
+[`browser-release-validation.md`](browser-release-validation.md).

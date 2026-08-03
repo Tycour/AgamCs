@@ -2,18 +2,41 @@
 
 from __future__ import annotations
 
+import json
+import re
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
+from build_pages_accession_index import validate_index
 from build_pages_examples import load_catalogue, verify_assets
 
 
 ROOT = Path(__file__).resolve().parents[1] / 'docs'
 PAGES = (ROOT / 'index.html', ROOT / '404.html')
 EXAMPLES_PATH = ROOT / 'examples.json'
+ACCESSION_INDEX_PATH = ROOT / 'assets/data/accession-index.json'
+QUERY_ASSETS = (
+    ROOT / 'assets/data/score-reference.json',
+    ROOT / 'assets/data/accessibility-reference.json',
+    ROOT / 'assets/data/query-manifest.json',
+    ROOT / 'assets/data/query-validation.json',
+    ROOT / 'assets/data/plot-validation.json',
+    ROOT / 'assets/query-worker.js',
+    ROOT / 'assets/live-plots.js',
+    ROOT / 'assets/query-contract.js',
+    ROOT / 'assets/accession-lookup.js',
+    ACCESSION_INDEX_PATH,
+)
+QUERY_ARRAYS = {'Cs', 'snp_density', 'stack'}
+VALIDATION_ARRAYS = QUERY_ARRAYS | {'status'}
+QUERY_CHROMOSOMES = {'2L', '2R', '3L', '3R', 'X'}
 REQUIRED_META_NAMES = {'description', 'theme-color', 'twitter:card'}
 REQUIRED_META_PROPERTIES = {'og:type', 'og:title', 'og:description', 'og:url', 'og:image'}
+FORBIDDEN_PAGES_SUFFIXES = {'.h5', '.hdf5', '.zarr', '.zip', '.tar', '.gz'}
+MAX_PAGES_FILE_BYTES = 10 * 1024 * 1024
+RELEASE_PATTERN = re.compile(r"(?:PAGES|WORKER)_RELEASE\s*=\s*['\"]([^'\"]+)['\"]")
+HTML_RELEASE_PATTERN = re.compile(r"[?&]v=([A-Za-z0-9._-]+)")
 
 
 class PageChecker(HTMLParser):
@@ -27,6 +50,7 @@ class PageChecker(HTMLParser):
         self.meta_names: set[str] = set()
         self.meta_properties: set[str] = set()
         self.title = ''
+        self.form_count = 0
         self._in_title = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -41,6 +65,8 @@ class PageChecker(HTMLParser):
             self.errors.append('document language must be English (lang="en")')
         if tag == 'title':
             self._in_title = True
+        if tag == 'form':
+            self.form_count += 1
         if tag == 'img' and not attributes.get('alt'):
             self.errors.append('image is missing alternative text')
         if tag == 'meta':
@@ -105,6 +131,23 @@ def validate_page(page: Path) -> list[str]:
             errors.append(f'index.html: missing Open Graph properties: {sorted(missing_properties)}')
         if 'Early research prototype' not in page.read_text(encoding='utf-8'):
             errors.append('index.html: early prototype status is not stated')
+        required_ids = {
+            'explorer', 'benchmark-form', 'live-accession', 'example-select',
+            'accession-query-panel', 'coordinate-query-panel',
+            'results-portal', 'resolved-accession',
+        }
+        if missing_ids := required_ids - checker.ids:
+            errors.append(f'index.html: missing live-query controls: {sorted(missing_ids)}')
+        obsolete_ids = {'query-form', 'live-query', 'profile-panel', 'heatmap-panel'}
+        if retained_ids := obsolete_ids & checker.ids:
+            errors.append(f'index.html: duplicate demo/live-query UI remains: {sorted(retained_ids)}')
+        page_text = page.read_text(encoding='utf-8')
+        if 'Precomputed examples' not in page_text:
+            errors.append('index.html: precomputed examples must remain a labelled query shortcut')
+        if 'Demo result' in page_text:
+            errors.append('index.html: obsolete demo-result presentation remains')
+        if checker.form_count != 1:
+            errors.append(f'index.html: expected one query form, found {checker.form_count}')
     return errors
 
 
@@ -118,6 +161,66 @@ def validate_examples() -> list[str]:
             for path in verify_assets(catalogue['examples'], ROOT / 'assets')]
 
 
+def validate_accessions() -> list[str]:
+    """Validate the pinned index and its overlap with precomputed examples."""
+    try:
+        index = json.loads(ACCESSION_INDEX_PATH.read_text(encoding='utf-8'))
+        validate_index(index)
+        catalogue = load_catalogue(EXAMPLES_PATH)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return [f'could not validate accession index: {error}']
+
+    errors = []
+    if len(index['accessions']) != 15:
+        errors.append('accession index must contain the 15 reviewed prototype records')
+    for example in catalogue['examples']:
+        accession = example['accession']
+        record = index['accessions'].get(accession)
+        if record is None:
+            errors.append(f'precomputed example is missing from accession index: {accession}')
+            continue
+        if record['region'] != example['region']:
+            errors.append(f'accession-index region disagrees with example: {accession}')
+        if record['annotation'] != example['annotation']:
+            errors.append(f'accession-index annotation disagrees with example: {accession}')
+    return errors
+
+
+def validate_pages_payload() -> list[str]:
+    """Ensure Pages contains only the small client and metadata assets."""
+    errors = []
+    for path in ROOT.rglob('*'):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(ROOT)
+        if path.suffix.lower() in FORBIDDEN_PAGES_SUFFIXES:
+            errors.append(f'forbidden data archive in Pages payload: {relative}')
+        if path.stat().st_size > MAX_PAGES_FILE_BYTES:
+            errors.append(f'Pages asset exceeds 10 MiB safety limit: {relative}')
+    return errors
+
+
+def validate_release_versions() -> list[str]:
+    """Require one cache-busting release ID across the page and worker graph."""
+    index_versions = set(HTML_RELEASE_PATTERN.findall(PAGES[0].read_text(encoding='utf-8')))
+    errors = []
+    if len(index_versions) != 1:
+        errors.append(f'index.html must use one release version, found: {sorted(index_versions)}')
+        return errors
+
+    expected = next(iter(index_versions))
+    for relative in ('assets/site.js', 'assets/query-worker.js'):
+        text = (ROOT / relative).read_text(encoding='utf-8')
+        match = RELEASE_PATTERN.search(text)
+        if not match:
+            errors.append(f'{relative} does not declare its release version')
+        elif match.group(1) != expected:
+            errors.append(
+                f'{relative} release {match.group(1)!r} does not match index.html {expected!r}'
+            )
+    return errors
+
+
 def main() -> None:
     errors: list[str] = []
     for page in PAGES:
@@ -126,6 +229,110 @@ def main() -> None:
         else:
             errors.extend(validate_page(page))
     errors.extend(validate_examples())
+    errors.extend(validate_accessions())
+    errors.extend(validate_pages_payload())
+    errors.extend(validate_release_versions())
+    for asset in QUERY_ASSETS:
+        if not asset.exists() or asset.stat().st_size == 0:
+            errors.append(f'missing browser-query asset: {asset.relative_to(ROOT)}')
+    if all(asset.exists() for asset in QUERY_ASSETS[:5]):
+        reference = json.loads(QUERY_ASSETS[0].read_text())
+        accessibility_reference = json.loads(QUERY_ASSETS[1].read_text())
+        manifest = json.loads(QUERY_ASSETS[2].read_text())
+        validation = json.loads(QUERY_ASSETS[3].read_text())
+        plot_validation = json.loads(QUERY_ASSETS[4].read_text())
+        if not str(reference.get('templates', {}).get('source', '')).startswith('https://'):
+            errors.append('browser-query source must use HTTPS')
+        expected_metadata = {
+            f'{chromosome}/{array}/.zarray'
+            for chromosome in QUERY_CHROMOSOMES
+            for array in QUERY_ARRAYS
+        }
+        if not expected_metadata.issubset(reference.get('refs', {})):
+            errors.append('browser-query index is missing required array metadata')
+        exposed = {
+            key.split('/')[1]
+            for key in reference.get('refs', {})
+            if len(key.split('/')) >= 3
+        }
+        if exposed != QUERY_ARRAYS:
+            errors.append(f'browser-query index exposes unexpected arrays: {sorted(exposed)}')
+        expected_status_metadata = {
+            f'{chromosome}/status/.zarray'
+            for chromosome in QUERY_CHROMOSOMES
+        }
+        if not expected_status_metadata.issubset(accessibility_reference.get('refs', {})):
+            errors.append('accessibility index is missing required status metadata')
+        if not str(accessibility_reference.get('templates', {}).get('source', '')).startswith('https://'):
+            errors.append('accessibility source must use HTTPS')
+        if manifest.get('assembly') != 'AgamP4':
+            errors.append('browser-query manifest has an unexpected assembly')
+        if manifest.get('coordinate_convention') != '1-based inclusive':
+            errors.append('browser-query manifest has an unexpected coordinate convention')
+        if manifest.get('maximum_query_bases') != 20_000:
+            errors.append('browser-query manifest has an unexpected query limit')
+        if set(manifest.get('chromosomes', {})) != QUERY_CHROMOSOMES:
+            errors.append('browser-query manifest has unexpected chromosomes')
+        if set(manifest.get('arrays', ())) != QUERY_ARRAYS:
+            errors.append('browser-query manifest has unexpected arrays')
+        accessibility = manifest.get('accessibility', {})
+        if accessibility.get('available') is not True:
+            errors.append('browser-query manifest must expose live accessibility')
+        if len(accessibility.get('sha256', '')) != 64:
+            errors.append('browser-query manifest has an invalid accessibility checksum')
+        stack = manifest.get('stack', {})
+        if len(stack.get('rows', ())) != 21 or len(stack.get('species', ())) != 21:
+            errors.append('browser-query manifest has invalid stack metadata')
+        validation_cases = validation.get('cases', ())
+        if validation.get('schema_version') != 3 or len(validation_cases) < 8:
+            errors.append('browser-query release validation matrix is missing or incomplete')
+        case_ids = [case.get('id') for case in validation_cases]
+        if len(case_ids) != len(set(case_ids)):
+            errors.append('browser-query release validation case IDs are not unique')
+        if {case.get('chromosome') for case in validation_cases} != QUERY_CHROMOSOMES:
+            errors.append('browser-query release validation does not cover every chromosome')
+        qc_classes = {case.get('expected_qc') for case in validation_cases}
+        if qc_classes != {'fully_accessible', 'partly_accessible', 'no_accessible_bases'}:
+            errors.append('browser-query release validation does not cover all QC states')
+        strands = {case.get('strand') for case in validation_cases if case.get('accession')}
+        if strands != {-1, 1}:
+            errors.append('browser-query release validation must include plus- and minus-strand genes')
+        has_left_boundary = False
+        has_right_boundary = False
+        for case in validation_cases:
+            chromosome = case.get('chromosome')
+            start, end = case.get('start'), case.get('end')
+            if start == 1:
+                has_left_boundary = True
+            if chromosome in manifest.get('chromosomes', {}) and end == manifest['chromosomes'][chromosome]['length']:
+                has_right_boundary = True
+            if case.get('region') != f'{chromosome}:{start}-{end}':
+                errors.append(f"release validation region fields disagree: {case.get('id')}")
+            if case.get('bases') != end - start + 1:
+                errors.append(f"release validation base count disagrees: {case.get('id')}")
+            accessible_bases = case.get('accessible_bases')
+            if not isinstance(accessible_bases, int) or not 0 <= accessible_bases <= case.get('bases', -1):
+                errors.append(f"release validation accessibility count is invalid: {case.get('id')}")
+            validation_arrays = case.get('arrays', {})
+            if set(validation_arrays) != VALIDATION_ARRAYS:
+                errors.append(f"release validation has unexpected arrays: {case.get('id')}")
+            for name, details in validation_arrays.items():
+                digest = details.get('sha256_bytes', '')
+                if len(digest) != 64 or any(character not in '0123456789abcdef' for character in digest):
+                    errors.append(f"invalid browser-query SHA-256 for {case.get('id')}/{name}")
+        if not has_left_boundary or not has_right_boundary:
+            errors.append('browser-query release validation must include both chromosome boundaries')
+        default_case = next(
+            (case for case in validation_cases if case.get('id') == validation.get('default_case')),
+            None,
+        )
+        if not default_case or plot_validation.get('region') != default_case.get('region'):
+            errors.append('plot-validation fixture does not match the default release validation case')
+        if len(plot_validation.get('cs', ())) != 240:
+            errors.append('plot-validation fixture has unexpected Cs display bins')
+        heatmap = plot_validation.get('heatmap', ())
+        if len(heatmap) != 21 or any(len(row) != 500 for row in heatmap):
+            errors.append('plot-validation fixture has unexpected heatmap dimensions')
     if errors:
         raise SystemExit('\n'.join(errors))
     print(f'Validated {len(PAGES)} Pages documents and their local assets.')
