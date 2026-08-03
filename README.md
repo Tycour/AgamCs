@@ -1,5 +1,12 @@
 # AgamCs
 
+**Use AgamCs in your browser:** [open the AgamCs research portal](https://tycour.github.io/AgamCs/).
+
+The GitHub Pages portal is the easiest way to query a pinned `AGAP...` gene or
+AgamP4 coordinates, inspect the figures, and download exact values. It is an
+early research prototype and requires no installation. The command-line tool
+below is intended for local, batch, and reproducible workflows.
+
 AgamCs retrieves conservation data for the *Anopheles gambiae* AgamP4 genome
 and turns it into readable gene- or region-level figures. You can query an
 `AGAP...` gene accession or genomic coordinates and generate:
@@ -8,7 +15,7 @@ and turns it into readable gene- or region-level figures. You can query an
 - the original base-level Cs/SNP plot; and
 - a cross-species identity heatmap with an aligned transcript model.
 
-## Quick start
+## Command-line installation
 
 AgamCs is installed from the GitHub source tree for now. On macOS or Linux, the
 simplest route is to create a fresh Conda environment so AgamCs and its

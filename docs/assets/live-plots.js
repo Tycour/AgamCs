@@ -246,6 +246,17 @@
     }).sort((left, right) => left[0] - right[0]);
   }
 
+  function drawCdsStrip(svg, annotation, xScale, y) {
+    cdsSegments(annotation).forEach(([left, right]) => {
+      svg.append(svgElement('rect', {
+        x: xScale(left), y,
+        width: Math.max(1, xScale(right) - xScale(left)), height: 8,
+        fill: COLORS.cds, stroke: COLORS.cdsEdge, 'stroke-width': 1,
+        class: 'heatmap-cds-strip',
+      }));
+    });
+  }
+
   function drawGeneModel(svg, annotation, xScale, y, xMinimum, xMaximum, layout = {}) {
     if (!annotation) return;
     const mapper = Number(annotation.strand) === -1
@@ -634,6 +645,7 @@
     });
 
     if (hasAnnotation) {
+      drawCdsStrip(svg, summary.annotation, xScale, rowTop - 10);
       cdsSegments(summary.annotation).flat().forEach((position) => {
         const x = xScale(position);
         svg.append(svgElement('line', {
@@ -659,6 +671,7 @@
 
   global.AgamCsPlots = {
     annotationMatches,
+    cdsSegments,
     quantile,
     summarizeSignals,
     summarizeHeatmap,

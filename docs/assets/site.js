@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-03-rc5';
+const PAGES_RELEASE = '2026-08-03-rc6';
 
 function versionedAsset(path) {
   const separator = path.includes('?') ? '&' : '?';
@@ -31,7 +31,6 @@ document.querySelectorAll('[role="tablist"]').forEach((tablist) => {
 
 const benchmarkForm = document.querySelector('#benchmark-form');
 const benchmarkStatus = document.querySelector('#benchmark-status');
-const benchmarkMetrics = document.querySelector('#benchmark-metrics');
 const benchmarkDownload = document.querySelector('#benchmark-download');
 const benchmarkSubmit = document.querySelector('#benchmark-submit');
 const querySummary = document.querySelector('#query-summary');
@@ -57,12 +56,6 @@ let queryRequestId = 0;
 let benchmarkDownloadUrl;
 let queryManifestPromise;
 let accessionIndexPromise;
-
-function formatBytes(bytes) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KiB`;
-  return `${(bytes / 1024 ** 2).toFixed(2)} MiB`;
-}
 
 async function loadValidation() {
   const response = await fetch(versionedAsset('assets/data/query-validation.json'));
@@ -112,7 +105,6 @@ function setLiveQueryMode(mode) {
   const byAccession = mode === 'accession';
   accessionQueryPanel.hidden = !byAccession;
   coordinateQueryPanel.hidden = byAccession;
-  benchmarkMetrics.hidden = true;
   benchmarkDownload.hidden = true;
   querySummary.hidden = true;
   liveVisuals.hidden = true;
@@ -362,7 +354,6 @@ benchmarkForm.addEventListener('submit', async (event) => {
   let end;
   let accessionIndex = null;
   let resolution = null;
-  benchmarkMetrics.hidden = true;
   benchmarkDownload.hidden = true;
   querySummary.hidden = true;
   liveVisuals.hidden = true;
@@ -440,21 +431,6 @@ benchmarkForm.addEventListener('submit', async (event) => {
       throw new Error('Plot validation failed; browser summaries do not match the Python plotting fixture.');
     }
 
-    document.querySelector('#metric-time').textContent = `${result.metrics.totalMs.toFixed(0)} ms`;
-    document.querySelector('#metric-cache-hits').textContent = String(result.metrics.cacheHits);
-    document.querySelector('#metric-requests').textContent = result.metrics.retries
-      ? `${result.metrics.requests} + ${result.metrics.retries} retries`
-      : String(result.metrics.requests);
-    document.querySelector('#metric-bytes').textContent = formatBytes(result.metrics.transferredBytes);
-    document.querySelector('#metric-memory').textContent = formatBytes(result.metrics.decodedCacheBytes);
-    document.querySelector('#metric-validation').textContent = hasArrayFixture
-      ? (hashesMatch
-        ? (plotSummariesMatch ? 'Exact arrays + Python plot match' : 'Exact arrays match Python fixture')
-        : hashUnavailable
-          ? (plotSummariesMatch ? 'Python plot match; hash unavailable' : 'Hash unavailable; fixture not checked')
-          : 'FAILED')
-      : 'No pinned local fixture for this interval';
-    benchmarkMetrics.hidden = false;
     setPortalState(resolution?.accession || `${chromosome}:${start}-${end}`, 'Complete');
     benchmarkStatus.textContent = hashesMatch && plotSummariesMatch
       ? 'Query complete; exact arrays and browser plot summaries match the Python fixtures.'
