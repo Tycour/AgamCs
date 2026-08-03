@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-03-rc6';
+const PAGES_RELEASE = '2026-08-03-rc7';
 
 function versionedAsset(path) {
   const separator = path.includes('?') ? '&' : '?';
@@ -34,7 +34,6 @@ const benchmarkStatus = document.querySelector('#benchmark-status');
 const benchmarkDownload = document.querySelector('#benchmark-download');
 const benchmarkSubmit = document.querySelector('#benchmark-submit');
 const querySummary = document.querySelector('#query-summary');
-const queryPreview = document.querySelector('#query-preview');
 const liveVisuals = document.querySelector('#live-visuals');
 const liveSignalPlot = document.querySelector('#live-signal-plot');
 const liveHeatmapPlot = document.querySelector('#live-heatmap-plot');
@@ -220,52 +219,27 @@ function buildTsv(data) {
   return `${lines.join('\n')}\n`;
 }
 
-function mean(values) {
-  let total = 0;
-  let count = 0;
-  for (const value of values) {
-    if (Number.isFinite(value)) {
-      total += value;
-      count += 1;
-    }
-  }
-  return count ? total / count : Number.NaN;
-}
-
 function displayNumber(value) {
   return Number.isFinite(value) ? value.toPrecision(6) : 'NA';
 }
 
-function renderQuerySummary(result) {
-  const accessibleSnp = [];
-  let accessibleCount = 0;
-  for (let index = 0; index < result.values.status.length; index += 1) {
-    if ((result.values.status[index] & 1) === 1) {
-      accessibleSnp.push(result.values.snp_density[index]);
-      accessibleCount += 1;
-    }
+function renderQuerySummary(result, annotation = null) {
+  const summary = globalThis.AgamCsPlots.summarizeQuery(result, annotation);
+  const hasExonSummary = summary.exonBasePairs != null;
+  const queryScope = hasExonSummary ? 'Entire gene span' : 'Queried interval';
+  document.querySelector('#summary-count').textContent = summary.queryBasePairs.toLocaleString();
+  document.querySelector('#summary-cs').textContent = displayNumber(summary.queryMeanCs);
+  document.querySelector('#summary-snp').textContent = displayNumber(summary.queryMeanSnp);
+  document.querySelector('#summary-query-scope').textContent = queryScope;
+  document.querySelector('#summary-exons-card').hidden = !hasExonSummary;
+  if (hasExonSummary) {
+    document.querySelector('#summary-exon-count').textContent = summary.exonBasePairs.toLocaleString();
+    document.querySelector('#summary-cs-exons').textContent = displayNumber(summary.exonMeanCs);
+    document.querySelector('#summary-snp-exons').textContent = displayNumber(summary.exonMeanSnp);
+    document.querySelector('#summary-method-note').textContent = `Gene-span means use all ${summary.queryBasePairs.toLocaleString()} queried bp (exons and introns). Exon means use the ${summary.exonBasePairs.toLocaleString()} unique bp in the union of annotated exons. SNP means include only QC-accessible bases within each scope; QC-failed bases remain unknown. Exon SNP averages the archived density values assigned to exonic bases; it does not recalculate their 20 bp windows.`;
+  } else {
+    document.querySelector('#summary-method-note').textContent = `Means use all ${summary.queryBasePairs.toLocaleString()} queried bp. The SNP mean includes only QC-accessible bases; QC-failed bases remain unknown. Exon means require a pinned gene annotation.`;
   }
-  document.querySelector('#summary-count').textContent = result.values.Cs.length.toLocaleString();
-  document.querySelector('#summary-cs').textContent = displayNumber(mean(result.values.Cs));
-  document.querySelector('#summary-snp').textContent = displayNumber(mean(accessibleSnp));
-  document.querySelector('#summary-accessible').textContent = `${(accessibleCount / result.values.status.length * 100).toFixed(1)}%`;
-  const rows = [];
-  const previewLength = Math.min(5, result.values.Cs.length);
-  for (let index = 0; index < previewLength; index += 1) {
-    const row = document.createElement('tr');
-    for (const value of [
-      String(result.start + index),
-      displayNumber(result.values.Cs[index]),
-      displayNumber(result.values.snp_density[index]),
-      statusLabel(result.values.status[index], result.statusFields),
-    ]) {
-      const cell = document.createElement('td');
-      cell.textContent = value;
-      row.append(cell);
-    }
-    rows.push(row);
-  }
-  queryPreview.replaceChildren(...rows);
   querySummary.hidden = false;
 }
 
@@ -439,7 +413,7 @@ benchmarkForm.addEventListener('submit', async (event) => {
       : hashUnavailable
         ? 'Query complete; data retrieved, but browser hash validation is unavailable.'
         : `Query complete: ${querySubject}.`;
-    renderQuerySummary(result);
+    renderQuerySummary(result, annotation);
     if (resolution) renderResolvedAccession(resolution, accessionIndex);
     renderLivePlots(result, annotation, annotationAccession);
 
