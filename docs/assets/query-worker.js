@@ -1,10 +1,69 @@
-const SCORE_REFERENCE_URL = 'data/score-reference.json';
-const ACCESSIBILITY_REFERENCE_URL = 'data/accessibility-reference.json';
+const WORKER_RELEASE = '2026-08-03-rc4';
+const SCORE_REFERENCE_URL = `data/score-reference.json?v=${WORKER_RELEASE}`;
+const ACCESSIBILITY_REFERENCE_URL = `data/accessibility-reference.json?v=${WORKER_RELEASE}`;
 const HASH_ARRAYS = ['Cs', 'snp_density', 'stack', 'status'];
 const MAX_CACHE_BYTES = 64 * 1024 * 1024;
+const MAX_CONCURRENT_RANGE_REQUESTS = 4;
+const MAX_RANGE_ATTEMPTS = 6;
+const TRANSIENT_HTTP_STATUSES = new Set([408, 429, 500, 502, 503, 504]);
 const cache = new Map();
 const referencePromises = new Map();
+const rangeQueue = [];
 let cacheBytes = 0;
+let activeRangeRequests = 0;
+
+function wait(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+async function withRangeSlot(task) {
+  if (activeRangeRequests >= MAX_CONCURRENT_RANGE_REQUESTS) {
+    await new Promise((resolve) => rangeQueue.push(resolve));
+  }
+  activeRangeRequests += 1;
+  try {
+    return await task();
+  } finally {
+    activeRangeRequests -= 1;
+    const next = rangeQueue.shift();
+    if (next) next();
+  }
+}
+
+function retryDelay(response, attempt) {
+  const exponential = 500 * (2 ** attempt);
+  const retryAfter = Number(response?.headers?.get?.('Retry-After'));
+  if (Number.isFinite(retryAfter) && retryAfter > 0) {
+    return Math.max(exponential, Math.min(15_000, retryAfter * 1_000));
+  }
+  return exponential;
+}
+
+async function fetchRange(source, offset, length, metrics) {
+  let lastError;
+  for (let attempt = 0; attempt < MAX_RANGE_ATTEMPTS; attempt += 1) {
+    let response;
+    try {
+      response = await fetch(source, {
+        headers: { Range: `bytes=${offset}-${offset + length - 1}` },
+        cache: 'no-store',
+      });
+    } catch (error) {
+      lastError = error;
+      if (attempt === MAX_RANGE_ATTEMPTS - 1) throw error;
+      metrics.retries += 1;
+      await wait(500 * (2 ** attempt));
+      continue;
+    }
+    if (response.status === 206) return response;
+    if (!TRANSIENT_HTTP_STATUSES.has(response.status) || attempt === MAX_RANGE_ATTEMPTS - 1) {
+      return response;
+    }
+    metrics.retries += 1;
+    await wait(retryDelay(response, attempt));
+  }
+  throw lastError || new Error('The data range request failed without a response.');
+}
 
 function parseMetadata(value) {
   return typeof value === 'string' ? JSON.parse(value) : value;
@@ -62,12 +121,12 @@ async function readChunk(reference, key, expectedBytes, metadata, metrics) {
   }
 
   const started = performance.now();
-  const response = await fetch(source, {
-    headers: { Range: `bytes=${offset}-${offset + length - 1}` },
-    cache: 'no-store',
-  });
+  const response = await withRangeSlot(() => fetchRange(source, offset, length, metrics));
   if (response.status !== 206) {
-    throw new Error(`The data host returned HTTP ${response.status}, not a partial-content response. Full-file downloads are refused.`);
+    if (response.status === 200) {
+      throw new Error('The data host returned HTTP 200, not a partial-content response. Full-file downloads are refused.');
+    }
+    throw new Error(`The data host returned HTTP ${response.status} after transient range-request retries.`);
   }
   const compressed = await response.arrayBuffer();
   if (compressed.byteLength !== length) {
@@ -119,7 +178,7 @@ async function readScoreVector(reference, chromosome, name, start, end, metrics)
     const chunkStart = chunkIndex * chunkBases;
     const chunkLength = Math.min(chunkBases, metadata.shape[1] - chunkStart);
     const key = `${path}/0.${chunkIndex}`;
-    const decoded = await readChunk(reference, key, chunkLength * 4, metadata, metrics);
+    const decoded = await readChunk(reference, key, chunkBases * 4, metadata, metrics);
     const chunk = new Float32Array(decoded);
     const sliceStart = Math.max(startIndex, chunkStart) - chunkStart;
     const sliceEnd = Math.min(endIndex, chunkStart + chunkLength) - chunkStart;
@@ -140,7 +199,7 @@ async function readStackRow(reference, path, metadata, rowIndex, startIndex, end
     const chunkStart = chunkIndex * chunkBases;
     const chunkLength = Math.min(chunkBases, metadata.shape[1] - chunkStart);
     const key = `${path}/${rowIndex}.${chunkIndex}`;
-    const decoded = await readChunk(reference, key, chunkLength * 4, metadata, metrics);
+    const decoded = await readChunk(reference, key, chunkBases * 4, metadata, metrics);
     const chunk = new Float32Array(decoded);
     const sliceStart = Math.max(startIndex, chunkStart) - chunkStart;
     const sliceEnd = Math.min(endIndex, chunkStart + chunkLength) - chunkStart;
@@ -192,7 +251,7 @@ async function readStatus(reference, chromosome, start, end, metrics) {
   for (let chunkIndex = firstChunk; chunkIndex <= lastChunk; chunkIndex += 1) {
     const chunkStart = chunkIndex * chunkBases;
     const chunkLength = Math.min(chunkBases, metadata.shape[0] - chunkStart);
-    const decoded = await readChunk(reference, `${path}/${chunkIndex}`, chunkLength, metadata, metrics);
+    const decoded = await readChunk(reference, `${path}/${chunkIndex}`, chunkBases, metadata, metrics);
     const chunk = new Uint8Array(decoded);
     const sliceStart = Math.max(startIndex, chunkStart) - chunkStart;
     const sliceEnd = Math.min(endIndex, chunkStart + chunkLength) - chunkStart;
@@ -208,7 +267,9 @@ async function query(chromosome, start, end) {
     loadReference(SCORE_REFERENCE_URL),
     loadReference(ACCESSIBILITY_REFERENCE_URL),
   ]);
-  const metrics = { requests: 0, cacheHits: 0, transferredBytes: 0, networkAndDecodeMs: 0 };
+  const metrics = {
+    requests: 0, retries: 0, cacheHits: 0, transferredBytes: 0, networkAndDecodeMs: 0,
+  };
   const started = performance.now();
   const [Cs, snpDensity, stack, status] = await Promise.all([
     readScoreVector(scoreReference, chromosome, 'Cs', start, end, metrics),

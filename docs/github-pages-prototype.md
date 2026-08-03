@@ -25,6 +25,8 @@ changes reach `main`.
 
 The Pages workflow also checks the browser JavaScript and the accession
 resolver's current, missing, retired, and ambiguous-ID behaviour with Node 22.
+It also checks coordinate bounds, full-download refusal, transient network
+handling, decoded-cache invalidation, and the final partial HDF5 chunk.
 
 ## Rebuild the example catalogue
 
@@ -53,6 +55,10 @@ After these files are merged into the repository's default branch:
 4. Wait for the Pages deployment shown under **Actions** to complete.
 
 No secret, server, package install, or JavaScript build is required.
+
+Every Pages release must bump the shared version in `index.html`, `site.js`,
+and `query-worker.js`. These query-string versions prevent an older cached
+worker or manifest from surviving a normal deployment refresh.
 
 ## Refresh the pinned accession index
 
@@ -103,3 +109,5 @@ Use `--verify` to confirm that committed query assets match the bundled
 Kerchunk reference and, when available, the local HDF5. The outcome and the
 decision gate for any browser-optimized derivative are documented in
 [`browser-hdf5-feasibility.md`](browser-hdf5-feasibility.md).
+The Step 10 release matrix and remaining publication gate are recorded in
+[`browser-release-validation.md`](browser-release-validation.md).

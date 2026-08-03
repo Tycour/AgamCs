@@ -128,3 +128,22 @@ The pinned minus-strand AGAP008118 interval and an arbitrary unannotated
 coordinate interval were also exercised successfully. Cross-browser
 publication regression testing remains part of Stage 10 rather than this
 implementation step.
+
+## Stage 10 release candidate (3 August 2026)
+
+The release candidate expands exact Python-reader validation to eight regions
+covering every chromosome arm, plus- and minus-strand genes, both chromosome
+boundaries, and fully, partly, and non-accessible QC states. The matrix and
+publication gate are documented in
+[`browser-release-validation.md`](browser-release-validation.md).
+
+Release testing found and fixed two browser-specific defects: stale cached
+workers could survive ordinary reloads, and the final physical HDF5 chunk was
+incorrectly expected to shrink to the logical chromosome length. Static asset
+versioning now invalidates old workers and manifests, while the boundary reader
+accepts a full physical chunk before slicing to the requested logical bases.
+
+Repeated synthetic queries can also trigger Zenodo HTTP 429 responses. The
+worker now limits concurrent range requests, retries only transient network and
+HTTP failures with bounded backoff, reports retries, and continues to refuse
+HTTP 200 responses that could represent a full-file download.

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlparse
@@ -23,6 +24,7 @@ QUERY_ASSETS = (
     ROOT / 'assets/data/plot-validation.json',
     ROOT / 'assets/query-worker.js',
     ROOT / 'assets/live-plots.js',
+    ROOT / 'assets/query-contract.js',
     ROOT / 'assets/accession-lookup.js',
     ACCESSION_INDEX_PATH,
 )
@@ -31,6 +33,10 @@ VALIDATION_ARRAYS = QUERY_ARRAYS | {'status'}
 QUERY_CHROMOSOMES = {'2L', '2R', '3L', '3R', 'X'}
 REQUIRED_META_NAMES = {'description', 'theme-color', 'twitter:card'}
 REQUIRED_META_PROPERTIES = {'og:type', 'og:title', 'og:description', 'og:url', 'og:image'}
+FORBIDDEN_PAGES_SUFFIXES = {'.h5', '.hdf5', '.zarr', '.zip', '.tar', '.gz'}
+MAX_PAGES_FILE_BYTES = 10 * 1024 * 1024
+RELEASE_PATTERN = re.compile(r"(?:PAGES|WORKER)_RELEASE\s*=\s*['\"]([^'\"]+)['\"]")
+HTML_RELEASE_PATTERN = re.compile(r"[?&]v=([A-Za-z0-9._-]+)")
 
 
 class PageChecker(HTMLParser):
@@ -166,6 +172,41 @@ def validate_accessions() -> list[str]:
     return errors
 
 
+def validate_pages_payload() -> list[str]:
+    """Ensure Pages contains only the small client and metadata assets."""
+    errors = []
+    for path in ROOT.rglob('*'):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(ROOT)
+        if path.suffix.lower() in FORBIDDEN_PAGES_SUFFIXES:
+            errors.append(f'forbidden data archive in Pages payload: {relative}')
+        if path.stat().st_size > MAX_PAGES_FILE_BYTES:
+            errors.append(f'Pages asset exceeds 10 MiB safety limit: {relative}')
+    return errors
+
+
+def validate_release_versions() -> list[str]:
+    """Require one cache-busting release ID across the page and worker graph."""
+    index_versions = set(HTML_RELEASE_PATTERN.findall(PAGES[0].read_text(encoding='utf-8')))
+    errors = []
+    if len(index_versions) != 1:
+        errors.append(f'index.html must use one release version, found: {sorted(index_versions)}')
+        return errors
+
+    expected = next(iter(index_versions))
+    for relative in ('assets/site.js', 'assets/query-worker.js'):
+        text = (ROOT / relative).read_text(encoding='utf-8')
+        match = RELEASE_PATTERN.search(text)
+        if not match:
+            errors.append(f'{relative} does not declare its release version')
+        elif match.group(1) != expected:
+            errors.append(
+                f'{relative} release {match.group(1)!r} does not match index.html {expected!r}'
+            )
+    return errors
+
+
 def main() -> None:
     errors: list[str] = []
     for page in PAGES:
@@ -175,6 +216,8 @@ def main() -> None:
             errors.extend(validate_page(page))
     errors.extend(validate_examples())
     errors.extend(validate_accessions())
+    errors.extend(validate_pages_payload())
+    errors.extend(validate_release_versions())
     for asset in QUERY_ASSETS:
         if not asset.exists() or asset.stat().st_size == 0:
             errors.append(f'missing browser-query asset: {asset.relative_to(ROOT)}')
@@ -226,15 +269,51 @@ def main() -> None:
         stack = manifest.get('stack', {})
         if len(stack.get('rows', ())) != 21 or len(stack.get('species', ())) != 21:
             errors.append('browser-query manifest has invalid stack metadata')
-        validation_arrays = validation.get('arrays', {})
-        if set(validation_arrays) != VALIDATION_ARRAYS:
-            errors.append('browser-query validation fixture has unexpected arrays')
-        for name, details in validation_arrays.items():
-            digest = details.get('sha256_bytes', '')
-            if len(digest) != 64 or any(character not in '0123456789abcdef' for character in digest):
-                errors.append(f'invalid browser-query SHA-256 for {name}')
-        if plot_validation.get('region') != validation.get('region'):
-            errors.append('plot-validation fixture does not match query validation region')
+        validation_cases = validation.get('cases', ())
+        if validation.get('schema_version') != 3 or len(validation_cases) < 8:
+            errors.append('browser-query release validation matrix is missing or incomplete')
+        case_ids = [case.get('id') for case in validation_cases]
+        if len(case_ids) != len(set(case_ids)):
+            errors.append('browser-query release validation case IDs are not unique')
+        if {case.get('chromosome') for case in validation_cases} != QUERY_CHROMOSOMES:
+            errors.append('browser-query release validation does not cover every chromosome')
+        qc_classes = {case.get('expected_qc') for case in validation_cases}
+        if qc_classes != {'fully_accessible', 'partly_accessible', 'no_accessible_bases'}:
+            errors.append('browser-query release validation does not cover all QC states')
+        strands = {case.get('strand') for case in validation_cases if case.get('accession')}
+        if strands != {-1, 1}:
+            errors.append('browser-query release validation must include plus- and minus-strand genes')
+        has_left_boundary = False
+        has_right_boundary = False
+        for case in validation_cases:
+            chromosome = case.get('chromosome')
+            start, end = case.get('start'), case.get('end')
+            if start == 1:
+                has_left_boundary = True
+            if chromosome in manifest.get('chromosomes', {}) and end == manifest['chromosomes'][chromosome]['length']:
+                has_right_boundary = True
+            if case.get('region') != f'{chromosome}:{start}-{end}':
+                errors.append(f"release validation region fields disagree: {case.get('id')}")
+            if case.get('bases') != end - start + 1:
+                errors.append(f"release validation base count disagrees: {case.get('id')}")
+            accessible_bases = case.get('accessible_bases')
+            if not isinstance(accessible_bases, int) or not 0 <= accessible_bases <= case.get('bases', -1):
+                errors.append(f"release validation accessibility count is invalid: {case.get('id')}")
+            validation_arrays = case.get('arrays', {})
+            if set(validation_arrays) != VALIDATION_ARRAYS:
+                errors.append(f"release validation has unexpected arrays: {case.get('id')}")
+            for name, details in validation_arrays.items():
+                digest = details.get('sha256_bytes', '')
+                if len(digest) != 64 or any(character not in '0123456789abcdef' for character in digest):
+                    errors.append(f"invalid browser-query SHA-256 for {case.get('id')}/{name}")
+        if not has_left_boundary or not has_right_boundary:
+            errors.append('browser-query release validation must include both chromosome boundaries')
+        default_case = next(
+            (case for case in validation_cases if case.get('id') == validation.get('default_case')),
+            None,
+        )
+        if not default_case or plot_validation.get('region') != default_case.get('region'):
+            errors.append('plot-validation fixture does not match the default release validation case')
         if len(plot_validation.get('cs', ())) != 240:
             errors.append('plot-validation fixture has unexpected Cs display bins')
         heatmap = plot_validation.get('heatmap', ())

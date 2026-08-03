@@ -1,3 +1,10 @@
+const PAGES_RELEASE = '2026-08-03-rc4';
+
+function versionedAsset(path) {
+  const separator = path.includes('?') ? '&' : '?';
+  return `${path}${separator}v=${PAGES_RELEASE}`;
+}
+
 const accessionSelect = document.querySelector('#accession');
 const catalogueHelp = document.querySelector('#catalogue-help');
 const resultTitle = document.querySelector('#result-title');
@@ -36,7 +43,7 @@ document.querySelectorAll('[role="tablist"]').forEach((tablist) => {
 });
 
 function assetUrl(path) {
-  return `assets/${path}`;
+  return versionedAsset(`assets/${path}`);
 }
 
 function renderExample(accession) {
@@ -61,7 +68,7 @@ function renderExample(accession) {
 
 async function loadCatalogue() {
   try {
-    const response = await fetch('examples.json');
+    const response = await fetch(versionedAsset('examples.json'));
     if (!response.ok) throw new Error(`Catalogue request failed (${response.status})`);
     const catalogue = await response.json();
     examples = catalogue.examples;
@@ -113,7 +120,7 @@ const liveAccession = document.querySelector('#live-accession');
 const liveAccessionList = document.querySelector('#live-accession-list');
 const accessionIndexHelp = document.querySelector('#accession-index-help');
 const resolvedAccession = document.querySelector('#resolved-accession');
-const queryWorker = new Worker('assets/query-worker.js');
+const queryWorker = new Worker(versionedAsset('assets/query-worker.js'));
 const pendingQueries = new Map();
 let queryRequestId = 0;
 let benchmarkDownloadUrl;
@@ -127,20 +134,20 @@ function formatBytes(bytes) {
 }
 
 async function loadValidation() {
-  const response = await fetch('assets/data/query-validation.json');
+  const response = await fetch(versionedAsset('assets/data/query-validation.json'));
   if (!response.ok) throw new Error(`Validation fixture request failed (${response.status}).`);
   return response.json();
 }
 
 async function loadPlotValidation() {
-  const response = await fetch('assets/data/plot-validation.json');
+  const response = await fetch(versionedAsset('assets/data/plot-validation.json'));
   if (!response.ok) throw new Error(`Plot validation fixture request failed (${response.status}).`);
   return response.json();
 }
 
 async function loadAccessionIndex() {
   if (!accessionIndexPromise) {
-    accessionIndexPromise = fetch('assets/data/accession-index.json').then(async (response) => {
+    accessionIndexPromise = fetch(versionedAsset('assets/data/accession-index.json')).then(async (response) => {
       if (!response.ok) throw new Error(`Accession index request failed (${response.status}).`);
       const index = await response.json();
       if (index.schema_version !== 1 || index.assembly !== 'AgamP4' || !index.accessions) {
@@ -187,7 +194,7 @@ loadAccessionIndex().then(configureAccessionIndex).catch((error) => {
 
 async function loadQueryManifest() {
   if (!queryManifestPromise) {
-    queryManifestPromise = fetch('assets/data/query-manifest.json').then((response) => {
+    queryManifestPromise = fetch(versionedAsset('assets/data/query-manifest.json')).then((response) => {
       if (!response.ok) throw new Error(`Query manifest request failed (${response.status}).`);
       return response.json();
     });
@@ -329,6 +336,13 @@ function valuesMatch(actual, expected, tolerance = 1e-7) {
   return Number.isFinite(actual) && Math.abs(actual - expected) <= tolerance;
 }
 
+function findValidationFixture(validation, region) {
+  if (Array.isArray(validation.cases)) {
+    return validation.cases.find((fixture) => fixture.region === region) || null;
+  }
+  return validation.region === region ? validation : null;
+}
+
 function validatePlotSummaries(result, fixture, annotation) {
   if (fixture.region !== `${result.chromosome}:${result.start}-${result.end}`) return false;
   const signal = globalThis.AgamCsPlots.summarizeSignals(result, annotation, fixture.signal_bins);
@@ -397,7 +411,6 @@ benchmarkForm.addEventListener('submit', async (event) => {
     end = Number(form.get('end'));
   }
 
-  const length = end - start + 1;
   let manifest;
   try {
     manifest = await loadQueryManifest();
@@ -405,21 +418,18 @@ benchmarkForm.addEventListener('submit', async (event) => {
     benchmarkStatus.textContent = `Live query unavailable: ${error.message}`;
     return;
   }
-  if (!(chromosome in manifest.chromosomes)) {
-    benchmarkStatus.textContent = `Chromosome ${chromosome} is not available in ${manifest.assembly}.`;
-    return;
-  }
-  if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < start) {
-    benchmarkStatus.textContent = 'Coordinates must satisfy 1 ≤ start ≤ end.';
-    return;
-  }
-  if (end > manifest.chromosomes[chromosome].length) {
-    benchmarkStatus.textContent = `End coordinate ${end.toLocaleString()} exceeds ${chromosome} length ${manifest.chromosomes[chromosome].length.toLocaleString()}.`;
-    return;
-  }
-  if (length > manifest.maximum_query_bases) {
-    const subject = resolution ? `${resolution.accession} spans ${length.toLocaleString()} bases. ` : '';
-    benchmarkStatus.textContent = `${subject}Queries are limited to ${manifest.maximum_query_bases.toLocaleString()} bases; use manual coordinates for a smaller interval.`;
+  try {
+    ({ chromosome, start, end } = globalThis.AgamCsQueryContract.validateCoordinates(
+      manifest, chromosome, start, end,
+    ));
+  } catch (error) {
+    const subject = resolution && error.code === 'maximum-length'
+      ? `${resolution.accession} spans ${(end - start + 1).toLocaleString()} bases. `
+      : '';
+    const guidance = error.code === 'maximum-length' && resolution
+      ? ' Use manual coordinates for a smaller interval.'
+      : '';
+    benchmarkStatus.textContent = `${subject}${error.message}${guidance}`;
     return;
   }
 
@@ -436,35 +446,42 @@ benchmarkForm.addEventListener('submit', async (event) => {
     const pinned = resolution ? null : findPinnedAnnotation(chromosome, start, end);
     const annotation = resolution?.annotation || pinned?.annotation || null;
     const annotationAccession = resolution?.accession || pinned?.accession || null;
-    const matchingFixture = validation.region === `${chromosome}:${start}-${end}`;
-    const hashesMatch = matchingFixture && result.hashAvailable && Object.entries(validation.arrays).every(
+    const resultRegion = `${chromosome}:${start}-${end}`;
+    const validationFixture = findValidationFixture(validation, resultRegion);
+    const hasArrayFixture = Boolean(validationFixture);
+    const hashesMatch = hasArrayFixture && result.hashAvailable && Object.entries(validationFixture.arrays).every(
       ([name, expected]) => result.hashes[name] === expected.sha256_bytes && result.values[name].length === expected.count,
     );
-    const hashUnavailable = matchingFixture && !result.hashAvailable;
-    if (matchingFixture && result.hashAvailable && !hashesMatch) {
+    const hashUnavailable = hasArrayFixture && !result.hashAvailable;
+    if (hasArrayFixture && result.hashAvailable && !hashesMatch) {
       throw new Error('Local validation failed; returned values do not match the pinned HDF5 fixture.');
     }
-    const plotSummariesMatch = matchingFixture
+    const hasPlotFixture = plotValidation.region === resultRegion;
+    const plotSummariesMatch = hasPlotFixture
       && validatePlotSummaries(result, plotValidation, annotation);
-    if (matchingFixture && !plotSummariesMatch) {
+    if (hasPlotFixture && !plotSummariesMatch) {
       throw new Error('Plot validation failed; browser summaries do not match the Python plotting fixture.');
     }
 
     document.querySelector('#metric-time').textContent = `${result.metrics.totalMs.toFixed(0)} ms`;
     document.querySelector('#metric-cache-hits').textContent = String(result.metrics.cacheHits);
-    document.querySelector('#metric-requests').textContent = String(result.metrics.requests);
+    document.querySelector('#metric-requests').textContent = result.metrics.retries
+      ? `${result.metrics.requests} + ${result.metrics.retries} retries`
+      : String(result.metrics.requests);
     document.querySelector('#metric-bytes').textContent = formatBytes(result.metrics.transferredBytes);
     document.querySelector('#metric-memory').textContent = formatBytes(result.metrics.decodedCacheBytes);
-    document.querySelector('#metric-validation').textContent = matchingFixture
-      ? (hashesMatch && plotSummariesMatch
-        ? 'Exact arrays + Python plot match'
-        : hashUnavailable && plotSummariesMatch
-          ? 'Python plot match; hash unavailable'
+    document.querySelector('#metric-validation').textContent = hasArrayFixture
+      ? (hashesMatch
+        ? (plotSummariesMatch ? 'Exact arrays + Python plot match' : 'Exact arrays match Python fixture')
+        : hashUnavailable
+          ? (plotSummariesMatch ? 'Python plot match; hash unavailable' : 'Hash unavailable; fixture not checked')
           : 'FAILED')
       : 'No pinned local fixture for this interval';
     benchmarkMetrics.hidden = false;
     benchmarkStatus.textContent = hashesMatch && plotSummariesMatch
       ? 'Query complete; exact arrays and browser plot summaries match the Python fixtures.'
+      : hashesMatch
+        ? 'Query complete; exact arrays match the Python fixture.'
       : hashUnavailable
         ? 'Query complete; data retrieved, but browser hash validation is unavailable.'
         : `Query complete: ${querySubject}.`;

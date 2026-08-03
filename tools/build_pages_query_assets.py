@@ -32,6 +32,60 @@ ACCESSIBILITY_SOURCE_URL = (
 ACCESSIBILITY_SHA256 = (
     '00fc146b977233c537d6189db891be55153038033d922014804ef5210acb260a'
 )
+RELEASE_VALIDATION_CASES = (
+    {
+        'id': 'plus-gene-2l', 'chromosome': '2L',
+        'start': 28_585_064, 'end': 28_586_748,
+        'accession': 'AGAP006241', 'strand': 1,
+        'purpose': 'Plus-strand pinned gene and Python plot fixture.',
+        'expected_qc': 'partly_accessible',
+    },
+    {
+        'id': 'mixed-manual-2r', 'chromosome': '2R',
+        'start': 30_000_000, 'end': 30_000_199,
+        'purpose': 'Representative manual-coordinate query on 2R.',
+        'expected_qc': 'partly_accessible',
+    },
+    {
+        'id': 'fully-accessible-gene-3l', 'chromosome': '3L',
+        'start': 2_905_395, 'end': 2_905_525,
+        'accession': 'AGAP013705', 'strand': 1,
+        'purpose': 'Fully accessible non-coding pinned gene.',
+        'expected_qc': 'fully_accessible',
+    },
+    {
+        'id': 'unavailable-gene-3l', 'chromosome': '3L',
+        'start': 16_180_434, 'end': 16_185_732,
+        'accession': 'AGAP011065', 'strand': -1,
+        'purpose': 'Pinned gene with no accessible bases; SNP interpretation remains unknown.',
+        'expected_qc': 'no_accessible_bases',
+    },
+    {
+        'id': 'minus-gene-3r', 'chromosome': '3R',
+        'start': 5_886_340, 'end': 5_904_286,
+        'accession': 'AGAP008118', 'strand': -1,
+        'purpose': 'Minus-strand pinned gene shown in 5-prime to 3-prime orientation.',
+        'expected_qc': 'partly_accessible',
+    },
+    {
+        'id': 'fully-accessible-manual-x', 'chromosome': 'X',
+        'start': 10_000_000, 'end': 10_000_199,
+        'purpose': 'Fully accessible manual-coordinate query on X.',
+        'expected_qc': 'fully_accessible',
+    },
+    {
+        'id': 'left-boundary-2l', 'chromosome': '2L',
+        'start': 1, 'end': 21,
+        'purpose': 'Inclusive left chromosome boundary.',
+        'expected_qc': 'no_accessible_bases',
+    },
+    {
+        'id': 'right-boundary-x', 'chromosome': 'X',
+        'start': 24_393_088, 'end': 24_393_108,
+        'purpose': 'Inclusive right chromosome boundary.',
+        'expected_qc': 'no_accessible_bases',
+    },
+)
 
 
 def compact_reference(source: dict) -> dict:
@@ -89,24 +143,53 @@ def _digest(values: np.ndarray) -> dict:
     }
 
 
+def _qc_class(status: np.ndarray) -> str:
+    accessible = int(np.count_nonzero((status & 1) == 1))
+    if accessible == len(status):
+        return 'fully_accessible'
+    if accessible == 0:
+        return 'no_accessible_bases'
+    return 'partly_accessible'
+
+
 def validation_fixture(hdf5_path: Path, accessibility_path: Path) -> dict:
-    chromosome, start, end = DEFAULT_REGION
-    arrays = {}
-    with h5py.File(hdf5_path, 'r') as root:
-        for name in SCORE_ARRAYS:
-            values = np.asarray(root[chromosome][name][:, start - 1:end], dtype='<f4')
-            arrays[name] = _digest(values)
-    with h5py.File(accessibility_path, 'r') as root:
-        arrays['status'] = _digest(
-            np.asarray(root[chromosome]['status'][start - 1:end], dtype='u1')
-        )
+    """Pin exact Python-reader hashes across the Stage 10 release matrix."""
+    cases = []
+    with h5py.File(hdf5_path, 'r') as scores, h5py.File(accessibility_path, 'r') as qc:
+        for specification in RELEASE_VALIDATION_CASES:
+            chromosome = specification['chromosome']
+            start = specification['start']
+            end = specification['end']
+            arrays = {
+                name: _digest(np.asarray(
+                    scores[chromosome][name][:, start - 1:end], dtype='<f4'
+                ))
+                for name in SCORE_ARRAYS
+            }
+            status = np.asarray(qc[chromosome]['status'][start - 1:end], dtype='u1')
+            arrays['status'] = _digest(status)
+            qc_class = _qc_class(status)
+            if qc_class != specification['expected_qc']:
+                raise ValueError(
+                    f"{specification['id']} QC changed: expected "
+                    f"{specification['expected_qc']}, found {qc_class}."
+                )
+            accessible_bases = int(np.count_nonzero((status & 1) == 1))
+            cases.append({
+                **specification,
+                'region': f'{chromosome}:{start}-{end}',
+                'bases': end - start + 1,
+                'accessible_bases': accessible_bases,
+                'accessible_fraction': accessible_bases / len(status),
+                'arrays': arrays,
+            })
     return {
-        'schema_version': 2,
+        'schema_version': 3,
         'assembly': 'AgamP4',
         'source': 'AgamP4_conservation.h5',
         'accessibility_source': 'Ag1000G_phase2_AR1_accessibility.h5',
-        'region': f'{chromosome}:{start}-{end}',
-        'arrays': arrays,
+        'default_case': RELEASE_VALIDATION_CASES[0]['id'],
+        'cases': cases,
     }
 
 
