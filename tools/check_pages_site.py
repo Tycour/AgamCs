@@ -271,9 +271,12 @@ def validate_release_versions() -> list[str]:
 def validate_live_plot_renderer() -> list[str]:
     """Keep the browser heatmap annotation convention aligned with the CLI."""
     text = (ROOT / 'assets/live-plots.js').read_text(encoding='utf-8')
+    errors = []
     if 'heatmap-cds-strip' not in text:
-        return ['live heatmap is missing its aligned CDS annotation strip']
-    return []
+        errors.append('live heatmap is missing its aligned CDS annotation strip')
+    if 'transcript-model-row' not in text or 'transcriptAnnotationsForDisplay' not in text:
+        errors.append('live plots are missing the shared multi-transcript annotation track')
+    return errors
 
 
 def main() -> None:

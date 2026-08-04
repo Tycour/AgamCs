@@ -3,7 +3,12 @@ const assert = require('node:assert/strict');
 
 require('../docs/assets/live-plots.js');
 
-const { cdsSegments, summarizeQuery } = globalThis.AgamCsPlots;
+const {
+  cdsSegments,
+  summarizeQuery,
+  transcriptModelGeometry,
+  transcriptAnnotationsForDisplay,
+} = globalThis.AgamCsPlots;
 
 test('CDS segments intersect exon bounds in plus-strand plot coordinates', () => {
   const annotation = {
@@ -74,4 +79,50 @@ test('manual coordinate summaries omit exon metrics', () => {
   assert.equal(summary.exonBasePairs, null);
   assert.ok(Number.isNaN(summary.exonMeanCs));
   assert.ok(Number.isNaN(summary.exonMeanSnp));
+});
+
+test('transcript models align to a shared plus-strand gene coordinate frame', () => {
+  const display = { chromosome: 'X', start: 100, end: 500, strand: 1 };
+  const transcript = {
+    chromosome: 'X', start: 150, end: 450, strand: 1,
+    exons: [{ start: 150, end: 200 }, { start: 400, end: 450 }],
+    cds_start: 175, cds_end: 425,
+  };
+  assert.deepEqual(transcriptModelGeometry(transcript, display), {
+    transcript: [50, 350],
+    exons: [[50, 100], [300, 350]],
+    cds: [[75, 100], [300, 325]],
+  });
+});
+
+test('transcript models stay aligned in a shared minus-strand gene frame', () => {
+  const display = { chromosome: '3R', start: 100, end: 500, strand: -1 };
+  const transcript = {
+    chromosome: '3R', start: 150, end: 450, strand: -1,
+    exons: [{ start: 400, end: 450 }, { start: 150, end: 200 }],
+    cds_start: 175, cds_end: 425,
+  };
+  assert.deepEqual(transcriptModelGeometry(transcript, display), {
+    transcript: [50, 350],
+    exons: [[50, 100], [300, 350]],
+    cds: [[75, 100], [300, 325]],
+  });
+});
+
+test('multi-transcript tracks retain unique overlapping models on the same strand', () => {
+  const display = {
+    chromosome: '2L', start: 100, end: 500, strand: 1,
+    transcript_id: 'AGAP000001-RB', exons: [{ start: 100, end: 500 }],
+  };
+  const annotations = [
+    { ...display, transcript_id: 'AGAP000001-RB' },
+    { ...display, transcript_id: 'AGAP000001-RA', start: 150, end: 450 },
+    { ...display, transcript_id: 'AGAP000001-RA', start: 150, end: 450 },
+    { ...display, transcript_id: 'AGAP000001-RC', chromosome: '3R' },
+    { ...display, transcript_id: 'AGAP000001-RD', strand: -1 },
+  ];
+  assert.deepEqual(
+    transcriptAnnotationsForDisplay(display, annotations).map((item) => item.transcript_id),
+    ['AGAP000001-RA', 'AGAP000001-RB'],
+  );
 });

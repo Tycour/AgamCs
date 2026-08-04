@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-04-rc9';
+const PAGES_RELEASE = '2026-08-04-rc10';
 
 function versionedAsset(path) {
   const separator = path.includes('?') ? '&' : '?';
@@ -276,10 +276,15 @@ function displayNumber(value) {
   return Number.isFinite(value) ? value.toPrecision(6) : 'NA';
 }
 
-function renderQuerySummary(result, annotation = null, annotationScope = 'gene') {
+function renderQuerySummary(
+  result, annotation = null, annotationScope = 'gene', transcriptAnnotations = [],
+) {
   const summary = globalThis.AgamCsPlots.summarizeQuery(result, annotation);
   const hasExonSummary = summary.exonBasePairs != null;
   const transcriptScope = hasExonSummary && annotationScope === 'transcript';
+  const multiTranscriptGene = hasExonSummary
+    && annotationScope === 'gene'
+    && transcriptAnnotations.length > 1;
   const queryScope = hasExonSummary
     ? (transcriptScope ? 'Entire transcript span' : 'Entire gene span')
     : 'Queried interval';
@@ -289,11 +294,19 @@ function renderQuerySummary(result, annotation = null, annotationScope = 'gene')
   document.querySelector('#summary-query-scope').textContent = queryScope;
   document.querySelector('#summary-exons-card').hidden = !hasExonSummary;
   if (hasExonSummary) {
+    document.querySelector('#summary-exons-heading').textContent = transcriptScope
+      ? 'Selected transcript exons'
+      : multiTranscriptGene
+        ? 'Representative transcript exons'
+        : 'Aggregated exons';
     document.querySelector('#summary-exon-count').textContent = summary.exonBasePairs.toLocaleString();
     document.querySelector('#summary-cs-exons').textContent = displayNumber(summary.exonMeanCs);
     document.querySelector('#summary-snp-exons').textContent = displayNumber(summary.exonMeanSnp);
     const spanLabel = transcriptScope ? 'Transcript-span' : 'Gene-span';
-    document.querySelector('#summary-method-note').textContent = `${spanLabel} means use all ${summary.queryBasePairs.toLocaleString()} queried bp (exons and introns). Exon means use the ${summary.exonBasePairs.toLocaleString()} unique bp in the union of annotated exons. SNP means include only QC-accessible bases within each scope; QC-failed bases remain unknown. Exon SNP averages the archived density values assigned to exonic bases; it does not recalculate their 20 bp windows.`;
+    const exonDefinition = multiTranscriptGene
+      ? `Exon means use the ${summary.exonBasePairs.toLocaleString()} unique bp in the union of ${annotation.transcript_id} exons; other isoforms shown in the plots are not combined into this metric.`
+      : `Exon means use the ${summary.exonBasePairs.toLocaleString()} unique bp in the union of annotated exons.`;
+    document.querySelector('#summary-method-note').textContent = `${spanLabel} means use all ${summary.queryBasePairs.toLocaleString()} queried bp (exons and introns). ${exonDefinition} SNP means include only QC-accessible bases within each scope; QC-failed bases remain unknown. Exon SNP averages the archived density values assigned to exonic bases; it does not recalculate their 20 bp windows.`;
   } else {
     document.querySelector('#summary-method-note').textContent = `Means use all ${summary.queryBasePairs.toLocaleString()} queried bp. The SNP mean includes only QC-accessible bases; QC-failed bases remain unknown. Exon means require a gene annotation from the versioned index.`;
   }
@@ -303,6 +316,15 @@ function renderQuerySummary(result, annotation = null, annotationScope = 'gene')
 function findPinnedAnnotation(chromosome, start, end) {
   const region = `${chromosome}:${start}-${end}`;
   return examples.find((example) => example.region === region) || null;
+}
+
+function transcriptAnnotationsForResolution(index, resolution, annotation) {
+  if (!annotation) return [];
+  if (!index || !resolution || resolution.matchedAs === 'transcript') return [annotation];
+  const transcriptIds = index.accessions?.[resolution.geneAccession]?.transcript_ids || [];
+  return transcriptIds.map((transcriptId) => (
+    globalThis.AgamCsAccessions.resolve(index, transcriptId).annotation
+  ));
 }
 
 function renderResolvedAccession(resolution, index) {
@@ -316,17 +338,27 @@ function renderResolvedAccession(resolution, index) {
   resolvedAccession.hidden = false;
 }
 
-function renderLivePlots(result, providedAnnotation = null, providedAccession = null) {
+function renderLivePlots(
+  result, providedAnnotation = null, providedAccession = null, providedTranscriptAnnotations = null,
+) {
   const pinned = providedAnnotation ? null : findPinnedAnnotation(result.chromosome, result.start, result.end);
   const annotation = providedAnnotation || pinned?.annotation || null;
   const accession = providedAccession || pinned?.accession || null;
-  globalThis.AgamCsPlots.renderSignalPlot(liveSignalPlot, result, annotation);
-  globalThis.AgamCsPlots.renderHeatmap(liveHeatmapPlot, result, annotation);
+  const transcriptAnnotations = providedTranscriptAnnotations
+    || (annotation ? [annotation] : []);
+  globalThis.AgamCsPlots.renderSignalPlot(
+    liveSignalPlot, result, annotation, transcriptAnnotations,
+  );
+  globalThis.AgamCsPlots.renderHeatmap(
+    liveHeatmapPlot, result, annotation, transcriptAnnotations,
+  );
   const annotationSubject = accession === annotation?.transcript_id
     ? `${annotation.id} isoform ${annotation.transcript_id}`
     : accession;
-  liveAnnotationNote.textContent = annotation
-    ? `${annotationSubject} annotation applied; ${annotation.transcript_id} is shown 5′→3′.`
+  liveAnnotationNote.textContent = transcriptAnnotations.length > 1
+    ? `All ${transcriptAnnotations.length} transcript models for ${annotation.id} are shown 5′→3′; ${annotation.transcript_id} is bold and supplies the exon summary and CDS guides.`
+    : annotation
+      ? `${annotationSubject} annotation applied; ${annotation.transcript_id} is shown 5′→3′.`
     : 'Genomic-coordinate view. Gene annotation is applied when querying by accession or an exact precomputed catalogue interval.';
   liveVisuals.hidden = false;
 }
@@ -449,6 +481,9 @@ benchmarkForm.addEventListener('submit', async (event) => {
     const pinned = resolution ? null : findPinnedAnnotation(chromosome, start, end);
     const annotation = resolution?.annotation || pinned?.annotation || null;
     const annotationAccession = resolution?.accession || pinned?.accession || null;
+    const transcriptAnnotations = transcriptAnnotationsForResolution(
+      accessionIndex, resolution, annotation,
+    );
     const resultRegion = `${chromosome}:${start}-${end}`;
     const validationFixture = findValidationFixture(validation, resultRegion);
     const hasArrayFixture = Boolean(validationFixture);
@@ -478,9 +513,10 @@ benchmarkForm.addEventListener('submit', async (event) => {
       result,
       annotation,
       resolution?.matchedAs === 'transcript' ? 'transcript' : 'gene',
+      transcriptAnnotations,
     );
     if (resolution) renderResolvedAccession(resolution, accessionIndex);
-    renderLivePlots(result, annotation, annotationAccession);
+    renderLivePlots(result, annotation, annotationAccession, transcriptAnnotations);
 
     if (benchmarkDownloadUrl) URL.revokeObjectURL(benchmarkDownloadUrl);
     benchmarkDownloadUrl = URL.createObjectURL(new Blob([buildTsv(result)], { type: 'text/tab-separated-values' }));

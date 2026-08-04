@@ -1,8 +1,8 @@
 # GitHub Pages live-query release validation
 
 This report records the Step 10 release-candidate checks for the early research
-prototype. The candidate is `2026-08-04-rc9` on
-`codex/full-accession-index`. It keeps the authoritative conservation HDF5
+prototype. The candidate is `2026-08-04-rc10` on
+`codex/all-transcript-annotations`. It keeps the authoritative conservation HDF5
 unchanged and reads only byte ranges from the published Zenodo file.
 
 ## Scientific regression matrix
@@ -63,6 +63,10 @@ and slices only the logical chromosome interval.
   accessions retain their representative default, while exact transcript IDs
   use isoform-specific spans, exon unions and CDS bounds. `AGAP000040-RA`,
   `-RB`, and `-RC` are explicit multi-isoform regression records.
+- Bare multi-isoform gene queries render every transcript as an aligned row
+  beneath both browser plots. The representative transcript is bold and still
+  supplies the exon summary and CDS guides, so additional displayed isoforms
+  do not silently change the reported metric definition.
 - The Pages payload contains no `.h5`, `.hdf5`, archive, or file over 10 MiB.
   The complete gene/transcript index is a compact 8.8 MiB static JSON asset; the
   25 MiB source GFF and multi-gigabyte HDF5 are not committed or deployed.
@@ -74,7 +78,7 @@ and slices only the logical chromosome interval.
 The release candidate passes:
 
 - 55 Python tests;
-- 19 JavaScript contract/worker/accession/plot tests;
+- 22 JavaScript contract/worker/accession/plot tests;
 - regenerated query-asset verification against the local authoritative HDF5;
 - complete versioned accession-index verification;
 - static Pages metadata, payload, provenance, and asset validation;

@@ -270,15 +270,55 @@
   }
 
   function cdsSegments(annotation) {
-    if (annotation.cds_start == null || annotation.cds_end == null) return [];
-    const mapper = Number(annotation.strand) === -1
-      ? (position) => Number(annotation.end) - position
-      : (position) => position - Number(annotation.start);
-    return (annotation.exons || []).flatMap((exon) => {
-      const start = Math.max(Number(exon.start), Number(annotation.cds_start));
-      const end = Math.min(Number(exon.end), Number(annotation.cds_end));
-      return start <= end ? [[Math.min(mapper(start), mapper(end)), Math.max(mapper(start), mapper(end))]] : [];
-    }).sort((left, right) => left[0] - right[0]);
+    return transcriptModelGeometry(annotation, annotation).cds;
+  }
+
+  function transcriptModelGeometry(annotation, displayAnnotation) {
+    if (!annotation || !displayAnnotation) return { transcript: null, exons: [], cds: [] };
+    const displayStart = Number(displayAnnotation.start);
+    const displayEnd = Number(displayAnnotation.end);
+    const mapper = Number(displayAnnotation.strand) === -1
+      ? (position) => displayEnd - position
+      : (position) => position - displayStart;
+    const mappedInterval = (startValue, endValue) => {
+      const start = Math.max(Number(startValue), displayStart);
+      const end = Math.min(Number(endValue), displayEnd);
+      if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) return null;
+      return [Math.min(mapper(start), mapper(end)), Math.max(mapper(start), mapper(end))];
+    };
+    const transcript = mappedInterval(annotation.start, annotation.end);
+    const exons = (annotation.exons || [])
+      .map((exon) => mappedInterval(exon.start, exon.end))
+      .filter(Boolean)
+      .sort((left, right) => left[0] - right[0]);
+    const cds = annotation.cds_start == null || annotation.cds_end == null
+      ? []
+      : (annotation.exons || []).map((exon) => {
+        const start = Math.max(Number(exon.start), Number(annotation.cds_start));
+        const end = Math.min(Number(exon.end), Number(annotation.cds_end));
+        return start <= end ? mappedInterval(start, end) : null;
+      }).filter(Boolean).sort((left, right) => left[0] - right[0]);
+    return { transcript, exons, cds };
+  }
+
+  function transcriptAnnotationsForDisplay(displayAnnotation, annotations = []) {
+    if (!displayAnnotation) return [];
+    const unique = new Map();
+    annotations.forEach((annotation) => {
+      if (!annotation?.transcript_id) return;
+      if (String(annotation.chromosome) !== String(displayAnnotation.chromosome)) return;
+      if (Number(annotation.strand) !== Number(displayAnnotation.strand)) return;
+      if (Number(annotation.end) < Number(displayAnnotation.start)
+          || Number(annotation.start) > Number(displayAnnotation.end)) return;
+      if (!Array.isArray(annotation.exons) || !annotation.exons.length) return;
+      unique.set(annotation.transcript_id, annotation);
+    });
+    if (!unique.size && displayAnnotation.transcript_id) {
+      unique.set(displayAnnotation.transcript_id, displayAnnotation);
+    }
+    return [...unique.values()].sort((left, right) => (
+      String(left.transcript_id).localeCompare(String(right.transcript_id))
+    ));
   }
 
   function drawCdsStrip(svg, annotation, xScale, y) {
@@ -383,6 +423,83 @@
     });
   }
 
+  function drawTranscriptModels(
+    svg, displayAnnotation, annotations, xScale, y, xMinimum, xMaximum, layout = {},
+  ) {
+    const models = transcriptAnnotationsForDisplay(displayAnnotation, annotations);
+    if (!models.length) return y;
+    const rowHeight = layout.rowHeight || 24;
+    const labelX = layout.labelX ?? xScale(xMinimum) - 8;
+    const titleX = layout.titleX ?? xScale(xMinimum);
+    const centre = layout.centre ?? (xScale(xMinimum) + xScale(xMaximum)) / 2;
+    const legendLeft = layout.legendLeft ?? xScale(xMaximum) - 235;
+    const selectedTranscriptId = layout.selectedTranscriptId || displayAnnotation.transcript_id;
+    const rowStart = y + 34;
+
+    addText(svg, `Transcript models (${models.length}; selected/representative in bold)`, titleX, y, {
+      fill: COLORS.ink, 'font-size': 12, 'font-weight': 700,
+    });
+    addLegendItem(svg, legendLeft, y, 'UTR', { color: COLORS.utr, stroke: COLORS.cds });
+    addLegendItem(svg, legendLeft + 100, y, 'CDS', { color: COLORS.cds, stroke: COLORS.cdsEdge });
+
+    models.forEach((annotation, index) => {
+      const rowY = rowStart + index * rowHeight;
+      const selected = annotation.transcript_id === selectedTranscriptId;
+      const geometry = transcriptModelGeometry(annotation, displayAnnotation);
+      const group = svgElement('g', {
+        class: `transcript-model-row${selected ? ' selected-transcript-model' : ''}`,
+        'data-transcript-id': annotation.transcript_id,
+      });
+      addText(group, annotation.transcript_id, labelX, rowY + 4, {
+        'text-anchor': 'end', fill: COLORS.ink, 'font-size': 9,
+        'font-weight': selected ? 800 : 500,
+      });
+      if (geometry.transcript) {
+        group.append(svgElement('line', {
+          x1: xScale(geometry.transcript[0]), x2: xScale(geometry.transcript[1]),
+          y1: rowY, y2: rowY, stroke: COLORS.intron,
+          'stroke-width': selected ? 2 : 1.4,
+        }));
+      }
+      geometry.exons.forEach(([left, right]) => {
+        group.append(svgElement('rect', {
+          x: xScale(left), y: rowY - 5,
+          width: Math.max(1, xScale(right) - xScale(left)), height: 10,
+          fill: COLORS.utr, stroke: COLORS.cds, 'stroke-width': selected ? 1.2 : 0.8,
+        }));
+      });
+      geometry.cds.forEach(([left, right]) => {
+        group.append(svgElement('rect', {
+          x: xScale(left), y: rowY - 8,
+          width: Math.max(1, xScale(right) - xScale(left)), height: 16,
+          fill: COLORS.cds, stroke: COLORS.cdsEdge, 'stroke-width': selected ? 1.2 : 0.8,
+        }));
+      });
+      svg.append(group);
+    });
+
+    const axisY = rowStart + models.length * rowHeight + 8;
+    for (let index = 0; index <= 6; index += 1) {
+      const value = xMinimum + (xMaximum - xMinimum) * index / 6;
+      const x = xScale(value);
+      svg.append(svgElement('line', {
+        x1: x, x2: x, y1: axisY, y2: axisY + 5, stroke: COLORS.muted,
+      }));
+      addText(svg, Math.round(value).toLocaleString(), x, axisY + 20, {
+        'text-anchor': index === 0 ? 'start' : index === 6 ? 'end' : 'middle',
+        fill: COLORS.muted, 'font-size': 10,
+      });
+    }
+    svg.append(svgElement('line', {
+      x1: xScale(xMinimum), x2: xScale(xMaximum), y1: axisY, y2: axisY,
+      stroke: COLORS.muted, 'stroke-width': 1,
+    }));
+    addText(svg, `Position relative to ${displayAnnotation.id} transcription start (bp)`, centre, axisY + 44, {
+      'text-anchor': 'middle', fill: COLORS.ink, 'font-size': 12,
+    });
+    return axisY + 58;
+  }
+
   function drawXAxis(svg, xScale, minimum, maximum, y, label) {
     for (let index = 0; index <= 6; index += 1) {
       const value = minimum + (maximum - minimum) * index / 6;
@@ -445,11 +562,17 @@
     });
   }
 
-  function renderSignalPlot(container, result, annotation = null) {
+  function renderSignalPlot(container, result, annotation = null, transcriptAnnotations = null) {
     const summary = summarizeSignals(result, annotation, 240);
     const hasAnnotation = Boolean(summary.annotation);
+    const annotationModels = transcriptAnnotationsForDisplay(
+      summary.annotation,
+      transcriptAnnotations || (summary.annotation ? [summary.annotation] : []),
+    );
     const width = 1000;
-    const height = hasAnnotation ? 700 : 520;
+    const height = hasAnnotation
+      ? Math.max(700, 592 + annotationModels.length * 24)
+      : 520;
     const plotLeft = 86;
     const plotRight = 976;
     const plotWidth = plotRight - plotLeft;
@@ -512,7 +635,15 @@
           }));
         }
       });
-      drawGeneModel(svg, summary.annotation, xScale, 490, summary.minimum, summary.maximum);
+      if (annotationModels.length > 1) {
+        drawTranscriptModels(
+          svg, summary.annotation, annotationModels, xScale, 478,
+          summary.minimum, summary.maximum,
+          { selectedTranscriptId: summary.annotation.transcript_id },
+        );
+      } else {
+        drawGeneModel(svg, summary.annotation, xScale, 490, summary.minimum, summary.maximum);
+      }
     } else {
       drawXAxis(
         svg, xScale, summary.minimum, summary.maximum, snpTop + snpHeight,
@@ -601,9 +732,13 @@
     svg.addEventListener('pointerleave', () => { tooltip.hidden = true; });
   }
 
-  function renderHeatmap(container, result, annotation = null) {
+  function renderHeatmap(container, result, annotation = null, transcriptAnnotations = null) {
     const summary = summarizeHeatmap(result, annotation, 500);
     const hasAnnotation = Boolean(summary.annotation);
+    const annotationModels = transcriptAnnotationsForDisplay(
+      summary.annotation,
+      transcriptAnnotations || (summary.annotation ? [summary.annotation] : []),
+    );
     const width = 1000;
     const rowTop = 78;
     const rowHeight = 23;
@@ -611,7 +746,11 @@
     const plotRight = 930;
     const plotWidth = plotRight - plotLeft;
     const plotHeight = result.stackRows.length * rowHeight;
-    const height = rowTop + plotHeight + (hasAnnotation ? 290 : 92);
+    const singleAnnotationHeight = rowTop + plotHeight + 290;
+    const multiAnnotationHeight = rowTop + plotHeight + 201 + annotationModels.length * 24;
+    const height = hasAnnotation
+      ? Math.max(singleAnnotationHeight, multiAnnotationHeight)
+      : rowTop + plotHeight + 92;
     const svg = svgElement('svg', {
       viewBox: `0 0 ${width} ${height}`,
       role: 'img',
@@ -688,10 +827,24 @@
           stroke: '#ffffff', 'stroke-width': 1, 'stroke-dasharray': '4 3', opacity: 0.72,
         }));
       });
-      drawGeneModel(
-        svg, summary.annotation, xScale, legendY + 70, summary.minimum, summary.maximum,
-        { labelLeft: plotLeft, centre: (plotLeft + plotRight) / 2, legendLeft: 700 },
-      );
+      if (annotationModels.length > 1) {
+        drawTranscriptModels(
+          svg, summary.annotation, annotationModels, xScale, legendY + 60,
+          summary.minimum, summary.maximum,
+          {
+            labelX: plotLeft - 10,
+            titleX: plotLeft,
+            centre: (plotLeft + plotRight) / 2,
+            legendLeft: 700,
+            selectedTranscriptId: summary.annotation.transcript_id,
+          },
+        );
+      } else {
+        drawGeneModel(
+          svg, summary.annotation, xScale, legendY + 70, summary.minimum, summary.maximum,
+          { labelLeft: plotLeft, centre: (plotLeft + plotRight) / 2, legendLeft: 700 },
+        );
+      }
     } else {
       drawXAxis(
         svg, xScale, summary.minimum, summary.maximum, rowTop + plotHeight,
@@ -707,6 +860,8 @@
   global.AgamCsPlots = {
     annotationMatches,
     cdsSegments,
+    transcriptModelGeometry,
+    transcriptAnnotationsForDisplay,
     quantile,
     summarizeQuery,
     summarizeSignals,

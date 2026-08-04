@@ -71,7 +71,8 @@ worker or manifest from surviving a normal deployment refresh.
 The live browser form uses a committed index containing all 13,097 AGAP genes
 and 15,317 transcript isoforms on the five AgamP4 chromosome arrays exposed by
 the browser data. Bare gene accessions retain the representative-transcript
-default; exact transcript IDs select their own span, exons and CDS bounds. The
+default and show every isoform as an aligned annotation row beneath both live
+plots; exact transcript IDs select their own span, exons and CDS bounds. The
 client does not contact Ensembl or VectorBase at query time. Download the
 official VectorBase release-68 GFF and rebuild the index with:
 
@@ -95,7 +96,8 @@ tailored messages.
 
 - Included: four precomputed examples; a versioned 13,097-gene and
   15,317-transcript AgamP4.14 index covering 2L, 2R, 3L, 3R, and X; direct
-  transcript-ID input and an isoform selector; independent manual
+  transcript-ID input, an isoform selector, and stacked all-isoform annotation
+  tracks for gene queries; independent manual
   coordinates; live `Cs`, unchanged SNP density,
   species-stack and accessibility/QC queries up to 20,000 bases; interactive
   browser plots; exact TSV downloads; and explicit annotation provenance.

@@ -154,8 +154,9 @@ and the rebuild procedure are in
 Try the [no-install GitHub Pages portal](https://tycour.github.io/AgamCs/).
 Its versioned VectorBase-68 index resolves 13,097 AgamP4.14 genes and 15,317
 transcript isoforms on the five supported chromosomes. A bare gene ID retains
-the representative-transcript default; an exact ID such as `AGAP000040-RA`
-uses that isoform's transcript span, exons and CDS bounds. Gene, transcript and
+the representative-transcript default while showing every isoform as aligned
+annotation rows beneath both plots; an exact ID such as `AGAP000040-RA` uses
+that isoform's transcript span, exons and CDS bounds. Gene, transcript and
 coordinate queries read only the required `Cs`, raw SNP-density, species-stack,
 and separate QC ranges from the Zenodo data and render live browser plots;
 reviewed precomputed examples remain as shortcuts in the same query form.
