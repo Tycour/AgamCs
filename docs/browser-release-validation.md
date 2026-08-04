@@ -1,7 +1,7 @@
 # GitHub Pages live-query release validation
 
 This report records the Step 10 release-candidate checks for the early research
-prototype. The candidate is `2026-08-03-rc5` on
+prototype. The candidate is `2026-08-03-rc7` on
 `codex/browser-hdf5-feasibility`. It keeps the authoritative conservation HDF5
 unchanged and reads only byte ranges from the published Zenodo file.
 
@@ -38,8 +38,9 @@ and slices only the logical chromosome interval.
   the full 3.4 GiB archive.
 - Simulated interrupted requests produce a query failure, while HTTP 429 and
   transient 5xx responses use bounded retries.
-- At most four byte ranges run concurrently; retries use exponential backoff
-  and are reported beside successful range counts.
+- At most four byte ranges run concurrently; retries use exponential backoff.
+  Those transport measurements remain available to automated checks but are
+  no longer shown as scientific results in the public portal.
 - The decoded-chunk cache is bounded at 64 MiB; warm reads reuse cached chunks,
   and the explicit clear-cache action forces a new range request.
 - Release-version query strings invalidate stale CSS, JavaScript, worker,
@@ -48,6 +49,12 @@ and slices only the logical chromosome interval.
   precomputed-example shortcuts all feed the same result portal and live plot
   renderer. The obsolete static demo form and duplicate lower query UI are
   absent.
+- Accession heatmaps use the same pinned transcript annotation as the signal
+  plot and now show aligned CDS blocks above the matrix, matching the CLI
+  heatmap convention.
+- Accession summaries report whole-gene-span and aggregated-exon means
+  separately. Exon aggregation uses the union of annotated exon bases, and SNP
+  means include only QC-accessible bases within the stated scope.
 - The Pages payload contains no `.h5`, `.hdf5`, archive, or file over 10 MiB.
   The checked `docs` tree is about 2.8 MiB; its largest asset is the compact
   byte-range reference at about 700 KiB.
@@ -59,7 +66,7 @@ and slices only the logical chromosome interval.
 The release candidate passes:
 
 - 54 Python tests;
-- 14 JavaScript contract/worker/accession tests;
+- 18 JavaScript contract/worker/accession/plot tests;
 - regenerated query-asset verification against the local authoritative HDF5;
 - pinned accession-index verification;
 - static Pages metadata, payload, provenance, and asset validation;

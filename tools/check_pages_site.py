@@ -134,11 +134,16 @@ def validate_page(page: Path) -> list[str]:
         required_ids = {
             'explorer', 'benchmark-form', 'live-accession', 'example-select',
             'accession-query-panel', 'coordinate-query-panel',
-            'results-portal', 'resolved-accession',
+            'results-portal', 'resolved-accession', 'summary-count',
+            'summary-exons-card', 'summary-cs-exons', 'summary-snp-exons',
+            'summary-exon-count', 'summary-method-note',
         }
         if missing_ids := required_ids - checker.ids:
             errors.append(f'index.html: missing live-query controls: {sorted(missing_ids)}')
-        obsolete_ids = {'query-form', 'live-query', 'profile-panel', 'heatmap-panel'}
+        obsolete_ids = {
+            'query-form', 'live-query', 'profile-panel', 'heatmap-panel',
+            'summary-accessible', 'query-preview',
+        }
         if retained_ids := obsolete_ids & checker.ids:
             errors.append(f'index.html: duplicate demo/live-query UI remains: {sorted(retained_ids)}')
         page_text = page.read_text(encoding='utf-8')
@@ -146,6 +151,22 @@ def validate_page(page: Path) -> list[str]:
             errors.append('index.html: precomputed examples must remain a labelled query shortcut')
         if 'Demo result' in page_text:
             errors.append('index.html: obsolete demo-result presentation remains')
+        if 'First five returned positions' in page_text:
+            errors.append('index.html: obsolete per-position preview remains')
+        for required_summary_text in ('Base pairs (bp)', 'Aggregated exons'):
+            if required_summary_text not in page_text:
+                errors.append(
+                    f'index.html: query summary is missing {required_summary_text!r}'
+                )
+        diagnostic_labels = {
+            'Query time', 'Cache hits', 'HTTP ranges', 'Transferred',
+            'Decoded cache', 'Local validation',
+        }
+        if retained_labels := {label for label in diagnostic_labels if label in page_text}:
+            errors.append(
+                'index.html: engineering diagnostics remain in the public result portal: '
+                f'{sorted(retained_labels)}'
+            )
         if checker.form_count != 1:
             errors.append(f'index.html: expected one query form, found {checker.form_count}')
     return errors
@@ -221,6 +242,14 @@ def validate_release_versions() -> list[str]:
     return errors
 
 
+def validate_live_plot_renderer() -> list[str]:
+    """Keep the browser heatmap annotation convention aligned with the CLI."""
+    text = (ROOT / 'assets/live-plots.js').read_text(encoding='utf-8')
+    if 'heatmap-cds-strip' not in text:
+        return ['live heatmap is missing its aligned CDS annotation strip']
+    return []
+
+
 def main() -> None:
     errors: list[str] = []
     for page in PAGES:
@@ -232,6 +261,7 @@ def main() -> None:
     errors.extend(validate_accessions())
     errors.extend(validate_pages_payload())
     errors.extend(validate_release_versions())
+    errors.extend(validate_live_plot_renderer())
     for asset in QUERY_ASSETS:
         if not asset.exists() or asset.stat().st_size == 0:
             errors.append(f'missing browser-query asset: {asset.relative_to(ROOT)}')

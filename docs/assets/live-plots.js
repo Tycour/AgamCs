@@ -79,6 +79,41 @@
     return { records, annotation: useAnnotation ? annotation : null };
   }
 
+  function summarizeQuery(result, annotation = null) {
+    const useAnnotation = annotationMatches(result, annotation)
+      && Array.isArray(annotation.exons)
+      && annotation.exons.length > 0;
+    const queryCs = [];
+    const querySnp = [];
+    const exonCs = [];
+    const exonSnp = [];
+    let exonBasePairs = 0;
+
+    for (let index = 0; index < result.values.Cs.length; index += 1) {
+      const position = result.start + index;
+      const accessible = (result.values.status[index] & 1) === 1;
+      queryCs.push(result.values.Cs[index]);
+      if (accessible) querySnp.push(result.values.snp_density[index]);
+
+      const inExon = useAnnotation && annotation.exons.some((exon) => (
+        position >= Number(exon.start) && position <= Number(exon.end)
+      ));
+      if (!inExon) continue;
+      exonBasePairs += 1;
+      exonCs.push(result.values.Cs[index]);
+      if (accessible) exonSnp.push(result.values.snp_density[index]);
+    }
+
+    return {
+      queryBasePairs: result.values.Cs.length,
+      queryMeanCs: mean(queryCs),
+      queryMeanSnp: mean(querySnp),
+      exonBasePairs: useAnnotation ? exonBasePairs : null,
+      exonMeanCs: useAnnotation ? mean(exonCs) : Number.NaN,
+      exonMeanSnp: useAnnotation ? mean(exonSnp) : Number.NaN,
+    };
+  }
+
   function assignBins(records, maximumBins) {
     const binCount = Math.min(Math.max(1, maximumBins), records.length);
     const minimum = records[0].x;
@@ -244,6 +279,17 @@
       const end = Math.min(Number(exon.end), Number(annotation.cds_end));
       return start <= end ? [[Math.min(mapper(start), mapper(end)), Math.max(mapper(start), mapper(end))]] : [];
     }).sort((left, right) => left[0] - right[0]);
+  }
+
+  function drawCdsStrip(svg, annotation, xScale, y) {
+    cdsSegments(annotation).forEach(([left, right]) => {
+      svg.append(svgElement('rect', {
+        x: xScale(left), y,
+        width: Math.max(1, xScale(right) - xScale(left)), height: 8,
+        fill: COLORS.cds, stroke: COLORS.cdsEdge, 'stroke-width': 1,
+        class: 'heatmap-cds-strip',
+      }));
+    });
   }
 
   function drawGeneModel(svg, annotation, xScale, y, xMinimum, xMaximum, layout = {}) {
@@ -634,6 +680,7 @@
     });
 
     if (hasAnnotation) {
+      drawCdsStrip(svg, summary.annotation, xScale, rowTop - 10);
       cdsSegments(summary.annotation).flat().forEach((position) => {
         const x = xScale(position);
         svg.append(svgElement('line', {
@@ -659,7 +706,9 @@
 
   global.AgamCsPlots = {
     annotationMatches,
+    cdsSegments,
     quantile,
+    summarizeQuery,
     summarizeSignals,
     summarizeHeatmap,
     renderSignalPlot,
