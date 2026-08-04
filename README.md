@@ -2,10 +2,11 @@
 
 **Use AgamCs in your browser:** [open the AgamCs research portal](https://tycour.github.io/AgamCs/).
 
-The GitHub Pages portal is the easiest way to query a pinned `AGAP...` gene or
-AgamP4 coordinates, inspect the figures, and download exact values. It is an
-early research prototype and requires no installation. The command-line tool
-below is intended for local, batch, and reproducible workflows.
+The GitHub Pages portal is the easiest way to query a current AgamP4.14
+`AGAP...` gene or exact transcript isoform on 2L, 2R, 3L, 3R, or X—or to enter
+AgamP4 coordinates—then inspect the figures and download exact values. It is
+an early research prototype and requires no installation. The command-line
+tool below is intended for local, batch, and reproducible workflows.
 
 AgamCs retrieves conservation data for the *Anopheles gambiae* AgamP4 genome
 and turns it into readable gene- or region-level figures. You can query an
@@ -150,11 +151,15 @@ and the rebuild procedure are in
 
 ## Web app
 
-Try the no-install, static GitHub Pages prototype from `docs/index.html`. It
-shows a precomputed example and the current plot outputs. An isolated
-coordinate query can also read and download exact `Cs` and raw SNP-density
-values directly from the Zenodo HDF5, but arbitrary live plots still require
-the CLI or Shiny app. Publishing instructions and the prototype boundary are documented in
+Try the [no-install GitHub Pages portal](https://tycour.github.io/AgamCs/).
+Its versioned VectorBase-68 index resolves 13,097 AgamP4.14 genes and 15,317
+transcript isoforms on the five supported chromosomes. A bare gene ID retains
+the representative-transcript default; an exact ID such as `AGAP000040-RA`
+uses that isoform's transcript span, exons and CDS bounds. Gene, transcript and
+coordinate queries read only the required `Cs`, raw SNP-density, species-stack,
+and separate QC ranges from the Zenodo data and render live browser plots;
+reviewed precomputed examples remain as shortcuts in the same query form.
+Publishing instructions and the prototype boundary are documented in
 [`docs/github-pages-prototype.md`](docs/github-pages-prototype.md).
 
 Start the local Shiny interface with:

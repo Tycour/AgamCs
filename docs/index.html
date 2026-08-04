@@ -14,11 +14,11 @@
   <title>AgamCs conservation explorer</title>
   <link rel="canonical" href="https://tycour.github.io/AgamCs/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/site.css?v=2026-08-03-rc7">
-  <script src="assets/live-plots.js?v=2026-08-03-rc7" defer></script>
-  <script src="assets/accession-lookup.js?v=2026-08-03-rc7" defer></script>
-  <script src="assets/query-contract.js?v=2026-08-03-rc7" defer></script>
-  <script src="assets/site.js?v=2026-08-03-rc7" defer></script>
+  <link rel="stylesheet" href="assets/site.css?v=2026-08-04-rc9">
+  <script src="assets/live-plots.js?v=2026-08-04-rc9" defer></script>
+  <script src="assets/accession-lookup.js?v=2026-08-04-rc9" defer></script>
+  <script src="assets/query-contract.js?v=2026-08-04-rc9" defer></script>
+  <script src="assets/site.js?v=2026-08-04-rc9" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -38,7 +38,7 @@
       <div>
         <p class="eyebrow">AgamP4 conservation scores</p>
         <h1>Inspect conservation around a mosquito gene.</h1>
-        <p class="lede">A browser-friendly preview of the AgamCs pipeline. Explore precomputed examples or query a pinned gene without installing Python or downloading the 3.7 GB source archive.</p>
+        <p class="lede">A browser-friendly preview of the AgamCs pipeline. Explore precomputed examples or query an AgamP4.14 gene or transcript without installing Python or downloading the 3.7 GB source archive.</p>
         <div class="hero-actions">
           <a class="button primary" href="#explorer">Open the explorer</a>
           <a class="button secondary" href="https://github.com/Tycour/AgamCs#command-line-installation">Use the CLI</a>
@@ -64,7 +64,7 @@
           <legend>Query by</legend>
           <label class="query-mode-control">
             <input type="radio" name="live-query-mode" value="accession" checked>
-            <span>Pinned gene accession</span>
+            <span>Gene or transcript accession</span>
           </label>
           <label class="query-mode-control">
             <input type="radio" name="live-query-mode" value="coordinates">
@@ -72,10 +72,15 @@
           </label>
         </fieldset>
         <div class="query-input-panel accession-query-panel" id="accession-query-panel">
-          <label for="live-accession">Gene accession</label>
+          <label for="live-accession">Gene or transcript accession</label>
           <input id="live-accession" name="live-accession" list="live-accession-list" value="AGAP006241" autocomplete="off" spellcheck="false">
           <datalist id="live-accession-list"></datalist>
-          <p class="field-help" id="accession-index-help">Loading the pinned accession index…</p>
+          <p class="field-help" id="accession-index-help">Loading the versioned AgamP4.14 gene index…</p>
+          <div class="isoform-control" id="isoform-control" hidden>
+            <label for="isoform-select">Transcript isoform</label>
+            <select id="isoform-select" name="isoform-select"></select>
+            <p class="field-help" id="isoform-help">Choose the representative default or an exact transcript.</p>
+          </div>
           <div class="example-shortcut">
             <label for="example-select">Precomputed examples</label>
             <select id="example-select" name="example-select">
@@ -112,9 +117,10 @@
           </div>
           <span class="ready-badge" id="result-status">Ready</span>
         </div>
-        <p class="result-description" id="benchmark-status">Choose a pinned accession, manual interval, or reviewed example shortcut.</p>
+        <p class="result-description" id="benchmark-status">Choose an AgamP4.14 gene or transcript accession, manual interval, or reviewed example shortcut.</p>
         <dl class="resolved-accession" id="resolved-accession" hidden>
-          <div><dt>Accession</dt><dd id="resolved-accession-id">—</dd></div>
+          <div><dt>Query ID</dt><dd id="resolved-accession-id">—</dd></div>
+          <div><dt>Gene</dt><dd id="resolved-gene-id">—</dd></div>
           <div><dt>Transcript</dt><dd id="resolved-transcript">—</dd></div>
           <div><dt>Strand</dt><dd id="resolved-strand">—</dd></div>
           <div><dt>Annotation</dt><dd id="resolved-annotation">—</dd></div>
@@ -169,7 +175,7 @@
           <p class="plot-method-note" id="plot-method-note">Plots use display-only bins. Hover for query values; the TSV retains every exact base and every species row.</p>
         </div>
         <a class="download-link" id="benchmark-download" hidden download="AgamCs-browser-query.tsv">Download exact TSV values</a>
-        <p class="field-help">Maximum interval: 20,000 bases. Unknown, retired, or ambiguous accessions never fall through to a live service; use manual coordinates instead. The conservation archive is never downloaded in full. Raw SNP-density values are never rewritten; failed accessibility/QC positions are shown separately as unknown.</p>
+        <p class="field-help">Maximum interval: 20,000 bases. The versioned index covers AGAP genes and transcript isoforms on 2L, 2R, 3L, 3R, and X; unplaced scaffolds and IDs absent from this annotation release are not queryable. The conservation archive is never downloaded in full. Raw SNP-density values are never rewritten; failed accessibility/QC positions are shown separately as unknown.</p>
       </div>
     </section>
 

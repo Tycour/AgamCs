@@ -35,6 +35,11 @@ REQUIRED_META_NAMES = {'description', 'theme-color', 'twitter:card'}
 REQUIRED_META_PROPERTIES = {'og:type', 'og:title', 'og:description', 'og:url', 'og:image'}
 FORBIDDEN_PAGES_SUFFIXES = {'.h5', '.hdf5', '.zarr', '.zip', '.tar', '.gz'}
 MAX_PAGES_FILE_BYTES = 10 * 1024 * 1024
+EXPECTED_ACCESSION_RECORDS = 13_097
+EXPECTED_TRANSCRIPT_RECORDS = 15_317
+EXPECTED_ACCESSION_SOURCE_SHA256 = '916a1e0e4d4613d36be31dc03c53871f6f62c94f4d8bc4662d0002131658c0c7'
+REQUIRED_ACCESSIONS = {'AGAP004568'}
+REQUIRED_TRANSCRIPTS = {'AGAP000040-RA', 'AGAP000040-RB', 'AGAP000040-RC'}
 RELEASE_PATTERN = re.compile(r"(?:PAGES|WORKER)_RELEASE\s*=\s*['\"]([^'\"]+)['\"]")
 HTML_RELEASE_PATTERN = re.compile(r"[?&]v=([A-Za-z0-9._-]+)")
 
@@ -133,8 +138,10 @@ def validate_page(page: Path) -> list[str]:
             errors.append('index.html: early prototype status is not stated')
         required_ids = {
             'explorer', 'benchmark-form', 'live-accession', 'example-select',
-            'accession-query-panel', 'coordinate-query-panel',
+            'accession-query-panel', 'isoform-control', 'isoform-select',
+            'isoform-help', 'coordinate-query-panel',
             'results-portal', 'resolved-accession', 'summary-count',
+            'resolved-gene-id',
             'summary-exons-card', 'summary-cs-exons', 'summary-snp-exons',
             'summary-exon-count', 'summary-method-note',
         }
@@ -153,7 +160,10 @@ def validate_page(page: Path) -> list[str]:
             errors.append('index.html: obsolete demo-result presentation remains')
         if 'First five returned positions' in page_text:
             errors.append('index.html: obsolete per-position preview remains')
-        for required_summary_text in ('Base pairs (bp)', 'Aggregated exons'):
+        for required_summary_text in (
+            'Base pairs (bp)', 'Aggregated exons', 'Gene or transcript accession',
+            'Transcript isoform',
+        ):
             if required_summary_text not in page_text:
                 errors.append(
                     f'index.html: query summary is missing {required_summary_text!r}'
@@ -183,7 +193,7 @@ def validate_examples() -> list[str]:
 
 
 def validate_accessions() -> list[str]:
-    """Validate the pinned index and its overlap with precomputed examples."""
+    """Validate the release index and its overlap with precomputed examples."""
     try:
         index = json.loads(ACCESSION_INDEX_PATH.read_text(encoding='utf-8'))
         validate_index(index)
@@ -192,8 +202,24 @@ def validate_accessions() -> list[str]:
         return [f'could not validate accession index: {error}']
 
     errors = []
-    if len(index['accessions']) != 15:
-        errors.append('accession index must contain the 15 reviewed prototype records')
+    if len(index['accessions']) != EXPECTED_ACCESSION_RECORDS:
+        errors.append(
+            f'accession index must contain all {EXPECTED_ACCESSION_RECORDS:,} supported '
+            'VectorBase-68 records'
+        )
+    if len(index['transcripts']) != EXPECTED_TRANSCRIPT_RECORDS:
+        errors.append(
+            f'accession index must contain all {EXPECTED_TRANSCRIPT_RECORDS:,} supported '
+            'VectorBase-68 transcript records'
+        )
+    if index['annotation']['source_snapshot_sha256'] != EXPECTED_ACCESSION_SOURCE_SHA256:
+        errors.append('accession index does not match the reviewed VectorBase-68 GFF checksum')
+    for accession in sorted(REQUIRED_ACCESSIONS):
+        if accession not in index['accessions']:
+            errors.append(f'required arbitrary-accession regression record is missing: {accession}')
+    for transcript_id in sorted(REQUIRED_TRANSCRIPTS):
+        if transcript_id not in index['transcripts']:
+            errors.append(f'required isoform regression record is missing: {transcript_id}')
     for example in catalogue['examples']:
         accession = example['accession']
         record = index['accessions'].get(accession)

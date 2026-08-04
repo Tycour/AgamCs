@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-03-rc7';
+const PAGES_RELEASE = '2026-08-04-rc9';
 
 function versionedAsset(path) {
   const separator = path.includes('?') ? '&' : '?';
@@ -43,6 +43,9 @@ const coordinateQueryPanel = document.querySelector('#coordinate-query-panel');
 const liveAccession = document.querySelector('#live-accession');
 const liveAccessionList = document.querySelector('#live-accession-list');
 const accessionIndexHelp = document.querySelector('#accession-index-help');
+const isoformControl = document.querySelector('#isoform-control');
+const isoformSelect = document.querySelector('#isoform-select');
+const isoformHelp = document.querySelector('#isoform-help');
 const resolvedAccession = document.querySelector('#resolved-accession');
 const exampleSelect = document.querySelector('#example-select');
 const catalogueHelp = document.querySelector('#catalogue-help');
@@ -55,6 +58,7 @@ let queryRequestId = 0;
 let benchmarkDownloadUrl;
 let queryManifestPromise;
 let accessionIndexPromise;
+let accessionIndexSnapshot;
 
 async function loadValidation() {
   const response = await fetch(versionedAsset('assets/data/query-validation.json'));
@@ -73,8 +77,9 @@ async function loadAccessionIndex() {
     accessionIndexPromise = fetch(versionedAsset('assets/data/accession-index.json')).then(async (response) => {
       if (!response.ok) throw new Error(`Accession index request failed (${response.status}).`);
       const index = await response.json();
-      if (index.schema_version !== 1 || index.assembly !== 'AgamP4' || !index.accessions) {
-        throw new Error('The pinned accession index is not compatible with this client.');
+      if (index.schema_version !== 2 || index.assembly !== 'AgamP4'
+          || !index.accessions || !index.transcripts) {
+        throw new Error('The versioned accession index is not compatible with this client.');
       }
       return index;
     });
@@ -83,15 +88,62 @@ async function loadAccessionIndex() {
 }
 
 function configureAccessionIndex(index) {
+  accessionIndexSnapshot = index;
   liveAccessionList.replaceChildren(...Object.entries(index.accessions).map(([accession, record]) => {
     const option = document.createElement('option');
     option.value = accession;
     option.label = `${record.region}; ${record.annotation.transcript_id}`;
     return option;
   }));
-  const count = Object.keys(index.accessions).length;
-  accessionIndexHelp.textContent = `${count} pinned genes · ${index.annotation.gene_build} · ${index.index_version} · live lookup off.`;
+  const geneCount = Object.keys(index.accessions).length;
+  const transcriptCount = Object.keys(index.transcripts).length;
+  accessionIndexHelp.textContent = `${geneCount.toLocaleString()} genes · ${transcriptCount.toLocaleString()} transcripts · 2L, 2R, 3L, 3R, and X · ${index.annotation.gene_build} · ${index.index_version}.`;
+  configureIsoformControl(liveAccession.value);
 }
+
+function configureIsoformControl(value) {
+  const index = accessionIndexSnapshot;
+  if (!index) return;
+  const normalized = globalThis.AgamCsAccessions.normalize(value);
+  const geneAccession = index.accessions[normalized]
+    ? normalized
+    : index.transcripts[normalized]?.gene_accession;
+  const geneRecord = index.accessions[geneAccession];
+  const transcriptIds = geneRecord?.transcript_ids || [];
+  if (transcriptIds.length < 2) {
+    isoformControl.hidden = true;
+    isoformSelect.replaceChildren();
+    return;
+  }
+
+  const representative = geneRecord.annotation.transcript_id;
+  const representativeOption = document.createElement('option');
+  representativeOption.value = geneAccession;
+  representativeOption.textContent = `Gene default — ${representative} annotation, full gene span`;
+  const transcriptOptions = transcriptIds.map((transcriptId) => {
+    const option = document.createElement('option');
+    option.value = transcriptId;
+    option.textContent = transcriptId === representative
+      ? `${transcriptId} — representative`
+      : transcriptId;
+    return option;
+  });
+  isoformSelect.replaceChildren(representativeOption, ...transcriptOptions);
+  isoformSelect.value = index.transcripts[normalized] ? normalized : geneAccession;
+  isoformHelp.textContent = `${transcriptIds.length} transcript isoforms are available for ${geneAccession}. The gene default uses ${representative} annotation across the full gene span; an exact transcript uses its own span.`;
+  isoformControl.hidden = false;
+}
+
+liveAccession.addEventListener('input', () => configureIsoformControl(liveAccession.value));
+
+isoformSelect.addEventListener('change', () => {
+  liveAccession.value = isoformSelect.value;
+  setPortalState(`Ready to query ${isoformSelect.value}`, 'Ready');
+  const geneRecord = accessionIndexSnapshot?.accessions?.[isoformSelect.value];
+  benchmarkStatus.textContent = geneRecord
+    ? `${isoformSelect.value} gene default selected. The full gene span will use ${geneRecord.annotation.transcript_id} annotation.`
+    : `${isoformSelect.value} selected. Run the live query to retrieve its exact transcript span.`;
+});
 
 function setPortalState(title, status, tone = 'ready') {
   resultTitle.textContent = title;
@@ -110,7 +162,7 @@ function setLiveQueryMode(mode) {
   resolvedAccession.hidden = true;
   setPortalState('Ready for a query', 'Ready');
   benchmarkStatus.textContent = byAccession
-    ? 'Ready to resolve a gene from the pinned accession index.'
+    ? 'Ready to resolve a gene from the versioned AgamP4.14 index.'
     : 'Ready for an independent manual AgamP4 coordinate query.';
 }
 
@@ -146,6 +198,7 @@ exampleSelect.addEventListener('change', () => {
   accessionMode.checked = true;
   setLiveQueryMode('accession');
   liveAccession.value = exampleSelect.value;
+  configureIsoformControl(liveAccession.value);
   setPortalState(`Ready to query ${exampleSelect.value}`, 'Ready');
   benchmarkStatus.textContent = `${exampleSelect.value} selected from the precomputed examples. Run the live query to retrieve its exact values.`;
 });
@@ -153,7 +206,7 @@ exampleSelect.addEventListener('change', () => {
 const cataloguePromise = loadCatalogue();
 
 loadAccessionIndex().then(configureAccessionIndex).catch((error) => {
-  accessionIndexHelp.textContent = `Pinned accession lookup unavailable: ${error.message} Manual coordinates still work.`;
+  accessionIndexHelp.textContent = `Versioned accession lookup unavailable: ${error.message} Manual coordinates still work.`;
 });
 
 async function loadQueryManifest() {
@@ -223,10 +276,13 @@ function displayNumber(value) {
   return Number.isFinite(value) ? value.toPrecision(6) : 'NA';
 }
 
-function renderQuerySummary(result, annotation = null) {
+function renderQuerySummary(result, annotation = null, annotationScope = 'gene') {
   const summary = globalThis.AgamCsPlots.summarizeQuery(result, annotation);
   const hasExonSummary = summary.exonBasePairs != null;
-  const queryScope = hasExonSummary ? 'Entire gene span' : 'Queried interval';
+  const transcriptScope = hasExonSummary && annotationScope === 'transcript';
+  const queryScope = hasExonSummary
+    ? (transcriptScope ? 'Entire transcript span' : 'Entire gene span')
+    : 'Queried interval';
   document.querySelector('#summary-count').textContent = summary.queryBasePairs.toLocaleString();
   document.querySelector('#summary-cs').textContent = displayNumber(summary.queryMeanCs);
   document.querySelector('#summary-snp').textContent = displayNumber(summary.queryMeanSnp);
@@ -236,9 +292,10 @@ function renderQuerySummary(result, annotation = null) {
     document.querySelector('#summary-exon-count').textContent = summary.exonBasePairs.toLocaleString();
     document.querySelector('#summary-cs-exons').textContent = displayNumber(summary.exonMeanCs);
     document.querySelector('#summary-snp-exons').textContent = displayNumber(summary.exonMeanSnp);
-    document.querySelector('#summary-method-note').textContent = `Gene-span means use all ${summary.queryBasePairs.toLocaleString()} queried bp (exons and introns). Exon means use the ${summary.exonBasePairs.toLocaleString()} unique bp in the union of annotated exons. SNP means include only QC-accessible bases within each scope; QC-failed bases remain unknown. Exon SNP averages the archived density values assigned to exonic bases; it does not recalculate their 20 bp windows.`;
+    const spanLabel = transcriptScope ? 'Transcript-span' : 'Gene-span';
+    document.querySelector('#summary-method-note').textContent = `${spanLabel} means use all ${summary.queryBasePairs.toLocaleString()} queried bp (exons and introns). Exon means use the ${summary.exonBasePairs.toLocaleString()} unique bp in the union of annotated exons. SNP means include only QC-accessible bases within each scope; QC-failed bases remain unknown. Exon SNP averages the archived density values assigned to exonic bases; it does not recalculate their 20 bp windows.`;
   } else {
-    document.querySelector('#summary-method-note').textContent = `Means use all ${summary.queryBasePairs.toLocaleString()} queried bp. The SNP mean includes only QC-accessible bases; QC-failed bases remain unknown. Exon means require a pinned gene annotation.`;
+    document.querySelector('#summary-method-note').textContent = `Means use all ${summary.queryBasePairs.toLocaleString()} queried bp. The SNP mean includes only QC-accessible bases; QC-failed bases remain unknown. Exon means require a gene annotation from the versioned index.`;
   }
   querySummary.hidden = false;
 }
@@ -251,6 +308,7 @@ function findPinnedAnnotation(chromosome, start, end) {
 function renderResolvedAccession(resolution, index) {
   const annotation = resolution.annotation;
   document.querySelector('#resolved-accession-id').textContent = resolution.accession;
+  document.querySelector('#resolved-gene-id').textContent = resolution.geneAccession;
   document.querySelector('#resolved-transcript').textContent = annotation.transcript_id;
   document.querySelector('#resolved-strand').textContent = Number(annotation.strand) === -1 ? '− (minus)' : '+ (plus)';
   document.querySelector('#resolved-annotation').textContent = `${index.annotation.gene_build} (${index.annotation.released})`;
@@ -264,8 +322,11 @@ function renderLivePlots(result, providedAnnotation = null, providedAccession = 
   const accession = providedAccession || pinned?.accession || null;
   globalThis.AgamCsPlots.renderSignalPlot(liveSignalPlot, result, annotation);
   globalThis.AgamCsPlots.renderHeatmap(liveHeatmapPlot, result, annotation);
+  const annotationSubject = accession === annotation?.transcript_id
+    ? `${annotation.id} isoform ${annotation.transcript_id}`
+    : accession;
   liveAnnotationNote.textContent = annotation
-    ? `${accession} annotation applied; ${annotation.transcript_id} is shown 5′→3′.`
+    ? `${annotationSubject} annotation applied; ${annotation.transcript_id} is shown 5′→3′.`
     : 'Genomic-coordinate view. Gene annotation is applied when querying by accession or an exact precomputed catalogue interval.';
   liveVisuals.hidden = false;
 }
@@ -413,7 +474,11 @@ benchmarkForm.addEventListener('submit', async (event) => {
       : hashUnavailable
         ? 'Query complete; data retrieved, but browser hash validation is unavailable.'
         : `Query complete: ${querySubject}.`;
-    renderQuerySummary(result, annotation);
+    renderQuerySummary(
+      result,
+      annotation,
+      resolution?.matchedAs === 'transcript' ? 'transcript' : 'gene',
+    );
     if (resolution) renderResolvedAccession(resolution, accessionIndex);
     renderLivePlots(result, annotation, annotationAccession);
 

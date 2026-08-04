@@ -1,8 +1,8 @@
 # GitHub Pages live-query release validation
 
 This report records the Step 10 release-candidate checks for the early research
-prototype. The candidate is `2026-08-03-rc7` on
-`codex/browser-hdf5-feasibility`. It keeps the authoritative conservation HDF5
+prototype. The candidate is `2026-08-04-rc9` on
+`codex/full-accession-index`. It keeps the authoritative conservation HDF5
 unchanged and reads only byte ranges from the published Zenodo file.
 
 ## Scientific regression matrix
@@ -49,15 +49,23 @@ and slices only the logical chromosome interval.
   precomputed-example shortcuts all feed the same result portal and live plot
   renderer. The obsolete static demo form and duplicate lower query UI are
   absent.
-- Accession heatmaps use the same pinned transcript annotation as the signal
+- Accession heatmaps use the same versioned transcript annotation as the signal
   plot and now show aligned CDS blocks above the matrix, matching the CLI
   heatmap convention.
 - Accession summaries report whole-gene-span and aggregated-exon means
   separately. Exon aggregation uses the union of annotated exon bases, and SNP
   means include only QC-accessible bases within the stated scope.
+- The accession resolver uses a 13,097-gene VectorBase-68 index for every AGAP
+  record on 2L, 2R, 3L, 3R, and X. `AGAP004568` is an explicit arbitrary-gene
+  regression case and resolves to `2R:57646252-57647480`; the 15 previously
+  reviewed annotations remain byte-for-byte-equivalent fixtures.
+- The same index contains all 15,317 supported transcript models. Bare gene
+  accessions retain their representative default, while exact transcript IDs
+  use isoform-specific spans, exon unions and CDS bounds. `AGAP000040-RA`,
+  `-RB`, and `-RC` are explicit multi-isoform regression records.
 - The Pages payload contains no `.h5`, `.hdf5`, archive, or file over 10 MiB.
-  The checked `docs` tree is about 2.8 MiB; its largest asset is the compact
-  byte-range reference at about 700 KiB.
+  The complete gene/transcript index is a compact 8.8 MiB static JSON asset; the
+  25 MiB source GFF and multi-gigabyte HDF5 are not committed or deployed.
 - Raw SNP density is never rewritten. QC-failed positions remain a separate
   unknown state in plots and exact downloads.
 
@@ -65,10 +73,10 @@ and slices only the logical chromosome interval.
 
 The release candidate passes:
 
-- 54 Python tests;
-- 18 JavaScript contract/worker/accession/plot tests;
+- 55 Python tests;
+- 19 JavaScript contract/worker/accession/plot tests;
 - regenerated query-asset verification against the local authoritative HDF5;
-- pinned accession-index verification;
+- complete versioned accession-index verification;
 - static Pages metadata, payload, provenance, and asset validation;
 - JavaScript syntax checks for the client, query contract, worker, plots, and
   accession resolver.
@@ -81,6 +89,6 @@ and exact TSV semantics. No new Zenodo release is needed because this candidate
 does not create or publish a derived scientific data store.
 
 After merge, wait for the Pages workflow, open the deployed site with a cache-
-bypassing release query, rerun the pinned default interval, and confirm the
+bypassing release query, rerun the default interval and `AGAP004568`, and confirm the
 same array/plot validation message. That post-merge deployment check remains
 pending until the reviewer merges the PR.
