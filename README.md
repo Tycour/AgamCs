@@ -65,16 +65,10 @@ Results are written below `results/<output>/`. Gene accessions are resolved
 online through Ensembl/VectorBase and include the representative transcript
 model. Use `--padding 500` to include flanking bases.
 
-To install the optional web interface in the same environment, run:
+For development and tests, install the test extra:
 
 ```commandline
-python -m pip install -e ".[web]"
-```
-
-For development and tests, install both optional groups:
-
-```commandline
-python -m pip install -e ".[web,test]"
+python -m pip install -e ".[test]"
 python -m pytest
 ```
 
@@ -149,7 +143,7 @@ missing QC metadata is never silently treated as PASS. Technical provenance
 and the rebuild procedure are in
 [`docs/accessibility-track.md`](docs/accessibility-track.md).
 
-## Web app
+## Web portal
 
 Try the [no-install GitHub Pages portal](https://tycour.github.io/AgamCs/).
 Its versioned VectorBase-68 index resolves 13,097 AgamP4.14 genes and 15,317
@@ -162,17 +156,8 @@ and separate QC ranges from the Zenodo data and render live browser plots;
 reviewed precomputed examples remain as shortcuts in the same query form.
 Publishing instructions and the prototype boundary are documented in
 [`docs/github-pages-prototype.md`](docs/github-pages-prototype.md).
-
-Start the local Shiny interface with:
-
-```commandline
-shiny run AgamCs.app:app
-```
-
-Open `http://127.0.0.1:8000`, choose a gene accession or genomic region, and
-generate downloadable plots and a source TSV. The web app limits requests to
-250,000 bp to keep interactive sessions responsive; use the CLI for larger
-intervals.
+For larger intervals, custom highlight ranges, local-HDF5 use, and fully
+reproducible batch output, use the CLI.
 
 ## Optional annotation files
 

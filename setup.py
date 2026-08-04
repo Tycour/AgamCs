@@ -20,7 +20,6 @@ setup(
     ],
     extras_require={
         'build': ['kerchunk>=0.2.10'],
-        'web': ['shiny>=1.6'],
         'test': ['pytest'],
     },
     entry_points={

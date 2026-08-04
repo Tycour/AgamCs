@@ -1,9 +1,9 @@
 # GitHub Pages prototype
 
-This directory contains a zero-runtime-cost, static prototype of the AgamCs web
-experience. GitHub Pages cannot run the Python/Shiny server in `AgamCs/app.py`,
-so the client resolves genes from a committed annotation index and retrieves
-only the required scientific-data byte ranges in the browser.
+This directory contains the zero-runtime-cost, static AgamCs web experience.
+The client resolves genes from a committed annotation index and retrieves only
+the required scientific-data byte ranges in the browser; there is no separate
+server-hosted interface.
 
 ## Preview locally
 
