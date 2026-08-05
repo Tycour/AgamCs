@@ -64,6 +64,8 @@ def test_sequence_identity_rows_follow_genome_codes_not_tsv_column_order():
 def test_species_rows_retain_taxonomy_aware_cladogram_order():
     assert SPECIES_GENOME_CODES[-3:] == ['AaegL5', 'CpipJ2', 'DmelP6']
     assert SPECIES_GENOME_CODES.index('CpipJ2') > SPECIES_GENOME_CODES.index('AalbS2')
+    assert SPECIES_LABELS[0] == 'An. coluzzii'
+    assert SPECIES_LABELS[-2] == 'Cx. quinquefasciatus'
 
 
 def test_sequence_identity_rows_require_all_metadata_species():

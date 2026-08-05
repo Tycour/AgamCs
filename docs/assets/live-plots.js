@@ -18,6 +18,22 @@
   const CLADE_COLORS = ['#3f007d', '#8c2981', '#cc4678', '#d95f0e'];
   const CLADE_NAMES = ['gambiae complex', 'Other Anopheles', 'New World', 'Outgroups'];
   const CLADE_RANGES = [[0, 4], [5, 15], [16, 17], [18, 20]];
+  // Representative nested splits only: horizontal distance is not scaled
+  // evolutionary distance, and the released score archive has no Newick tree.
+  const SPECIES_TREE = [
+    [
+      [[0, 1], [2, [3, 4]]],
+      [5, [6, [[7, [8, [9, 10]]], [11, [12, [13, [14, 15]]]]]]],
+      [16, 17],
+    ],
+    [[18, 19], 20],
+  ];
+  const GENUS_ABBREVIATIONS = new Map([
+    ['Anopheles', 'An.'],
+    ['Aedes', 'Ae.'],
+    ['Culex', 'Cx.'],
+    ['Drosophila', 'D.'],
+  ]);
   const VIRIDIS = [
     [0, [68, 1, 84]],
     [0.25, [59, 82, 139]],
@@ -687,25 +703,39 @@
     return `rgb(${rgb.join(',')})`;
   }
 
+  function abbreviatedSpeciesName(name) {
+    const parts = name.trim().split(/\s+/);
+    const abbreviation = GENUS_ABBREVIATIONS.get(parts[0]);
+    return abbreviation && parts.length > 1
+      ? `${abbreviation} ${parts.slice(1).join(' ')}`
+      : name.trim();
+  }
+
   function drawCladogram(svg, rowTop, rowHeight) {
-    const centre = (start, end) => rowTop + ((start + end + 1) / 2) * rowHeight;
-    CLADE_RANGES.forEach(([start, end]) => {
-      const y1 = rowTop + (start + 0.5) * rowHeight;
-      const y2 = rowTop + (end + 0.5) * rowHeight;
-      svg.append(svgElement('line', { x1: 74, x2: 74, y1, y2, stroke: COLORS.muted, 'stroke-width': 1 }));
-      for (let row = start; row <= end; row += 1) {
-        const y = rowTop + (row + 0.5) * rowHeight;
-        svg.append(svgElement('line', { x1: 74, x2: 96, y1: y, y2: y, stroke: COLORS.muted, 'stroke-width': 1 }));
+    const maximumDepth = 7;
+    const left = 22;
+    const tip = 66;
+    const xForDepth = (depth) => left + (tip - left) * depth / maximumDepth;
+    const draw = (node, depth = 0) => {
+      if (Number.isInteger(node)) {
+        return { x: tip, y: rowTop + (node + 0.5) * rowHeight };
       }
-    });
-    const mainCentres = CLADE_RANGES.slice(0, 3).map(([start, end]) => centre(start, end));
-    const outCentre = centre(18, 20);
-    svg.append(svgElement('line', { x1: 53, x2: 53, y1: mainCentres[0], y2: mainCentres[2], stroke: COLORS.muted }));
-    mainCentres.forEach((y) => svg.append(svgElement('line', { x1: 53, x2: 74, y1: y, y2: y, stroke: COLORS.muted })));
-    const mainCentre = (mainCentres[0] + mainCentres[2]) / 2;
-    svg.append(svgElement('line', { x1: 31, x2: 31, y1: mainCentre, y2: outCentre, stroke: COLORS.muted }));
-    svg.append(svgElement('line', { x1: 31, x2: 53, y1: mainCentre, y2: mainCentre, stroke: COLORS.muted }));
-    svg.append(svgElement('line', { x1: 31, x2: 74, y1: outCentre, y2: outCentre, stroke: COLORS.muted }));
+      const children = node.map((child) => draw(child, depth + 1));
+      const x = xForDepth(depth);
+      const childYs = children.map((child) => child.y);
+      const minimumY = Math.min(...childYs);
+      const maximumY = Math.max(...childYs);
+      svg.append(svgElement('line', {
+        x1: x, x2: x, y1: minimumY, y2: maximumY,
+        stroke: COLORS.muted, 'stroke-width': 1,
+      }));
+      children.forEach((child) => svg.append(svgElement('line', {
+        x1: x, x2: child.x, y1: child.y, y2: child.y,
+        stroke: COLORS.muted, 'stroke-width': 1,
+      })));
+      return { x, y: childYs.reduce((total, y) => total + y, 0) / childYs.length };
+    };
+    draw(SPECIES_TREE);
   }
 
   function installHeatmapTooltip(container, svg, summary, result, plotLeft, plotWidth, rowTop, rowHeight) {
@@ -742,7 +772,7 @@
     const width = 1000;
     const rowTop = 78;
     const rowHeight = 23;
-    const plotLeft = 310;
+    const plotLeft = 210;
     const plotRight = 930;
     const plotWidth = plotRight - plotLeft;
     const plotHeight = result.stackRows.length * rowHeight;
@@ -766,13 +796,13 @@
     addText(svg, `${result.stackRows.length} metadata-ordered species · ${summary.bins.length} display bins`, plotLeft, 49, {
       fill: COLORS.muted, 'font-size': 12,
     });
-    addText(svg, 'Unscaled broad-group cladogram', 31, 22, {
+    addText(svg, 'Representative cladogram', 22, 22, {
       fill: COLORS.muted, 'font-size': 10, 'font-weight': 650,
     });
     CLADE_NAMES.forEach((name, index) => {
       const column = index % 2;
       const row = Math.floor(index / 2);
-      const x = 31 + column * 132;
+      const x = 22 + column * 108;
       const y = 43 + row * 18;
       svg.append(svgElement('rect', { x, y: y - 9, width: 9, height: 9, fill: CLADE_COLORS[index] }));
       addText(svg, name, x + 14, y, { fill: COLORS.muted, 'font-size': 9 });
@@ -783,10 +813,10 @@
       const y = rowTop + rowIndex * rowHeight;
       const cladeIndex = CLADE_RANGES.findIndex(([start, end]) => rowIndex >= start && rowIndex <= end);
       svg.append(svgElement('rect', {
-        x: 104, y: y + 2, width: 4, height: rowHeight - 4,
+        x: 72, y: y + 2, width: 4, height: rowHeight - 4,
         fill: CLADE_COLORS[cladeIndex],
       }));
-      addText(svg, result.stackSpecies[rowIndex].trim(), 292, y + rowHeight * 0.68, {
+      addText(svg, abbreviatedSpeciesName(result.stackSpecies[rowIndex]), plotLeft - 12, y + rowHeight * 0.68, {
         'text-anchor': 'end', fill: COLORS.ink, 'font-size': 11,
         'font-style': 'italic', 'font-weight': 600,
       });
@@ -866,6 +896,7 @@
     summarizeQuery,
     summarizeSignals,
     summarizeHeatmap,
+    abbreviatedSpeciesName,
     renderSignalPlot,
     renderHeatmap,
   };
