@@ -8,7 +8,15 @@ const {
   summarizeQuery,
   transcriptModelGeometry,
   transcriptAnnotationsForDisplay,
+  abbreviatedSpeciesName,
 } = globalThis.AgamCsPlots;
+
+test('species labels use established genus abbreviations', () => {
+  assert.equal(abbreviatedSpeciesName('Anopheles coluzzii'), 'An. coluzzii');
+  assert.equal(abbreviatedSpeciesName('Aedes aegypti '), 'Ae. aegypti');
+  assert.equal(abbreviatedSpeciesName('Culex quinquefasciatus'), 'Cx. quinquefasciatus');
+  assert.equal(abbreviatedSpeciesName('Drosophila melanogaster'), 'D. melanogaster');
+});
 
 test('CDS segments intersect exon bounds in plus-strand plot coordinates', () => {
   const annotation = {

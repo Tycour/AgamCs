@@ -22,26 +22,26 @@ INTRON_COLOR = '#4d4d4d'
 # ratios in the released HDF5. Keep each code, display label, and factor coupled
 # so TSV column order cannot silently attach metadata to the wrong heatmap row.
 _SPECIES_METADATA = (
-    ('AcolM1', 'A. coluzzii', 0.05762710),
-    ('AaraD1', 'A. arabiensis', 0.06529441),
-    ('AquaS1', 'A. quadriannulatus', 0.07335419),
-    ('AmelC2', 'A. melas', 0.08462369),
-    ('AmerM2', 'A. merus', 0.08553242),
-    ('AchrA1', 'A. christyi', 0.37320513),
-    ('AsinC2', 'A. sinensis', 0.50000000),
-    ('AepiE1', 'A. epiroticus', 0.50000000),
-    ('AminM1', 'A. minimus', 0.51938444),
-    ('AmacM1', 'A. maculatus', 0.54403692),
-    ('AculA1', 'A. culicifacies', 0.56968802),
-    ('AsteI2', 'A. stephensi', 0.58201295),
-    ('AfunF1', 'A. funestus', 0.61755806),
-    ('AatrE3', 'A. atroparvus', 0.66815686),
-    ('AdirW1', 'A. dirus', 0.68838775),
-    ('AfarF2', 'A. farauti', 0.68981272),
-    ('AdarC3', 'A. darlingi', 0.69153583),
-    ('AalbS2', 'A. albimanus', 0.69723785),
+    ('AcolM1', 'An. coluzzii', 0.05762710),
+    ('AaraD1', 'An. arabiensis', 0.06529441),
+    ('AquaS1', 'An. quadriannulatus', 0.07335419),
+    ('AmelC2', 'An. melas', 0.08462369),
+    ('AmerM2', 'An. merus', 0.08553242),
+    ('AchrA1', 'An. christyi', 0.37320513),
+    ('AsinC2', 'An. sinensis', 0.50000000),
+    ('AepiE1', 'An. epiroticus', 0.50000000),
+    ('AminM1', 'An. minimus', 0.51938444),
+    ('AmacM1', 'An. maculatus', 0.54403692),
+    ('AculA1', 'An. culicifacies', 0.56968802),
+    ('AsteI2', 'An. stephensi', 0.58201295),
+    ('AfunF1', 'An. funestus', 0.61755806),
+    ('AatrE3', 'An. atroparvus', 0.66815686),
+    ('AdirW1', 'An. dirus', 0.68838775),
+    ('AfarF2', 'An. farauti', 0.68981272),
+    ('AdarC3', 'An. darlingi', 0.69153583),
+    ('AalbS2', 'An. albimanus', 0.69723785),
     ('AaegL5', 'Ae. aegypti', 0.71218956),
-    ('CpipJ2', 'C. quinquefasciatus', 0.68016356),
+    ('CpipJ2', 'Cx. quinquefasciatus', 0.68016356),
     ('DmelP6', 'D. melanogaster', 0.80923682),
 )
 SPECIES = _SPECIES_METADATA
@@ -65,13 +65,23 @@ OUTGROUP_CODES = ('AaegL5', 'CpipJ2', 'DmelP6')
 # The taxon order and topology follow the whole-genome alignment described in
 # https://doi.org/10.3390/insects12020097, on which this resource is based.
 # The fitted Newick tree is not distributed with the score dataset, so this is
-# deliberately a compact, unresolved cladogram of the broad groups rather than
-# a reconstruction with invented internal branch lengths.
+# a compact, representative cladogram rather than a reconstruction with fitted
+# branch lengths. Its nested splits restore taxonomic orientation without
+# implying that horizontal distance is evolutionary distance.
 SPECIES_TREE = (
     (
-        tuple(SPECIES_LABELS[0:5]),
-        tuple(SPECIES_LABELS[5:16]),
-        tuple(SPECIES_LABELS[16:18]),
+        ((SPECIES_LABELS[0], SPECIES_LABELS[1]),
+         (SPECIES_LABELS[2], (SPECIES_LABELS[3], SPECIES_LABELS[4]))),
+        (SPECIES_LABELS[5],
+         (SPECIES_LABELS[6],
+          ((SPECIES_LABELS[7],
+            (SPECIES_LABELS[8],
+             (SPECIES_LABELS[9], SPECIES_LABELS[10]))),
+           (SPECIES_LABELS[11],
+            (SPECIES_LABELS[12],
+             (SPECIES_LABELS[13],
+              (SPECIES_LABELS[14], SPECIES_LABELS[15]))))))),
+        (SPECIES_LABELS[16], SPECIES_LABELS[17]),
     ),
     ((SPECIES_LABELS[18], SPECIES_LABELS[19]), SPECIES_LABELS[20]),
 )
@@ -265,7 +275,7 @@ def create_heatmap(
     )
     grid = fig.add_gridspec(
         2 if gene_annotation else 1, 2,
-        width_ratios=(1.15, 8.85),
+        width_ratios=(0.9, 9.1),
         height_ratios=(5, 0.9) if gene_annotation else None,
         hspace=0.01,
     )
