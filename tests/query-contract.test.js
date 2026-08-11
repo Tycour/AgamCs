@@ -48,3 +48,43 @@ test('rejects chromosome overflow and over-limit intervals', () => {
     (error) => error.code === 'maximum-length',
   );
 });
+
+test('pads accession coordinates symmetrically', () => {
+  assert.deepEqual(contract.padCoordinates(manifest, '2L', 100, 200, 25), {
+    chromosome: '2L', start: 75, end: 225, length: 151,
+    requestedPadding: 25, leftPadding: 25, rightPadding: 25,
+  });
+});
+
+test('clips accession padding at chromosome boundaries', () => {
+  assert.deepEqual(contract.padCoordinates(manifest, '2L', 10, 20, 25), {
+    chromosome: '2L', start: 1, end: 45, length: 45,
+    requestedPadding: 25, leftPadding: 9, rightPadding: 25,
+  });
+  assert.deepEqual(
+    contract.padCoordinates(manifest, 'X', 24_393_100, 24_393_108, 20),
+    {
+      chromosome: 'X', start: 24_393_080, end: 24_393_108, length: 29,
+      requestedPadding: 20, leftPadding: 20, rightPadding: 0,
+    },
+  );
+});
+
+test('rejects invalid padding and padded intervals over the query limit', () => {
+  for (const padding of [-1, 1.5, 'many']) {
+    assert.throws(
+      () => contract.padCoordinates(manifest, '2L', 100, 200, padding),
+      (error) => error.code === 'padding',
+    );
+  }
+  assert.throws(
+    () => contract.padCoordinates(manifest, '2L', 20_000, 20_100, 10_000),
+    (error) => error.code === 'maximum-length',
+  );
+});
+
+test('calculates maximum per-side padding within the interval limit', () => {
+  assert.equal(contract.maximumSymmetricPadding(manifest, '2L', 20_000, 20_100), 9_949);
+  assert.equal(contract.maximumSymmetricPadding(manifest, '2L', 1, 101), 19_899);
+  assert.equal(contract.maximumSymmetricPadding(manifest, '2L', 1, 20_000), 0);
+});

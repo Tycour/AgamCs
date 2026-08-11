@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-11-topology1';
+const PAGES_RELEASE = '2026-08-11-padding-feedback1';
 
 function versionedAsset(path) {
   const separator = path.includes('?') ? '&' : '?';
@@ -37,12 +37,15 @@ const querySummary = document.querySelector('#query-summary');
 const liveVisuals = document.querySelector('#live-visuals');
 const liveSignalPlot = document.querySelector('#live-signal-plot');
 const liveHeatmapPlot = document.querySelector('#live-heatmap-plot');
+const liveSignalDownload = document.querySelector('#live-signal-download');
+const liveHeatmapDownload = document.querySelector('#live-heatmap-download');
 const liveAnnotationNote = document.querySelector('#live-annotation-note');
 const accessionQueryPanel = document.querySelector('#accession-query-panel');
 const coordinateQueryPanel = document.querySelector('#coordinate-query-panel');
 const liveAccession = document.querySelector('#live-accession');
 const liveAccessionList = document.querySelector('#live-accession-list');
 const accessionIndexHelp = document.querySelector('#accession-index-help');
+const paddingHelp = document.querySelector('#padding-help');
 const isoformControl = document.querySelector('#isoform-control');
 const isoformSelect = document.querySelector('#isoform-select');
 const isoformHelp = document.querySelector('#isoform-help');
@@ -59,6 +62,33 @@ let benchmarkDownloadUrl;
 let queryManifestPromise;
 let accessionIndexPromise;
 let accessionIndexSnapshot;
+let queryManifestSnapshot;
+const figureDownloadUrls = new Map();
+
+function clearFigureDownloads() {
+  figureDownloadUrls.forEach((url) => URL.revokeObjectURL(url));
+  figureDownloadUrls.clear();
+  [liveSignalDownload, liveHeatmapDownload].forEach((link) => {
+    link.hidden = true;
+    link.removeAttribute('href');
+    link.removeAttribute('download');
+  });
+}
+
+function configureFigureDownload(link, container, filename) {
+  const svg = container.querySelector('svg');
+  if (!svg) return;
+  const standalone = svg.cloneNode(true);
+  standalone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  standalone.setAttribute('font-family', 'Inter, ui-sans-serif, system-ui, sans-serif');
+  standalone.setAttribute('style', 'background: #fff');
+  const source = `<?xml version="1.0" encoding="UTF-8"?>\n${new XMLSerializer().serializeToString(standalone)}\n`;
+  const url = URL.createObjectURL(new Blob([source], { type: 'image/svg+xml;charset=utf-8' }));
+  figureDownloadUrls.set(link, url);
+  link.href = url;
+  link.download = filename;
+  link.hidden = false;
+}
 
 async function loadValidation() {
   const response = await fetch(versionedAsset('assets/data/query-validation.json'));
@@ -99,6 +129,23 @@ function configureAccessionIndex(index) {
   const transcriptCount = Object.keys(index.transcripts).length;
   accessionIndexHelp.textContent = `${geneCount.toLocaleString()} genes · ${transcriptCount.toLocaleString()} transcripts · 2L, 2R, 3L, 3R, and X · ${index.annotation.gene_build} · ${index.index_version}.`;
   configureIsoformControl(liveAccession.value);
+  updatePaddingHelp();
+}
+
+function updatePaddingHelp() {
+  if (!accessionIndexSnapshot || !queryManifestSnapshot) return;
+  try {
+    const resolution = globalThis.AgamCsAccessions.resolve(
+      accessionIndexSnapshot, liveAccession.value,
+    );
+    const { chromosome, start, end } = resolution.annotation;
+    const maximum = globalThis.AgamCsQueryContract.maximumSymmetricPadding(
+      queryManifestSnapshot, chromosome, start, end,
+    );
+    paddingHelp.textContent = `For ${resolution.accession}, use 0–${maximum.toLocaleString()} bp per side to remain within the ${Number(queryManifestSnapshot.maximum_query_bases).toLocaleString()}-base browser limit. Padding is clipped at chromosome boundaries.`;
+  } catch (_error) {
+    paddingHelp.textContent = 'Enter a supported accession to calculate its allowable padding. The padded interval must remain within the 20,000-base browser limit.';
+  }
 }
 
 function configureIsoformControl(value) {
@@ -134,7 +181,10 @@ function configureIsoformControl(value) {
   isoformControl.hidden = false;
 }
 
-liveAccession.addEventListener('input', () => configureIsoformControl(liveAccession.value));
+liveAccession.addEventListener('input', () => {
+  configureIsoformControl(liveAccession.value);
+  updatePaddingHelp();
+});
 
 isoformSelect.addEventListener('change', () => {
   liveAccession.value = isoformSelect.value;
@@ -143,6 +193,7 @@ isoformSelect.addEventListener('change', () => {
   benchmarkStatus.textContent = geneRecord
     ? `${isoformSelect.value} gene default selected. The full gene span will use ${geneRecord.annotation.transcript_id} annotation.`
     : `${isoformSelect.value} selected. Run the live query to retrieve its exact transcript span.`;
+  updatePaddingHelp();
 });
 
 function setPortalState(title, status, tone = 'ready') {
@@ -157,6 +208,7 @@ function setLiveQueryMode(mode) {
   accessionQueryPanel.hidden = !byAccession;
   coordinateQueryPanel.hidden = byAccession;
   benchmarkDownload.hidden = true;
+  clearFigureDownloads();
   querySummary.hidden = true;
   liveVisuals.hidden = true;
   resolvedAccession.hidden = true;
@@ -199,6 +251,7 @@ exampleSelect.addEventListener('change', () => {
   setLiveQueryMode('accession');
   liveAccession.value = exampleSelect.value;
   configureIsoformControl(liveAccession.value);
+  updatePaddingHelp();
   setPortalState(`Ready to query ${exampleSelect.value}`, 'Ready');
   benchmarkStatus.textContent = `${exampleSelect.value} selected from the precomputed examples. Run the live query to retrieve its exact values.`;
 });
@@ -278,6 +331,7 @@ function displayNumber(value) {
 
 function renderQuerySummary(
   result, annotation = null, annotationScope = 'gene', transcriptAnnotations = [],
+  paddingDetails = null,
 ) {
   const summary = globalThis.AgamCsPlots.summarizeQuery(result, annotation);
   const hasExonSummary = summary.exonBasePairs != null;
@@ -285,8 +339,11 @@ function renderQuerySummary(
   const multiTranscriptGene = hasExonSummary
     && annotationScope === 'gene'
     && transcriptAnnotations.length > 1;
+  const hasPadding = Number(paddingDetails?.requestedPadding) > 0;
   const queryScope = hasExonSummary
-    ? (transcriptScope ? 'Entire transcript span' : 'Entire gene span')
+    ? (hasPadding
+      ? `Padded ${transcriptScope ? 'transcript' : 'gene'} interval`
+      : (transcriptScope ? 'Entire transcript span' : 'Entire gene span'))
     : 'Queried interval';
   document.querySelector('#summary-count').textContent = summary.queryBasePairs.toLocaleString();
   document.querySelector('#summary-cs').textContent = displayNumber(summary.queryMeanCs);
@@ -302,11 +359,17 @@ function renderQuerySummary(
     document.querySelector('#summary-exon-count').textContent = summary.exonBasePairs.toLocaleString();
     document.querySelector('#summary-cs-exons').textContent = displayNumber(summary.exonMeanCs);
     document.querySelector('#summary-snp-exons').textContent = displayNumber(summary.exonMeanSnp);
-    const spanLabel = transcriptScope ? 'Transcript-span' : 'Gene-span';
+    const spanLabel = hasPadding
+      ? `Padded ${transcriptScope ? 'transcript' : 'gene'}-interval`
+      : (transcriptScope ? 'Transcript-span' : 'Gene-span');
+    const spanContents = hasPadding ? 'flanks, exons, and introns' : 'exons and introns';
+    const paddingNote = hasPadding
+      ? ` Requested padding was ${paddingDetails.requestedPadding.toLocaleString()} bp per side; chromosome-boundary clipping applied ${paddingDetails.leftPadding.toLocaleString()} bp on the lower-coordinate side and ${paddingDetails.rightPadding.toLocaleString()} bp on the higher-coordinate side.`
+      : '';
     const exonDefinition = multiTranscriptGene
       ? `Exon means use the ${summary.exonBasePairs.toLocaleString()} unique bp in the union of ${annotation.transcript_id} exons; other isoforms shown in the plots are not combined into this metric.`
       : `Exon means use the ${summary.exonBasePairs.toLocaleString()} unique bp in the union of annotated exons.`;
-    document.querySelector('#summary-method-note').textContent = `${spanLabel} means use all ${summary.queryBasePairs.toLocaleString()} queried bp (exons and introns). ${exonDefinition} SNP means include only QC-accessible bases within each scope; QC-failed bases remain unknown. Exon SNP averages the archived density values assigned to exonic bases; it does not recalculate their 20 bp windows.`;
+    document.querySelector('#summary-method-note').textContent = `${spanLabel} means use all ${summary.queryBasePairs.toLocaleString()} queried bp (${spanContents}).${paddingNote} ${exonDefinition} SNP means include only QC-accessible bases within each scope; QC-failed bases remain unknown. Exon SNP averages the archived density values assigned to exonic bases; it does not recalculate their 20 bp windows.`;
   } else {
     document.querySelector('#summary-method-note').textContent = `Means use all ${summary.queryBasePairs.toLocaleString()} queried bp. The SNP mean includes only QC-accessible bases; QC-failed bases remain unknown. Exon means require a gene annotation from the versioned index.`;
   }
@@ -327,11 +390,17 @@ function transcriptAnnotationsForResolution(index, resolution, annotation) {
   ));
 }
 
-function renderResolvedAccession(resolution, index) {
+function renderResolvedAccession(resolution, index, paddingDetails) {
   const annotation = resolution.annotation;
   document.querySelector('#resolved-accession-id').textContent = resolution.accession;
   document.querySelector('#resolved-gene-id').textContent = resolution.geneAccession;
   document.querySelector('#resolved-transcript').textContent = annotation.transcript_id;
+  const requestedPadding = paddingDetails?.requestedPadding || 0;
+  document.querySelector('#resolved-padding').textContent = requestedPadding > 0
+    && (paddingDetails.leftPadding !== requestedPadding
+      || paddingDetails.rightPadding !== requestedPadding)
+    ? `${requestedPadding.toLocaleString()} bp/side requested; ${paddingDetails.leftPadding.toLocaleString()} lower + ${paddingDetails.rightPadding.toLocaleString()} higher applied`
+    : `${requestedPadding.toLocaleString()} bp per side`;
   document.querySelector('#resolved-strand').textContent = Number(annotation.strand) === -1 ? '− (minus)' : '+ (plus)';
   document.querySelector('#resolved-annotation').textContent = `${index.annotation.gene_build} (${index.annotation.released})`;
   document.querySelector('#resolved-index-version').textContent = index.index_version;
@@ -399,6 +468,7 @@ function validatePlotSummaries(result, fixture, annotation) {
 }
 
 function configureQueryMetadata(manifest) {
+  queryManifestSnapshot = manifest;
   document.querySelector('#query-assembly').textContent = manifest.assembly;
   document.querySelector('#query-coordinate-convention').textContent = manifest.coordinate_convention;
   document.querySelector('#query-arrays').textContent = manifest.arrays.join(', ');
@@ -406,6 +476,7 @@ function configureQueryMetadata(manifest) {
   const source = document.querySelector('#query-source');
   source.href = manifest.source.doi;
   source.textContent = manifest.source.filename;
+  updatePaddingHelp();
 }
 
 loadQueryManifest().then(configureQueryMetadata).catch((error) => {
@@ -421,10 +492,12 @@ benchmarkForm.addEventListener('submit', async (event) => {
   let end;
   let accessionIndex = null;
   let resolution = null;
-  benchmarkDownload.hidden = true;
-  querySummary.hidden = true;
-  liveVisuals.hidden = true;
-  resolvedAccession.hidden = true;
+  let paddingDetails = null;
+  setPortalState('Preparing query', 'Loading', 'loading');
+  benchmarkStatus.textContent = mode === 'accession'
+    ? 'Resolving the accession from the versioned AgamP4.14 index…'
+    : 'Validating the requested coordinates…';
+  benchmarkSubmit.disabled = true;
 
   if (mode === 'accession') {
     try {
@@ -435,6 +508,7 @@ benchmarkForm.addEventListener('submit', async (event) => {
     } catch (error) {
       setPortalState('Query not run', 'Check input', 'error');
       benchmarkStatus.textContent = `Accession lookup stopped: ${error.message}`;
+      benchmarkSubmit.disabled = false;
       return;
     }
   } else {
@@ -449,28 +523,47 @@ benchmarkForm.addEventListener('submit', async (event) => {
   } catch (error) {
     setPortalState('Query unavailable', 'Unavailable', 'error');
     benchmarkStatus.textContent = `Live query unavailable: ${error.message}`;
+    benchmarkSubmit.disabled = false;
     return;
   }
   try {
-    ({ chromosome, start, end } = globalThis.AgamCsQueryContract.validateCoordinates(
-      manifest, chromosome, start, end,
-    ));
+    if (resolution) {
+      paddingDetails = globalThis.AgamCsQueryContract.padCoordinates(
+        manifest, chromosome, start, end, form.get('accession-padding'),
+      );
+      ({ chromosome, start, end } = paddingDetails);
+    } else {
+      ({ chromosome, start, end } = globalThis.AgamCsQueryContract.validateCoordinates(
+        manifest, chromosome, start, end,
+      ));
+    }
   } catch (error) {
     const subject = resolution && error.code === 'maximum-length'
-      ? `${resolution.accession} spans ${(end - start + 1).toLocaleString()} bases. `
+      ? `${resolution.accession} with the requested padding exceeds the browser interval limit. `
       : '';
+    const maximumPadding = resolution && manifest
+      ? globalThis.AgamCsQueryContract.maximumSymmetricPadding(
+        manifest, resolution.annotation.chromosome,
+        resolution.annotation.start, resolution.annotation.end,
+      )
+      : null;
     const guidance = error.code === 'maximum-length' && resolution
-      ? ' Use manual coordinates for a smaller interval.'
+      ? ` Use no more than ${maximumPadding.toLocaleString()} bp per side for this accession, or use manual coordinates for a smaller interval.`
       : '';
     setPortalState('Query not run', 'Check input', 'error');
     benchmarkStatus.textContent = `${subject}${error.message}${guidance}`;
+    benchmarkSubmit.disabled = false;
     return;
   }
 
-  const querySubject = resolution ? `${resolution.accession} (${chromosome}:${start}-${end})` : `${chromosome}:${start}-${end}`;
+  const paddingSubject = paddingDetails?.requestedPadding
+    ? `; ${paddingDetails.requestedPadding.toLocaleString()} bp padding per side`
+    : '';
+  const querySubject = resolution
+    ? `${resolution.accession} (${chromosome}:${start}-${end}${paddingSubject})`
+    : `${chromosome}:${start}-${end}`;
   setPortalState(resolution?.accession || `${chromosome}:${start}-${end}`, 'Loading', 'loading');
   benchmarkStatus.textContent = `Reading ${querySubject} from Zenodo and the QC companion…`;
-  benchmarkSubmit.disabled = true;
   try {
     const [result, validation, plotValidation] = await Promise.all([
       workerQuery(chromosome, start, end),
@@ -502,6 +595,7 @@ benchmarkForm.addEventListener('submit', async (event) => {
       throw new Error('Plot validation failed; browser summaries do not match the Python plotting fixture.');
     }
 
+    clearFigureDownloads();
     setPortalState(resolution?.accession || `${chromosome}:${start}-${end}`, 'Complete');
     benchmarkStatus.textContent = hashesMatch && plotSummariesMatch
       ? 'Query complete; exact arrays and browser plot summaries match the Python fixtures.'
@@ -515,9 +609,20 @@ benchmarkForm.addEventListener('submit', async (event) => {
       annotation,
       resolution?.matchedAs === 'transcript' ? 'transcript' : 'gene',
       transcriptAnnotations,
+      paddingDetails,
     );
-    if (resolution) renderResolvedAccession(resolution, accessionIndex);
+    if (resolution) renderResolvedAccession(resolution, accessionIndex, paddingDetails);
     renderLivePlots(result, annotation, annotationAccession, transcriptAnnotations);
+
+    const figureStem = resolution
+      ? `AgamCs_${resolution.accession}_${chromosome}_${start}-${end}`
+      : `AgamCs_${chromosome}_${start}-${end}`;
+    configureFigureDownload(
+      liveSignalDownload, liveSignalPlot, `${figureStem}_cs-snp-qc.svg`,
+    );
+    configureFigureDownload(
+      liveHeatmapDownload, liveHeatmapPlot, `${figureStem}_species-heatmap.svg`,
+    );
 
     if (benchmarkDownloadUrl) URL.revokeObjectURL(benchmarkDownloadUrl);
     benchmarkDownloadUrl = URL.createObjectURL(new Blob([buildTsv(result)], { type: 'text/tab-separated-values' }));
