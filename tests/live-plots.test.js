@@ -5,6 +5,7 @@ const manifest = require('../docs/assets/data/query-manifest.json');
 require('../docs/assets/live-plots.js');
 
 const {
+  annotationMatches,
   cdsSegments,
   summarizeQuery,
   transcriptModelGeometry,
@@ -13,6 +14,13 @@ const {
   topologyTipCodes,
   validateSpeciesTopology,
 } = globalThis.AgamCsPlots;
+
+test('annotations remain active when the query includes flanking padding', () => {
+  const annotation = { chromosome: '2L', start: 100, end: 200 };
+  assert.equal(annotationMatches({ chromosome: '2L', start: 75, end: 225 }, annotation), true);
+  assert.equal(annotationMatches({ chromosome: '2L', start: 125, end: 225 }, annotation), false);
+  assert.equal(annotationMatches({ chromosome: '3R', start: 75, end: 225 }, annotation), false);
+});
 
 test('species labels use established genus abbreviations', () => {
   assert.equal(abbreviatedSpeciesName('Anopheles coluzzii'), 'An. coluzzii');
@@ -90,6 +98,33 @@ test('query summaries distinguish the full span from the union of exons', () => 
     exonBasePairs: 5,
     exonMeanCs: 3,
     exonMeanSnp: 32.5,
+  });
+});
+
+test('padded query summaries retain exon metrics from the contained annotation', () => {
+  const result = {
+    chromosome: '2L',
+    start: 99,
+    end: 106,
+    values: {
+      Cs: Float64Array.from([0, 1, 2, 3, 4, 5, 6, 7]),
+      snp_density: Float64Array.from([0, 10, 20, 30, 40, 50, 60, 70]),
+      status: Uint8Array.from([1, 1, 1, 1, 1, 1, 1, 1]),
+    },
+  };
+  const annotation = {
+    chromosome: '2L',
+    start: 100,
+    end: 105,
+    exons: [{ start: 101, end: 102 }, { start: 104, end: 104 }],
+  };
+  assert.deepEqual(summarizeQuery(result, annotation), {
+    queryBasePairs: 8,
+    queryMeanCs: 3.5,
+    queryMeanSnp: 35,
+    exonBasePairs: 3,
+    exonMeanCs: 10 / 3,
+    exonMeanSnp: 100 / 3,
   });
 });
 

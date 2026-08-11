@@ -58,8 +58,8 @@
     return Boolean(
       annotation
       && String(annotation.chromosome) === String(result.chromosome)
-      && Number(annotation.start) === result.start
-      && Number(annotation.end) === result.end
+      && Number(annotation.start) >= result.start
+      && Number(annotation.end) <= result.end
     );
   }
 

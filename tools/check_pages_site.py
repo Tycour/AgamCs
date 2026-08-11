@@ -138,12 +138,14 @@ def validate_page(page: Path) -> list[str]:
             errors.append('index.html: early prototype status is not stated')
         required_ids = {
             'explorer', 'benchmark-form', 'live-accession', 'example-select',
+            'accession-padding',
             'accession-query-panel', 'isoform-control', 'isoform-select',
             'isoform-help', 'coordinate-query-panel',
             'results-portal', 'resolved-accession', 'summary-count',
             'resolved-gene-id',
             'summary-exons-card', 'summary-cs-exons', 'summary-snp-exons',
             'summary-exon-count', 'summary-method-note',
+            'live-signal-download', 'live-heatmap-download',
         }
         if missing_ids := required_ids - checker.ids:
             errors.append(f'index.html: missing live-query controls: {sorted(missing_ids)}')

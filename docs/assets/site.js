@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-11-topology1';
+const PAGES_RELEASE = '2026-08-11-padding-download1';
 
 function versionedAsset(path) {
   const separator = path.includes('?') ? '&' : '?';
@@ -37,6 +37,8 @@ const querySummary = document.querySelector('#query-summary');
 const liveVisuals = document.querySelector('#live-visuals');
 const liveSignalPlot = document.querySelector('#live-signal-plot');
 const liveHeatmapPlot = document.querySelector('#live-heatmap-plot');
+const liveSignalDownload = document.querySelector('#live-signal-download');
+const liveHeatmapDownload = document.querySelector('#live-heatmap-download');
 const liveAnnotationNote = document.querySelector('#live-annotation-note');
 const accessionQueryPanel = document.querySelector('#accession-query-panel');
 const coordinateQueryPanel = document.querySelector('#coordinate-query-panel');
@@ -59,6 +61,32 @@ let benchmarkDownloadUrl;
 let queryManifestPromise;
 let accessionIndexPromise;
 let accessionIndexSnapshot;
+const figureDownloadUrls = new Map();
+
+function clearFigureDownloads() {
+  figureDownloadUrls.forEach((url) => URL.revokeObjectURL(url));
+  figureDownloadUrls.clear();
+  [liveSignalDownload, liveHeatmapDownload].forEach((link) => {
+    link.hidden = true;
+    link.removeAttribute('href');
+    link.removeAttribute('download');
+  });
+}
+
+function configureFigureDownload(link, container, filename) {
+  const svg = container.querySelector('svg');
+  if (!svg) return;
+  const standalone = svg.cloneNode(true);
+  standalone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  standalone.setAttribute('font-family', 'Inter, ui-sans-serif, system-ui, sans-serif');
+  standalone.setAttribute('style', 'background: #fff');
+  const source = `<?xml version="1.0" encoding="UTF-8"?>\n${new XMLSerializer().serializeToString(standalone)}\n`;
+  const url = URL.createObjectURL(new Blob([source], { type: 'image/svg+xml;charset=utf-8' }));
+  figureDownloadUrls.set(link, url);
+  link.href = url;
+  link.download = filename;
+  link.hidden = false;
+}
 
 async function loadValidation() {
   const response = await fetch(versionedAsset('assets/data/query-validation.json'));
@@ -157,6 +185,7 @@ function setLiveQueryMode(mode) {
   accessionQueryPanel.hidden = !byAccession;
   coordinateQueryPanel.hidden = byAccession;
   benchmarkDownload.hidden = true;
+  clearFigureDownloads();
   querySummary.hidden = true;
   liveVisuals.hidden = true;
   resolvedAccession.hidden = true;
@@ -278,6 +307,7 @@ function displayNumber(value) {
 
 function renderQuerySummary(
   result, annotation = null, annotationScope = 'gene', transcriptAnnotations = [],
+  paddingDetails = null,
 ) {
   const summary = globalThis.AgamCsPlots.summarizeQuery(result, annotation);
   const hasExonSummary = summary.exonBasePairs != null;
@@ -285,8 +315,11 @@ function renderQuerySummary(
   const multiTranscriptGene = hasExonSummary
     && annotationScope === 'gene'
     && transcriptAnnotations.length > 1;
+  const hasPadding = Number(paddingDetails?.requestedPadding) > 0;
   const queryScope = hasExonSummary
-    ? (transcriptScope ? 'Entire transcript span' : 'Entire gene span')
+    ? (hasPadding
+      ? `Padded ${transcriptScope ? 'transcript' : 'gene'} interval`
+      : (transcriptScope ? 'Entire transcript span' : 'Entire gene span'))
     : 'Queried interval';
   document.querySelector('#summary-count').textContent = summary.queryBasePairs.toLocaleString();
   document.querySelector('#summary-cs').textContent = displayNumber(summary.queryMeanCs);
@@ -302,11 +335,17 @@ function renderQuerySummary(
     document.querySelector('#summary-exon-count').textContent = summary.exonBasePairs.toLocaleString();
     document.querySelector('#summary-cs-exons').textContent = displayNumber(summary.exonMeanCs);
     document.querySelector('#summary-snp-exons').textContent = displayNumber(summary.exonMeanSnp);
-    const spanLabel = transcriptScope ? 'Transcript-span' : 'Gene-span';
+    const spanLabel = hasPadding
+      ? `Padded ${transcriptScope ? 'transcript' : 'gene'}-interval`
+      : (transcriptScope ? 'Transcript-span' : 'Gene-span');
+    const spanContents = hasPadding ? 'flanks, exons, and introns' : 'exons and introns';
+    const paddingNote = hasPadding
+      ? ` Requested padding was ${paddingDetails.requestedPadding.toLocaleString()} bp per side; chromosome-boundary clipping applied ${paddingDetails.leftPadding.toLocaleString()} bp on the lower-coordinate side and ${paddingDetails.rightPadding.toLocaleString()} bp on the higher-coordinate side.`
+      : '';
     const exonDefinition = multiTranscriptGene
       ? `Exon means use the ${summary.exonBasePairs.toLocaleString()} unique bp in the union of ${annotation.transcript_id} exons; other isoforms shown in the plots are not combined into this metric.`
       : `Exon means use the ${summary.exonBasePairs.toLocaleString()} unique bp in the union of annotated exons.`;
-    document.querySelector('#summary-method-note').textContent = `${spanLabel} means use all ${summary.queryBasePairs.toLocaleString()} queried bp (exons and introns). ${exonDefinition} SNP means include only QC-accessible bases within each scope; QC-failed bases remain unknown. Exon SNP averages the archived density values assigned to exonic bases; it does not recalculate their 20 bp windows.`;
+    document.querySelector('#summary-method-note').textContent = `${spanLabel} means use all ${summary.queryBasePairs.toLocaleString()} queried bp (${spanContents}).${paddingNote} ${exonDefinition} SNP means include only QC-accessible bases within each scope; QC-failed bases remain unknown. Exon SNP averages the archived density values assigned to exonic bases; it does not recalculate their 20 bp windows.`;
   } else {
     document.querySelector('#summary-method-note').textContent = `Means use all ${summary.queryBasePairs.toLocaleString()} queried bp. The SNP mean includes only QC-accessible bases; QC-failed bases remain unknown. Exon means require a gene annotation from the versioned index.`;
   }
@@ -327,11 +366,17 @@ function transcriptAnnotationsForResolution(index, resolution, annotation) {
   ));
 }
 
-function renderResolvedAccession(resolution, index) {
+function renderResolvedAccession(resolution, index, paddingDetails) {
   const annotation = resolution.annotation;
   document.querySelector('#resolved-accession-id').textContent = resolution.accession;
   document.querySelector('#resolved-gene-id').textContent = resolution.geneAccession;
   document.querySelector('#resolved-transcript').textContent = annotation.transcript_id;
+  const requestedPadding = paddingDetails?.requestedPadding || 0;
+  document.querySelector('#resolved-padding').textContent = requestedPadding > 0
+    && (paddingDetails.leftPadding !== requestedPadding
+      || paddingDetails.rightPadding !== requestedPadding)
+    ? `${requestedPadding.toLocaleString()} bp/side requested; ${paddingDetails.leftPadding.toLocaleString()} lower + ${paddingDetails.rightPadding.toLocaleString()} higher applied`
+    : `${requestedPadding.toLocaleString()} bp per side`;
   document.querySelector('#resolved-strand').textContent = Number(annotation.strand) === -1 ? '− (minus)' : '+ (plus)';
   document.querySelector('#resolved-annotation').textContent = `${index.annotation.gene_build} (${index.annotation.released})`;
   document.querySelector('#resolved-index-version').textContent = index.index_version;
@@ -421,7 +466,9 @@ benchmarkForm.addEventListener('submit', async (event) => {
   let end;
   let accessionIndex = null;
   let resolution = null;
+  let paddingDetails = null;
   benchmarkDownload.hidden = true;
+  clearFigureDownloads();
   querySummary.hidden = true;
   liveVisuals.hidden = true;
   resolvedAccession.hidden = true;
@@ -452,22 +499,34 @@ benchmarkForm.addEventListener('submit', async (event) => {
     return;
   }
   try {
-    ({ chromosome, start, end } = globalThis.AgamCsQueryContract.validateCoordinates(
-      manifest, chromosome, start, end,
-    ));
+    if (resolution) {
+      paddingDetails = globalThis.AgamCsQueryContract.padCoordinates(
+        manifest, chromosome, start, end, form.get('accession-padding'),
+      );
+      ({ chromosome, start, end } = paddingDetails);
+    } else {
+      ({ chromosome, start, end } = globalThis.AgamCsQueryContract.validateCoordinates(
+        manifest, chromosome, start, end,
+      ));
+    }
   } catch (error) {
     const subject = resolution && error.code === 'maximum-length'
-      ? `${resolution.accession} spans ${(end - start + 1).toLocaleString()} bases. `
+      ? `${resolution.accession} with the requested padding exceeds the browser interval limit. `
       : '';
     const guidance = error.code === 'maximum-length' && resolution
-      ? ' Use manual coordinates for a smaller interval.'
+      ? ' Reduce the padding or use manual coordinates for a smaller interval.'
       : '';
     setPortalState('Query not run', 'Check input', 'error');
     benchmarkStatus.textContent = `${subject}${error.message}${guidance}`;
     return;
   }
 
-  const querySubject = resolution ? `${resolution.accession} (${chromosome}:${start}-${end})` : `${chromosome}:${start}-${end}`;
+  const paddingSubject = paddingDetails?.requestedPadding
+    ? `; ${paddingDetails.requestedPadding.toLocaleString()} bp padding per side`
+    : '';
+  const querySubject = resolution
+    ? `${resolution.accession} (${chromosome}:${start}-${end}${paddingSubject})`
+    : `${chromosome}:${start}-${end}`;
   setPortalState(resolution?.accession || `${chromosome}:${start}-${end}`, 'Loading', 'loading');
   benchmarkStatus.textContent = `Reading ${querySubject} from Zenodo and the QC companion…`;
   benchmarkSubmit.disabled = true;
@@ -515,9 +574,20 @@ benchmarkForm.addEventListener('submit', async (event) => {
       annotation,
       resolution?.matchedAs === 'transcript' ? 'transcript' : 'gene',
       transcriptAnnotations,
+      paddingDetails,
     );
-    if (resolution) renderResolvedAccession(resolution, accessionIndex);
+    if (resolution) renderResolvedAccession(resolution, accessionIndex, paddingDetails);
     renderLivePlots(result, annotation, annotationAccession, transcriptAnnotations);
+
+    const figureStem = resolution
+      ? `AgamCs_${resolution.accession}_${chromosome}_${start}-${end}`
+      : `AgamCs_${chromosome}_${start}-${end}`;
+    configureFigureDownload(
+      liveSignalDownload, liveSignalPlot, `${figureStem}_cs-snp-qc.svg`,
+    );
+    configureFigureDownload(
+      liveHeatmapDownload, liveHeatmapPlot, `${figureStem}_species-heatmap.svg`,
+    );
 
     if (benchmarkDownloadUrl) URL.revokeObjectURL(benchmarkDownloadUrl);
     benchmarkDownloadUrl = URL.createObjectURL(new Blob([buildTsv(result)], { type: 'text/tab-separated-values' }));

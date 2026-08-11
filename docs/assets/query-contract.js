@@ -41,5 +41,26 @@
     return { chromosome, start, end, length };
   }
 
-  return { QueryValidationError, validateCoordinates };
+  function padCoordinates(manifest, chromosomeValue, startValue, endValue, paddingValue) {
+    const coordinates = validateCoordinates(manifest, chromosomeValue, startValue, endValue);
+    const requestedPadding = Number(paddingValue);
+    if (!Number.isSafeInteger(requestedPadding) || requestedPadding < 0) {
+      throw new QueryValidationError(
+        'padding',
+        'Padding must be a non-negative whole number of bases per side.',
+      );
+    }
+    const chromosomeLength = Number(manifest.chromosomes[coordinates.chromosome].length);
+    const start = Math.max(1, coordinates.start - requestedPadding);
+    const end = Math.min(chromosomeLength, coordinates.end + requestedPadding);
+    const padded = validateCoordinates(manifest, coordinates.chromosome, start, end);
+    return {
+      ...padded,
+      requestedPadding,
+      leftPadding: coordinates.start - padded.start,
+      rightPadding: padded.end - coordinates.end,
+    };
+  }
+
+  return { QueryValidationError, padCoordinates, validateCoordinates };
 }));

@@ -14,11 +14,11 @@
   <title>AgamCs conservation explorer</title>
   <link rel="canonical" href="https://tycour.github.io/AgamCs/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/site.css?v=2026-08-11-topology1">
-  <script src="assets/live-plots.js?v=2026-08-11-topology1" defer></script>
-  <script src="assets/accession-lookup.js?v=2026-08-11-topology1" defer></script>
-  <script src="assets/query-contract.js?v=2026-08-11-topology1" defer></script>
-  <script src="assets/site.js?v=2026-08-11-topology1" defer></script>
+  <link rel="stylesheet" href="assets/site.css?v=2026-08-11-padding-download1">
+  <script src="assets/live-plots.js?v=2026-08-11-padding-download1" defer></script>
+  <script src="assets/accession-lookup.js?v=2026-08-11-padding-download1" defer></script>
+  <script src="assets/query-contract.js?v=2026-08-11-padding-download1" defer></script>
+  <script src="assets/site.js?v=2026-08-11-padding-download1" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -76,6 +76,11 @@
           <input id="live-accession" name="live-accession" list="live-accession-list" value="AGAP006241" autocomplete="off" spellcheck="false">
           <datalist id="live-accession-list"></datalist>
           <p class="field-help" id="accession-index-help">Loading the versioned AgamP4.14 gene index…</p>
+          <div class="padding-control">
+            <label for="accession-padding">Padding per side (bp)</label>
+            <input id="accession-padding" name="accession-padding" type="number" min="0" step="1" value="0" inputmode="numeric" required>
+            <p class="field-help">Applied only to accession queries and clipped at chromosome boundaries. The padded interval must remain within the 20,000-base query limit.</p>
+          </div>
           <div class="isoform-control" id="isoform-control" hidden>
             <label for="isoform-select">Transcript isoform</label>
             <select id="isoform-select" name="isoform-select"></select>
@@ -122,6 +127,7 @@
           <div><dt>Query ID</dt><dd id="resolved-accession-id">—</dd></div>
           <div><dt>Gene</dt><dd id="resolved-gene-id">—</dd></div>
           <div><dt>Transcript</dt><dd id="resolved-transcript">—</dd></div>
+          <div><dt>Padding</dt><dd id="resolved-padding">—</dd></div>
           <div><dt>Strand</dt><dd id="resolved-strand">—</dd></div>
           <div><dt>Annotation</dt><dd id="resolved-annotation">—</dd></div>
           <div><dt>Index</dt><dd id="resolved-index-version">—</dd></div>
@@ -171,9 +177,11 @@
         </div>
         <div class="live-plot-panel" id="live-signals-panel" role="tabpanel" aria-labelledby="live-signals-tab">
           <div class="live-plot" id="live-signal-plot"></div>
+          <a class="download-link figure-download" id="live-signal-download" hidden download>Download Cs + SNP/QC figure (SVG)</a>
         </div>
         <div class="live-plot-panel" id="live-heatmap-panel" role="tabpanel" aria-labelledby="live-heatmap-tab" hidden>
           <div class="live-plot" id="live-heatmap-plot"></div>
+          <a class="download-link figure-download" id="live-heatmap-download" hidden download>Download species heatmap (SVG)</a>
         </div>
         <p class="plot-method-note" id="plot-method-note">Plots use display-only bins. Hover for query values; the TSV retains every exact base and every species row.</p>
       </div>

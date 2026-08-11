@@ -110,7 +110,8 @@ input { width: 100%; height: 44px; padding: 0 12px; color: var(--ink); border: 1
 .accession-query-panel { max-width: 560px; }
 .accession-query-panel label { display: block; margin-bottom: 6px; }
 .accession-query-panel .field-help { margin-bottom: 0; }
-.isoform-control { margin-top: 16px; }
+.padding-control, .isoform-control { margin-top: 16px; }
+.padding-control .field-help,
 .isoform-control .field-help { margin-top: 7px; }
 .example-shortcut { margin-top: 24px; padding-top: 22px; border-top: 1px solid #ccd5d0; }
 .example-shortcut .field-help { margin-top: 7px; }
@@ -166,6 +167,7 @@ input { width: 100%; height: 44px; padding: 0 12px; color: var(--ink); border: 1
 }
 .live-tooltip strong { margin-bottom: 2px; font-size: 12px; }
 .plot-method-note { margin: 13px 0 0; color: var(--muted); font-size: 12px; }
+.figure-download { margin-top: 11px; }
 .interpretation { padding: 110px 0 90px; }
 .interpretation > div:first-child { max-width: 640px; }
 .explain-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 42px; }
