@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-04-rc10';
+const PAGES_RELEASE = '2026-08-11-wide-plots';
 
 function versionedAsset(path) {
   const separator = path.includes('?') ? '&' : '?';
