@@ -1,5 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const manifest = require('../docs/assets/data/query-manifest.json');
 
 require('../docs/assets/live-plots.js');
 
@@ -8,7 +9,38 @@ const {
   summarizeQuery,
   transcriptModelGeometry,
   transcriptAnnotationsForDisplay,
+  abbreviatedSpeciesName,
+  topologyTipCodes,
+  validateSpeciesTopology,
 } = globalThis.AgamCsPlots;
+
+test('species labels use established genus abbreviations', () => {
+  assert.equal(abbreviatedSpeciesName('Anopheles coluzzii'), 'An. coluzzii');
+  assert.equal(abbreviatedSpeciesName('Aedes aegypti '), 'Ae. aegypti');
+  assert.equal(abbreviatedSpeciesName('Culex quinquefasciatus'), 'Cx. quinquefasciatus');
+  assert.equal(abbreviatedSpeciesName('Drosophila melanogaster'), 'D. melanogaster');
+});
+
+test('browser topology contains every metadata genome code exactly once', () => {
+  const tips = topologyTipCodes(manifest.stack.topology.tree);
+
+  assert.deepEqual(tips, manifest.stack.rows);
+  assert.equal(new Set(tips).size, tips.length);
+  assert.equal(
+    validateSpeciesTopology(manifest.stack.topology, manifest.stack.rows),
+    manifest.stack.topology.tree,
+  );
+});
+
+test('browser rejects topology drift from the metadata row order', () => {
+  assert.throws(
+    () => validateSpeciesTopology(
+      manifest.stack.topology,
+      [...manifest.stack.rows].reverse(),
+    ),
+    /does not match the metadata genome-code order/,
+  );
+});
 
 test('CDS segments intersect exon bounds in plus-strand plot coordinates', () => {
   const annotation = {

@@ -101,11 +101,19 @@ dark-blue blocks and dashed guides mark CDS segments. Species-label colours
 progress from the *A. gambiae* complex through other *Anopheles* to the
 outgroups; these are broad visual groups, not numeric distance bins.
 
-The tree is a compact, unscaled cladogram. It shows broad branching and group
-membership only: horizontal branch lengths are arbitrary and must not be read
-as evolutionary time or substitutions per site. The four label colours are:
-dark purple = *gambiae* complex; purple = other *Anopheles*; pink = New World
-*Anopheles*; orange = outgroups.
+The tree is a compact, unscaled, evidence-bounded cladogram loaded from the
+shared genome-code topology in `AgamCs/data/species_topology.json`. It retains
+only cited broad relationships and uses polytomies wherever the conservation
+archive does not provide an authoritative split. In particular, heatmap row
+order is not used to resolve the introgressed *gambiae* complex. Horizontal
+branch lengths are arbitrary and must not be read as evolutionary time or
+substitutions per site. The broad topology follows the molecular context in
+[Neafsey et al.](https://doi.org/10.1126/science.1258522), while the conservative
+handling of the *gambiae* complex reflects the introgression demonstrated by
+[Fontaine et al.](https://doi.org/10.1126/science.1258524). The four label
+colours remain visual groups rather than clades or distance bins: dark purple =
+*gambiae* complex; purple = other *Anopheles*; pink = New World *Anopheles*;
+orange = outgroups.
 
 Method details are available in the
 [original paper](https://doi.org/10.3390/insects12020097) and the

@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-04-rc10';
+const PAGES_RELEASE = '2026-08-11-topology1';
 
 function versionedAsset(path) {
   const separator = path.includes('?') ? '&' : '?';
@@ -479,6 +479,7 @@ benchmarkForm.addEventListener('submit', async (event) => {
       cataloguePromise,
     ]);
     const pinned = resolution ? null : findPinnedAnnotation(chromosome, start, end);
+    result.stackTopology = manifest.stack.topology;
     const annotation = resolution?.annotation || pinned?.annotation || null;
     const annotationAccession = resolution?.accession || pinned?.accession || null;
     const transcriptAnnotations = transcriptAnnotationsForResolution(

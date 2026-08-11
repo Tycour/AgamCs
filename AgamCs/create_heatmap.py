@@ -7,6 +7,12 @@ from matplotlib.ticker import MaxNLocator, FuncFormatter
 from matplotlib.font_manager import FontProperties
 from matplotlib.patches import Patch, Rectangle
 
+from AgamCs.species_topology import (
+    SPECIES_TOPOLOGY,
+    SPECIES_TREE,
+    validate_species_topology,
+)
+
 
 INACCESSIBLE_COLOR = '#969696'
 NO_CNE_INTERVAL_COLOR = '#2f2f2f'
@@ -22,26 +28,26 @@ INTRON_COLOR = '#4d4d4d'
 # ratios in the released HDF5. Keep each code, display label, and factor coupled
 # so TSV column order cannot silently attach metadata to the wrong heatmap row.
 _SPECIES_METADATA = (
-    ('AcolM1', 'A. coluzzii', 0.05762710),
-    ('AaraD1', 'A. arabiensis', 0.06529441),
-    ('AquaS1', 'A. quadriannulatus', 0.07335419),
-    ('AmelC2', 'A. melas', 0.08462369),
-    ('AmerM2', 'A. merus', 0.08553242),
-    ('AchrA1', 'A. christyi', 0.37320513),
-    ('AsinC2', 'A. sinensis', 0.50000000),
-    ('AepiE1', 'A. epiroticus', 0.50000000),
-    ('AminM1', 'A. minimus', 0.51938444),
-    ('AmacM1', 'A. maculatus', 0.54403692),
-    ('AculA1', 'A. culicifacies', 0.56968802),
-    ('AsteI2', 'A. stephensi', 0.58201295),
-    ('AfunF1', 'A. funestus', 0.61755806),
-    ('AatrE3', 'A. atroparvus', 0.66815686),
-    ('AdirW1', 'A. dirus', 0.68838775),
-    ('AfarF2', 'A. farauti', 0.68981272),
-    ('AdarC3', 'A. darlingi', 0.69153583),
-    ('AalbS2', 'A. albimanus', 0.69723785),
+    ('AcolM1', 'An. coluzzii', 0.05762710),
+    ('AaraD1', 'An. arabiensis', 0.06529441),
+    ('AquaS1', 'An. quadriannulatus', 0.07335419),
+    ('AmelC2', 'An. melas', 0.08462369),
+    ('AmerM2', 'An. merus', 0.08553242),
+    ('AchrA1', 'An. christyi', 0.37320513),
+    ('AsinC2', 'An. sinensis', 0.50000000),
+    ('AepiE1', 'An. epiroticus', 0.50000000),
+    ('AminM1', 'An. minimus', 0.51938444),
+    ('AmacM1', 'An. maculatus', 0.54403692),
+    ('AculA1', 'An. culicifacies', 0.56968802),
+    ('AsteI2', 'An. stephensi', 0.58201295),
+    ('AfunF1', 'An. funestus', 0.61755806),
+    ('AatrE3', 'An. atroparvus', 0.66815686),
+    ('AdirW1', 'An. dirus', 0.68838775),
+    ('AfarF2', 'An. farauti', 0.68981272),
+    ('AdarC3', 'An. darlingi', 0.69153583),
+    ('AalbS2', 'An. albimanus', 0.69723785),
     ('AaegL5', 'Ae. aegypti', 0.71218956),
-    ('CpipJ2', 'C. quinquefasciatus', 0.68016356),
+    ('CpipJ2', 'Cx. quinquefasciatus', 0.68016356),
     ('DmelP6', 'D. melanogaster', 0.80923682),
 )
 SPECIES = _SPECIES_METADATA
@@ -62,19 +68,10 @@ OTHER_OLD_WORLD_CODES = (
 NEW_WORLD_CODES = ('AdarC3', 'AalbS2')
 OUTGROUP_CODES = ('AaegL5', 'CpipJ2', 'DmelP6')
 
-# The taxon order and topology follow the whole-genome alignment described in
-# https://doi.org/10.3390/insects12020097, on which this resource is based.
-# The fitted Newick tree is not distributed with the score dataset, so this is
-# deliberately a compact, unresolved cladogram of the broad groups rather than
-# a reconstruction with invented internal branch lengths.
-SPECIES_TREE = (
-    (
-        tuple(SPECIES_LABELS[0:5]),
-        tuple(SPECIES_LABELS[5:16]),
-        tuple(SPECIES_LABELS[16:18]),
-    ),
-    ((SPECIES_LABELS[18], SPECIES_LABELS[19]), SPECIES_LABELS[20]),
-)
+# The archive has no fitted Newick tree. The shared package-data topology keeps
+# only cited broad relationships and deliberately leaves unsupported splits as
+# polytomies. Genome codes, rather than labels or row numbers, anchor every tip.
+validate_species_topology(SPECIES_TOPOLOGY, SPECIES_GENOME_CODES)
 
 CLADE_STYLES = (
     ('gambiae complex', GAMBIAE_COMPLEX_CODES, '#3f007d', '#eee5f7'),
@@ -88,21 +85,25 @@ CLADE_STYLES = (
     ),
 )
 
-def _draw_species_tree(ax, tree=SPECIES_TREE, labels=SPECIES_LABELS):
+def _draw_species_tree(
+    ax, tree=SPECIES_TREE, genome_codes=SPECIES_GENOME_CODES,
+):
     """Draw a compact, unscaled cladogram aligned with heatmap rows."""
-    y_positions = {label: index + 0.5 for index, label in enumerate(labels)}
+    y_positions = {
+        code: index + 0.5 for index, code in enumerate(genome_codes)
+    }
 
     def depth(node):
         if isinstance(node, str):
             return 0
-        return 1 + max(depth(child) for child in node)
+        return 1 + max(depth(child) for child in node['children'])
 
     maximum_depth = depth(tree)
 
     def draw(node):
         if isinstance(node, str):
             return maximum_depth, y_positions[node]
-        children = [draw(child) for child in node]
+        children = [draw(child) for child in node['children']]
         x = maximum_depth - depth(node)
         child_ys = [child[1] for child in children]
         ax.plot([x, x], [min(child_ys), max(child_ys)], color='#4d4d4d', lw=0.8)
@@ -112,7 +113,7 @@ def _draw_species_tree(ax, tree=SPECIES_TREE, labels=SPECIES_LABELS):
 
     draw(tree)
     ax.set_xlim(-0.25, maximum_depth + 0.15)
-    ax.set_ylim(len(labels), 0)
+    ax.set_ylim(len(genome_codes), 0)
     ax.axis('off')
 
 
@@ -265,7 +266,7 @@ def create_heatmap(
     )
     grid = fig.add_gridspec(
         2 if gene_annotation else 1, 2,
-        width_ratios=(1.15, 8.85),
+        width_ratios=(0.9, 9.1),
         height_ratios=(5, 0.9) if gene_annotation else None,
         hspace=0.01,
     )
