@@ -139,6 +139,7 @@ def validate_page(page: Path) -> list[str]:
         required_ids = {
             'explorer', 'benchmark-form', 'live-accession', 'example-select',
             'accession-padding',
+            'padding-help',
             'accession-query-panel', 'isoform-control', 'isoform-select',
             'isoform-help', 'coordinate-query-panel',
             'results-portal', 'resolved-accession', 'summary-count',

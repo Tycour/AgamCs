@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-11-padding-download1';
+const PAGES_RELEASE = '2026-08-11-padding-feedback1';
 
 function versionedAsset(path) {
   const separator = path.includes('?') ? '&' : '?';
@@ -45,6 +45,7 @@ const coordinateQueryPanel = document.querySelector('#coordinate-query-panel');
 const liveAccession = document.querySelector('#live-accession');
 const liveAccessionList = document.querySelector('#live-accession-list');
 const accessionIndexHelp = document.querySelector('#accession-index-help');
+const paddingHelp = document.querySelector('#padding-help');
 const isoformControl = document.querySelector('#isoform-control');
 const isoformSelect = document.querySelector('#isoform-select');
 const isoformHelp = document.querySelector('#isoform-help');
@@ -61,6 +62,7 @@ let benchmarkDownloadUrl;
 let queryManifestPromise;
 let accessionIndexPromise;
 let accessionIndexSnapshot;
+let queryManifestSnapshot;
 const figureDownloadUrls = new Map();
 
 function clearFigureDownloads() {
@@ -127,6 +129,23 @@ function configureAccessionIndex(index) {
   const transcriptCount = Object.keys(index.transcripts).length;
   accessionIndexHelp.textContent = `${geneCount.toLocaleString()} genes · ${transcriptCount.toLocaleString()} transcripts · 2L, 2R, 3L, 3R, and X · ${index.annotation.gene_build} · ${index.index_version}.`;
   configureIsoformControl(liveAccession.value);
+  updatePaddingHelp();
+}
+
+function updatePaddingHelp() {
+  if (!accessionIndexSnapshot || !queryManifestSnapshot) return;
+  try {
+    const resolution = globalThis.AgamCsAccessions.resolve(
+      accessionIndexSnapshot, liveAccession.value,
+    );
+    const { chromosome, start, end } = resolution.annotation;
+    const maximum = globalThis.AgamCsQueryContract.maximumSymmetricPadding(
+      queryManifestSnapshot, chromosome, start, end,
+    );
+    paddingHelp.textContent = `For ${resolution.accession}, use 0–${maximum.toLocaleString()} bp per side to remain within the ${Number(queryManifestSnapshot.maximum_query_bases).toLocaleString()}-base browser limit. Padding is clipped at chromosome boundaries.`;
+  } catch (_error) {
+    paddingHelp.textContent = 'Enter a supported accession to calculate its allowable padding. The padded interval must remain within the 20,000-base browser limit.';
+  }
 }
 
 function configureIsoformControl(value) {
@@ -162,7 +181,10 @@ function configureIsoformControl(value) {
   isoformControl.hidden = false;
 }
 
-liveAccession.addEventListener('input', () => configureIsoformControl(liveAccession.value));
+liveAccession.addEventListener('input', () => {
+  configureIsoformControl(liveAccession.value);
+  updatePaddingHelp();
+});
 
 isoformSelect.addEventListener('change', () => {
   liveAccession.value = isoformSelect.value;
@@ -171,6 +193,7 @@ isoformSelect.addEventListener('change', () => {
   benchmarkStatus.textContent = geneRecord
     ? `${isoformSelect.value} gene default selected. The full gene span will use ${geneRecord.annotation.transcript_id} annotation.`
     : `${isoformSelect.value} selected. Run the live query to retrieve its exact transcript span.`;
+  updatePaddingHelp();
 });
 
 function setPortalState(title, status, tone = 'ready') {
@@ -228,6 +251,7 @@ exampleSelect.addEventListener('change', () => {
   setLiveQueryMode('accession');
   liveAccession.value = exampleSelect.value;
   configureIsoformControl(liveAccession.value);
+  updatePaddingHelp();
   setPortalState(`Ready to query ${exampleSelect.value}`, 'Ready');
   benchmarkStatus.textContent = `${exampleSelect.value} selected from the precomputed examples. Run the live query to retrieve its exact values.`;
 });
@@ -444,6 +468,7 @@ function validatePlotSummaries(result, fixture, annotation) {
 }
 
 function configureQueryMetadata(manifest) {
+  queryManifestSnapshot = manifest;
   document.querySelector('#query-assembly').textContent = manifest.assembly;
   document.querySelector('#query-coordinate-convention').textContent = manifest.coordinate_convention;
   document.querySelector('#query-arrays').textContent = manifest.arrays.join(', ');
@@ -451,6 +476,7 @@ function configureQueryMetadata(manifest) {
   const source = document.querySelector('#query-source');
   source.href = manifest.source.doi;
   source.textContent = manifest.source.filename;
+  updatePaddingHelp();
 }
 
 loadQueryManifest().then(configureQueryMetadata).catch((error) => {
@@ -467,11 +493,11 @@ benchmarkForm.addEventListener('submit', async (event) => {
   let accessionIndex = null;
   let resolution = null;
   let paddingDetails = null;
-  benchmarkDownload.hidden = true;
-  clearFigureDownloads();
-  querySummary.hidden = true;
-  liveVisuals.hidden = true;
-  resolvedAccession.hidden = true;
+  setPortalState('Preparing query', 'Loading', 'loading');
+  benchmarkStatus.textContent = mode === 'accession'
+    ? 'Resolving the accession from the versioned AgamP4.14 index…'
+    : 'Validating the requested coordinates…';
+  benchmarkSubmit.disabled = true;
 
   if (mode === 'accession') {
     try {
@@ -482,6 +508,7 @@ benchmarkForm.addEventListener('submit', async (event) => {
     } catch (error) {
       setPortalState('Query not run', 'Check input', 'error');
       benchmarkStatus.textContent = `Accession lookup stopped: ${error.message}`;
+      benchmarkSubmit.disabled = false;
       return;
     }
   } else {
@@ -496,6 +523,7 @@ benchmarkForm.addEventListener('submit', async (event) => {
   } catch (error) {
     setPortalState('Query unavailable', 'Unavailable', 'error');
     benchmarkStatus.textContent = `Live query unavailable: ${error.message}`;
+    benchmarkSubmit.disabled = false;
     return;
   }
   try {
@@ -513,11 +541,18 @@ benchmarkForm.addEventListener('submit', async (event) => {
     const subject = resolution && error.code === 'maximum-length'
       ? `${resolution.accession} with the requested padding exceeds the browser interval limit. `
       : '';
+    const maximumPadding = resolution && manifest
+      ? globalThis.AgamCsQueryContract.maximumSymmetricPadding(
+        manifest, resolution.annotation.chromosome,
+        resolution.annotation.start, resolution.annotation.end,
+      )
+      : null;
     const guidance = error.code === 'maximum-length' && resolution
-      ? ' Reduce the padding or use manual coordinates for a smaller interval.'
+      ? ` Use no more than ${maximumPadding.toLocaleString()} bp per side for this accession, or use manual coordinates for a smaller interval.`
       : '';
     setPortalState('Query not run', 'Check input', 'error');
     benchmarkStatus.textContent = `${subject}${error.message}${guidance}`;
+    benchmarkSubmit.disabled = false;
     return;
   }
 
@@ -529,7 +564,6 @@ benchmarkForm.addEventListener('submit', async (event) => {
     : `${chromosome}:${start}-${end}`;
   setPortalState(resolution?.accession || `${chromosome}:${start}-${end}`, 'Loading', 'loading');
   benchmarkStatus.textContent = `Reading ${querySubject} from Zenodo and the QC companion…`;
-  benchmarkSubmit.disabled = true;
   try {
     const [result, validation, plotValidation] = await Promise.all([
       workerQuery(chromosome, start, end),
@@ -561,6 +595,7 @@ benchmarkForm.addEventListener('submit', async (event) => {
       throw new Error('Plot validation failed; browser summaries do not match the Python plotting fixture.');
     }
 
+    clearFigureDownloads();
     setPortalState(resolution?.accession || `${chromosome}:${start}-${end}`, 'Complete');
     benchmarkStatus.textContent = hashesMatch && plotSummariesMatch
       ? 'Query complete; exact arrays and browser plot summaries match the Python fixtures.'
