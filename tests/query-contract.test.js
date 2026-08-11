@@ -82,3 +82,9 @@ test('rejects invalid padding and padded intervals over the query limit', () => 
     (error) => error.code === 'maximum-length',
   );
 });
+
+test('calculates maximum per-side padding within the interval limit', () => {
+  assert.equal(contract.maximumSymmetricPadding(manifest, '2L', 20_000, 20_100), 9_949);
+  assert.equal(contract.maximumSymmetricPadding(manifest, '2L', 1, 101), 19_899);
+  assert.equal(contract.maximumSymmetricPadding(manifest, '2L', 1, 20_000), 0);
+});

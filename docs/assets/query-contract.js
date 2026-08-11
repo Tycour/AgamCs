@@ -62,5 +62,24 @@
     };
   }
 
-  return { QueryValidationError, padCoordinates, validateCoordinates };
+  function maximumSymmetricPadding(manifest, chromosomeValue, startValue, endValue) {
+    const coordinates = validateCoordinates(manifest, chromosomeValue, startValue, endValue);
+    const chromosomeLength = Number(manifest.chromosomes[coordinates.chromosome].length);
+    const maximumLength = Number(manifest.maximum_query_bases);
+    let low = 0;
+    let high = maximumLength;
+    while (low < high) {
+      const candidate = Math.ceil((low + high) / 2);
+      const length = coordinates.length
+        + Math.min(candidate, coordinates.start - 1)
+        + Math.min(candidate, chromosomeLength - coordinates.end);
+      if (length <= maximumLength) low = candidate;
+      else high = candidate - 1;
+    }
+    return low;
+  }
+
+  return {
+    QueryValidationError, maximumSymmetricPadding, padCoordinates, validateCoordinates,
+  };
 }));
