@@ -27,6 +27,11 @@ from AgamCs.gene_regions import (
     annotation_from_gff,
     resolve_accession_details,
 )
+from AgamCs.species_topology import (
+    SPECIES_TOPOLOGY,
+    topology_tip_codes,
+    validate_species_topology,
+)
 
 
 def test_species_tree_tips_align_with_all_heatmap_rows():
@@ -44,6 +49,25 @@ def test_species_tree_tips_align_with_all_heatmap_rows():
     }
     assert axis.get_ylim() == (len(SPECIES_LABELS), 0)
     plt.close(fig)
+
+
+def test_species_topology_covers_every_genome_code_once_in_display_order():
+    tips = topology_tip_codes(SPECIES_TOPOLOGY['tree'])
+
+    assert tips == SPECIES_GENOME_CODES
+    assert len(tips) == len(set(tips))
+    assert validate_species_topology(
+        SPECIES_TOPOLOGY, SPECIES_GENOME_CODES,
+    ) is SPECIES_TOPOLOGY
+
+
+def test_gambiae_complex_is_an_intentional_polytomy():
+    anopheles = SPECIES_TOPOLOGY['tree']['children'][0]['children'][0]
+    gambiae_complex = anopheles['children'][0]
+
+    assert gambiae_complex['name'] == 'gambiae complex'
+    assert gambiae_complex['children'] == SPECIES_GENOME_CODES[:5]
+    assert all(isinstance(child, str) for child in gambiae_complex['children'])
 
 
 def test_sequence_identity_rows_follow_genome_codes_not_tsv_column_order():

@@ -14,6 +14,7 @@ import pandas as pd
 from kerchunk.hdf import SingleHdf5ToZarr
 
 from AgamCs.plot_signal_summary import _bin_signal, _bin_snp_signal
+from AgamCs.species_topology import SPECIES_TOPOLOGY
 
 
 CHROMOSOMES = ('2L', '2R', '3L', '3R', 'X')
@@ -276,6 +277,7 @@ def query_manifest(reference: dict, qc_reference: dict) -> dict:
             'species': stack_attributes['species'],
             'units': 'Identity (%)',
             'zero_semantics': 'No detected CNEr interval; not measured 0% identity.',
+            'topology': SPECIES_TOPOLOGY,
         },
         'accessibility': {
             'available': True,

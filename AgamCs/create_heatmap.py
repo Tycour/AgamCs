@@ -7,6 +7,12 @@ from matplotlib.ticker import MaxNLocator, FuncFormatter
 from matplotlib.font_manager import FontProperties
 from matplotlib.patches import Patch, Rectangle
 
+from AgamCs.species_topology import (
+    SPECIES_TOPOLOGY,
+    SPECIES_TREE,
+    validate_species_topology,
+)
+
 
 INACCESSIBLE_COLOR = '#969696'
 NO_CNE_INTERVAL_COLOR = '#2f2f2f'
@@ -62,29 +68,10 @@ OTHER_OLD_WORLD_CODES = (
 NEW_WORLD_CODES = ('AdarC3', 'AalbS2')
 OUTGROUP_CODES = ('AaegL5', 'CpipJ2', 'DmelP6')
 
-# The taxon order and topology follow the whole-genome alignment described in
-# https://doi.org/10.3390/insects12020097, on which this resource is based.
-# The fitted Newick tree is not distributed with the score dataset, so this is
-# a compact, representative cladogram rather than a reconstruction with fitted
-# branch lengths. Its nested splits restore taxonomic orientation without
-# implying that horizontal distance is evolutionary distance.
-SPECIES_TREE = (
-    (
-        ((SPECIES_LABELS[0], SPECIES_LABELS[1]),
-         (SPECIES_LABELS[2], (SPECIES_LABELS[3], SPECIES_LABELS[4]))),
-        (SPECIES_LABELS[5],
-         (SPECIES_LABELS[6],
-          ((SPECIES_LABELS[7],
-            (SPECIES_LABELS[8],
-             (SPECIES_LABELS[9], SPECIES_LABELS[10]))),
-           (SPECIES_LABELS[11],
-            (SPECIES_LABELS[12],
-             (SPECIES_LABELS[13],
-              (SPECIES_LABELS[14], SPECIES_LABELS[15]))))))),
-        (SPECIES_LABELS[16], SPECIES_LABELS[17]),
-    ),
-    ((SPECIES_LABELS[18], SPECIES_LABELS[19]), SPECIES_LABELS[20]),
-)
+# The archive has no fitted Newick tree. The shared package-data topology keeps
+# only cited broad relationships and deliberately leaves unsupported splits as
+# polytomies. Genome codes, rather than labels or row numbers, anchor every tip.
+validate_species_topology(SPECIES_TOPOLOGY, SPECIES_GENOME_CODES)
 
 CLADE_STYLES = (
     ('gambiae complex', GAMBIAE_COMPLEX_CODES, '#3f007d', '#eee5f7'),
@@ -98,21 +85,25 @@ CLADE_STYLES = (
     ),
 )
 
-def _draw_species_tree(ax, tree=SPECIES_TREE, labels=SPECIES_LABELS):
+def _draw_species_tree(
+    ax, tree=SPECIES_TREE, genome_codes=SPECIES_GENOME_CODES,
+):
     """Draw a compact, unscaled cladogram aligned with heatmap rows."""
-    y_positions = {label: index + 0.5 for index, label in enumerate(labels)}
+    y_positions = {
+        code: index + 0.5 for index, code in enumerate(genome_codes)
+    }
 
     def depth(node):
         if isinstance(node, str):
             return 0
-        return 1 + max(depth(child) for child in node)
+        return 1 + max(depth(child) for child in node['children'])
 
     maximum_depth = depth(tree)
 
     def draw(node):
         if isinstance(node, str):
             return maximum_depth, y_positions[node]
-        children = [draw(child) for child in node]
+        children = [draw(child) for child in node['children']]
         x = maximum_depth - depth(node)
         child_ys = [child[1] for child in children]
         ax.plot([x, x], [min(child_ys), max(child_ys)], color='#4d4d4d', lw=0.8)
@@ -122,7 +113,7 @@ def _draw_species_tree(ax, tree=SPECIES_TREE, labels=SPECIES_LABELS):
 
     draw(tree)
     ax.set_xlim(-0.25, maximum_depth + 0.15)
-    ax.set_ylim(len(labels), 0)
+    ax.set_ylim(len(genome_codes), 0)
     ax.axis('off')
 
 

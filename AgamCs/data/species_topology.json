@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "title": "Evidence-bounded cladogram",
+  "representation": "Broad clades with intentional polytomies; branch lengths are not evolutionary distances.",
+  "sources": [
+    {
+      "doi": "https://doi.org/10.1126/science.1258522",
+      "supports": "Broad molecular relationships among anophelines, culicine mosquitoes, and Drosophila."
+    },
+    {
+      "doi": "https://doi.org/10.1126/science.1258524",
+      "supports": "Whole-genome consensus relationships within the gambiae complex can be distorted by extensive introgression, so row order is not used to resolve its species tree."
+    },
+    {
+      "doi": "https://doi.org/10.3390/insects12020097",
+      "supports": "The conservation analysis taxon set and genome-code identifiers."
+    }
+  ],
+  "tree": {
+    "name": "Diptera",
+    "children": [
+      {
+        "name": "Culicidae",
+        "children": [
+          {
+            "name": "Anopheles",
+            "children": [
+              {
+                "name": "gambiae complex",
+                "children": [
+                  "AcolM1",
+                  "AaraD1",
+                  "AquaS1",
+                  "AmelC2",
+                  "AmerM2"
+                ]
+              },
+              "AchrA1",
+              "AsinC2",
+              "AepiE1",
+              "AminM1",
+              "AmacM1",
+              "AculA1",
+              "AsteI2",
+              "AfunF1",
+              "AatrE3",
+              "AdirW1",
+              "AfarF2",
+              {
+                "name": "Nyssorhynchus",
+                "children": [
+                  "AdarC3",
+                  "AalbS2"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "Culicinae",
+            "children": [
+              "AaegL5",
+              "CpipJ2"
+            ]
+          }
+        ]
+      },
+      "DmelP6"
+    ]
+  }
+}

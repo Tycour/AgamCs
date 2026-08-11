@@ -18,16 +18,6 @@
   const CLADE_COLORS = ['#3f007d', '#8c2981', '#cc4678', '#d95f0e'];
   const CLADE_NAMES = ['gambiae complex', 'Other Anopheles', 'New World', 'Outgroups'];
   const CLADE_RANGES = [[0, 4], [5, 15], [16, 17], [18, 20]];
-  // Representative nested splits only: horizontal distance is not scaled
-  // evolutionary distance, and the released score archive has no Newick tree.
-  const SPECIES_TREE = [
-    [
-      [[0, 1], [2, [3, 4]]],
-      [5, [6, [[7, [8, [9, 10]]], [11, [12, [13, [14, 15]]]]]]],
-      [16, 17],
-    ],
-    [[18, 19], 20],
-  ];
   const GENUS_ABBREVIATIONS = new Map([
     ['Anopheles', 'An.'],
     ['Aedes', 'Ae.'],
@@ -711,16 +701,45 @@
       : name.trim();
   }
 
-  function drawCladogram(svg, rowTop, rowHeight) {
-    const maximumDepth = 7;
+  function topologyTipCodes(node) {
+    if (typeof node === 'string') return [node];
+    if (!node || !Array.isArray(node.children)) {
+      throw new Error('Species topology nodes must be genome codes or child-bearing objects.');
+    }
+    return node.children.flatMap(topologyTipCodes);
+  }
+
+  function validateSpeciesTopology(topology, stackRows) {
+    if (topology?.schema_version !== 1 || !topology.tree) {
+      throw new Error('The species topology is missing or uses an unsupported schema.');
+    }
+    const tips = topologyTipCodes(topology.tree);
+    const duplicates = tips.filter((code, index) => tips.indexOf(code) !== index);
+    if (duplicates.length) {
+      throw new Error(`The species topology repeats genome codes: ${[...new Set(duplicates)].join(', ')}.`);
+    }
+    if (tips.length !== stackRows.length || tips.some((code, index) => code !== stackRows[index])) {
+      throw new Error('The species topology does not match the metadata genome-code order.');
+    }
+    return topology.tree;
+  }
+
+  function topologyDepth(node) {
+    if (typeof node === 'string') return 0;
+    return 1 + Math.max(...node.children.map(topologyDepth));
+  }
+
+  function drawCladogram(svg, rowTop, rowHeight, tree, stackRows) {
+    const maximumDepth = topologyDepth(tree);
     const left = 22;
     const tip = 66;
+    const rowByCode = new Map(stackRows.map((code, index) => [code, index]));
     const xForDepth = (depth) => left + (tip - left) * depth / maximumDepth;
     const draw = (node, depth = 0) => {
-      if (Number.isInteger(node)) {
-        return { x: tip, y: rowTop + (node + 0.5) * rowHeight };
+      if (typeof node === 'string') {
+        return { x: tip, y: rowTop + (rowByCode.get(node) + 0.5) * rowHeight };
       }
-      const children = node.map((child) => draw(child, depth + 1));
+      const children = node.children.map((child) => draw(child, depth + 1));
       const x = xForDepth(depth);
       const childYs = children.map((child) => child.y);
       const minimumY = Math.min(...childYs);
@@ -735,7 +754,7 @@
       })));
       return { x, y: childYs.reduce((total, y) => total + y, 0) / childYs.length };
     };
-    draw(SPECIES_TREE);
+    draw(tree);
   }
 
   function installHeatmapTooltip(container, svg, summary, result, plotLeft, plotWidth, rowTop, rowHeight) {
@@ -764,6 +783,7 @@
 
   function renderHeatmap(container, result, annotation = null, transcriptAnnotations = null) {
     const summary = summarizeHeatmap(result, annotation, 500);
+    const speciesTree = validateSpeciesTopology(result.stackTopology, result.stackRows);
     const hasAnnotation = Boolean(summary.annotation);
     const annotationModels = transcriptAnnotationsForDisplay(
       summary.annotation,
@@ -796,7 +816,7 @@
     addText(svg, `${result.stackRows.length} metadata-ordered species · ${summary.bins.length} display bins`, plotLeft, 49, {
       fill: COLORS.muted, 'font-size': 12,
     });
-    addText(svg, 'Representative cladogram', 22, 22, {
+    addText(svg, 'Evidence-bounded cladogram', 22, 22, {
       fill: COLORS.muted, 'font-size': 10, 'font-weight': 650,
     });
     CLADE_NAMES.forEach((name, index) => {
@@ -807,7 +827,7 @@
       svg.append(svgElement('rect', { x, y: y - 9, width: 9, height: 9, fill: CLADE_COLORS[index] }));
       addText(svg, name, x + 14, y, { fill: COLORS.muted, 'font-size': 9 });
     });
-    drawCladogram(svg, rowTop, rowHeight);
+    drawCladogram(svg, rowTop, rowHeight, speciesTree, result.stackRows);
 
     summary.cells.forEach((row, rowIndex) => {
       const y = rowTop + rowIndex * rowHeight;
@@ -897,6 +917,8 @@
     summarizeSignals,
     summarizeHeatmap,
     abbreviatedSpeciesName,
+    topologyTipCodes,
+    validateSpeciesTopology,
     renderSignalPlot,
     renderHeatmap,
   };

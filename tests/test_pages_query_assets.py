@@ -1,5 +1,7 @@
 import json
+from pathlib import Path
 
+from AgamCs.species_topology import SPECIES_TOPOLOGY
 from tools import build_pages_query_assets
 
 
@@ -65,3 +67,13 @@ def test_query_manifest_publishes_coordinate_contract_and_lengths():
     assert manifest['chromosomes']['X']['length'] == 500
     assert manifest['accessibility']['available'] is True
     assert len(manifest['stack']['rows']) == 21
+    assert manifest['stack']['topology'] == SPECIES_TOPOLOGY
+
+
+def test_checked_in_browser_manifest_matches_the_canonical_topology():
+    root = Path(__file__).resolve().parents[1]
+    manifest = json.loads(
+        (root / 'docs/assets/data/query-manifest.json').read_text()
+    )
+
+    assert manifest['stack']['topology'] == SPECIES_TOPOLOGY
