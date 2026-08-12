@@ -134,8 +134,15 @@ def validate_page(page: Path) -> list[str]:
             errors.append(f'index.html: missing meta names: {sorted(missing_names)}')
         if missing_properties:
             errors.append(f'index.html: missing Open Graph properties: {sorted(missing_properties)}')
-        if 'Early research prototype' not in page.read_text(encoding='utf-8'):
-            errors.append('index.html: early prototype status is not stated')
+        page_text = page.read_text(encoding='utf-8')
+        if 'Anopheles gambiae' not in page_text:
+            errors.append('index.html: public copy must name Anopheles gambiae')
+        for retired_positioning in ('prototype', 'preview'):
+            if retired_positioning in page_text.lower():
+                errors.append(
+                    'index.html: retired prototype/preview positioning remains: '
+                    f'{retired_positioning!r}'
+                )
         required_ids = {
             'explorer', 'benchmark-form', 'live-accession', 'example-select',
             'accession-padding',
@@ -156,9 +163,8 @@ def validate_page(page: Path) -> list[str]:
         }
         if retained_ids := obsolete_ids & checker.ids:
             errors.append(f'index.html: duplicate demo/live-query UI remains: {sorted(retained_ids)}')
-        page_text = page.read_text(encoding='utf-8')
-        if 'Precomputed examples' not in page_text:
-            errors.append('index.html: precomputed examples must remain a labelled query shortcut')
+        if 'Featured examples' not in page_text:
+            errors.append('index.html: featured examples must remain a labelled query shortcut')
         if 'Demo result' in page_text:
             errors.append('index.html: obsolete demo-result presentation remains')
         if 'First five returned positions' in page_text:

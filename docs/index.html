@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="An early research prototype for live, accession-aware AgamP4 conservation queries.">
+  <meta name="description" content="Explore AgamP4.14 conservation, SNP density, and cross-species identity around Anopheles gambiae genes, transcripts, or any given genomic intervals.">
   <meta name="theme-color" content="#0c675a">
   <meta property="og:type" content="website">
   <meta property="og:title" content="AgamCs conservation explorer">
-  <meta property="og:description" content="An early research prototype for live, accession-aware AgamP4 conservation queries.">
+  <meta property="og:description" content="Explore AgamP4.14 conservation, SNP density, and cross-species identity around Anopheles gambiae genes, transcripts, or any given genomic intervals.">
   <meta property="og:url" content="https://tycour.github.io/AgamCs/">
   <meta property="og:image" content="https://tycour.github.io/AgamCs/assets/examples/AGAP006241/cs_snp_summary.png">
   <meta name="twitter:card" content="summary_large_image">
@@ -37,18 +37,18 @@
     <section class="hero">
       <div>
         <p class="eyebrow">AgamP4 conservation scores</p>
-        <h1>Inspect conservation around a mosquito gene.</h1>
-        <p class="lede">A browser-friendly preview of the AgamCs pipeline. Explore precomputed examples or query an AgamP4.14 gene or transcript without installing Python or downloading the 3.7 GB source archive.</p>
+        <h1>Explore conservation and SNP density across the Anopheles gambiae genome.</h1>
+        <p class="lede">Query an AgamP4.14 gene, transcript, or genomic interval in your browser. View conservation, SNP density, and cross-species identity for the selected region.</p>
         <div class="hero-actions">
           <a class="button primary" href="#explorer">Open the explorer</a>
           <a class="button secondary" href="https://github.com/Tycour/AgamCs#command-line-installation">Use the CLI</a>
         </div>
       </div>
-      <aside class="hero-note" aria-label="Prototype status">
+      <aside class="hero-note" aria-label="AgamP4.14 query scope">
         <span class="status-dot" aria-hidden="true"></span>
         <div>
-          <strong>Early research prototype</strong>
-          <p>This static client reads selected AgamP4 archive chunks and a separate QC companion directly in your browser. Features, results, and presentation may change; use the CLI for established workflows.</p>
+          <strong>Built for AgamP4.14 queries</strong>
+          <p>AgamCs reads the selected region from the published conservation dataset and a separate accessibility/QC companion track. Results include exact TSV values, browser plots, and source provenance for the queried interval.</p>
         </div>
       </aside>
     </section>
@@ -56,9 +56,9 @@
     <section class="workspace" id="explorer" aria-labelledby="explorer-title">
       <form class="query-panel benchmark-form" id="benchmark-form">
         <div>
-          <p class="eyebrow">Live query</p>
-          <h2 id="explorer-title">Choose a gene or interval.</h2>
-          <p class="query-intro">Read exact AgamP4 values directly from the published archive without downloading it in full.</p>
+          <p class="eyebrow">Region query</p>
+          <h2 id="explorer-title">Select a gene, transcript, or genomic interval.</h2>
+          <p class="query-intro">Retrieve values for the selected region and inspect them with conservation, SNP-density, and species-identity plots.</p>
         </div>
         <fieldset class="query-mode-switch">
           <legend>Query by</legend>
@@ -87,11 +87,11 @@
             <p class="field-help" id="isoform-help">Choose the representative default or an exact transcript.</p>
           </div>
           <div class="example-shortcut">
-            <label for="example-select">Precomputed examples</label>
+            <label for="example-select">Featured examples</label>
             <select id="example-select" name="example-select">
-              <option value="">Choose a reviewed example…</option>
+              <option value="">Choose a featured example...</option>
             </select>
-            <p class="field-help" id="catalogue-help">Loading the precomputed example catalogue…</p>
+            <p class="field-help" id="catalogue-help">Loading featured examples...</p>
           </div>
         </div>
         <div class="query-input-panel coordinate-query-panel" id="coordinate-query-panel" hidden>
@@ -110,7 +110,7 @@
             <input id="benchmark-end" name="end" type="number" min="1" value="28586748">
           </div>
         </div>
-        <button class="button primary full" id="benchmark-submit" type="submit">Query exact values</button>
+        <button class="button primary full" id="benchmark-submit" type="submit">Run query</button>
         <p class="privacy-note">No query or analytics data leaves your browser.</p>
       </form>
 
@@ -122,7 +122,7 @@
           </div>
           <span class="ready-badge" id="result-status">Ready</span>
         </div>
-        <p class="result-description" id="benchmark-status">Choose an AgamP4.14 gene or transcript accession, manual interval, or reviewed example shortcut.</p>
+        <p class="result-description" id="benchmark-status">Choose an AgamP4.14 gene or transcript accession, manual interval, or featured example.</p>
         <dl class="resolved-accession" id="resolved-accession" hidden>
           <div><dt>Query ID</dt><dd id="resolved-accession-id">—</dd></div>
           <div><dt>Gene</dt><dd id="resolved-gene-id">—</dd></div>
@@ -161,7 +161,7 @@
           <p class="summary-method" id="summary-method-note"></p>
         </div>
         <a class="download-link" id="benchmark-download" hidden download="AgamCs-browser-query.tsv">Download exact TSV values</a>
-        <p class="field-help">Maximum interval: 20,000 bases. The versioned index covers AGAP genes and transcript isoforms on 2L, 2R, 3L, 3R, and X; unplaced scaffolds and IDs absent from this annotation release are not queryable. The conservation archive is never downloaded in full. Raw SNP-density values are never rewritten; failed accessibility/QC positions are shown separately as unknown.</p>
+        <p class="field-help">Maximum interval: 20,000 bases. The versioned index covers AGAP genes and transcript isoforms on 2L, 2R, 3L, 3R, and X. Failed accessibility/QC positions are shown separately as unknown.</p>
       </div>
       <div class="live-visuals" id="live-visuals" hidden>
         <div class="live-visual-heading">
@@ -171,8 +171,8 @@
           </div>
           <p id="live-annotation-note">Genomic-coordinate view.</p>
         </div>
-        <div class="tabs live-tabs" role="tablist" aria-label="Live query figures">
-          <button role="tab" aria-selected="true" aria-controls="live-signals-panel" id="live-signals-tab">Cs + SNP/QC</button>
+        <div class="tabs live-tabs" role="tablist" aria-label="Query figures">
+          <button role="tab" aria-selected="true" aria-controls="live-signals-panel" id="live-signals-tab">Conservation + SNP density</button>
           <button role="tab" aria-selected="false" aria-controls="live-heatmap-panel" id="live-heatmap-tab">Species heatmap</button>
         </div>
         <div class="live-plot-panel" id="live-signals-panel" role="tabpanel" aria-labelledby="live-signals-tab">
@@ -189,8 +189,8 @@
 
     <section class="interpretation" id="interpretation">
       <div>
-        <p class="eyebrow">Read the evidence carefully</p>
-        <h2>Conservation and callability are separate signals.</h2>
+        <p class="eyebrow">How to read the results</p>
+        <h2>Conservation and data quality are shown separately.</h2>
       </div>
       <div class="explain-grid">
         <article>
@@ -213,7 +213,7 @@
   </main>
 
   <footer>
-    <p>Early research prototype. AgamCs is an open-source research tool; use the CLI for reproducible analysis and larger queries.</p>
+    <p>AgamCs is an open-source research tool for exploring conservation across the Anopheles gambiae AgamP4 genome.</p>
     <a href="https://doi.org/10.5281/zenodo.4304586">Source dataset on Zenodo</a>
   </footer>
 </body>

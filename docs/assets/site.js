@@ -192,7 +192,7 @@ isoformSelect.addEventListener('change', () => {
   const geneRecord = accessionIndexSnapshot?.accessions?.[isoformSelect.value];
   benchmarkStatus.textContent = geneRecord
     ? `${isoformSelect.value} gene default selected. The full gene span will use ${geneRecord.annotation.transcript_id} annotation.`
-    : `${isoformSelect.value} selected. Run the live query to retrieve its exact transcript span.`;
+    : `${isoformSelect.value} selected. Run the query to retrieve its transcript span.`;
   updatePaddingHelp();
 });
 
@@ -230,16 +230,16 @@ async function loadCatalogue() {
     examples = catalogue.examples;
     const placeholder = document.createElement('option');
     placeholder.value = '';
-    placeholder.textContent = 'Choose a reviewed example…';
+    placeholder.textContent = 'Choose a featured example...';
     exampleSelect.replaceChildren(placeholder, ...examples.map((example) => {
       const option = document.createElement('option');
       option.value = example.accession;
       option.textContent = `${example.accession} — ${example.feature_summary}`;
       return option;
     }));
-    catalogueHelp.textContent = `${examples.length} reviewed precomputed examples. Selecting one uses this same live query portal.`;
+    catalogueHelp.textContent = `${examples.length} featured examples. Selecting one fills the accession query.`;
   } catch (error) {
-    catalogueHelp.textContent = 'The precomputed example shortcuts could not be loaded; accession and coordinate queries still work.';
+    catalogueHelp.textContent = 'Featured examples could not be loaded; accession and coordinate queries still work.';
     console.error(error);
   }
 }
@@ -253,7 +253,7 @@ exampleSelect.addEventListener('change', () => {
   configureIsoformControl(liveAccession.value);
   updatePaddingHelp();
   setPortalState(`Ready to query ${exampleSelect.value}`, 'Ready');
-  benchmarkStatus.textContent = `${exampleSelect.value} selected from the precomputed examples. Run the live query to retrieve its exact values.`;
+  benchmarkStatus.textContent = `${exampleSelect.value} selected from the featured examples. Run the query to retrieve its values.`;
 });
 
 const cataloguePromise = loadCatalogue();
@@ -428,7 +428,7 @@ function renderLivePlots(
     ? `All ${transcriptAnnotations.length} transcript models for ${annotation.id} are shown 5′→3′; ${annotation.transcript_id} is bold and supplies the exon summary and CDS guides.`
     : annotation
       ? `${annotationSubject} annotation applied; ${annotation.transcript_id} is shown 5′→3′.`
-    : 'Genomic-coordinate view. Gene annotation is applied when querying by accession or an exact precomputed catalogue interval.';
+    : 'Genomic-coordinate view. Gene annotation is applied when querying by accession or a featured example.';
   liveVisuals.hidden = false;
 }
 
@@ -480,7 +480,7 @@ function configureQueryMetadata(manifest) {
 }
 
 loadQueryManifest().then(configureQueryMetadata).catch((error) => {
-  benchmarkStatus.textContent = `Live query unavailable: ${error.message}`;
+  benchmarkStatus.textContent = `Query unavailable: ${error.message}`;
 });
 
 benchmarkForm.addEventListener('submit', async (event) => {
@@ -522,7 +522,7 @@ benchmarkForm.addEventListener('submit', async (event) => {
     manifest = await loadQueryManifest();
   } catch (error) {
     setPortalState('Query unavailable', 'Unavailable', 'error');
-    benchmarkStatus.textContent = `Live query unavailable: ${error.message}`;
+    benchmarkStatus.textContent = `Query unavailable: ${error.message}`;
     benchmarkSubmit.disabled = false;
     return;
   }
@@ -598,9 +598,9 @@ benchmarkForm.addEventListener('submit', async (event) => {
     clearFigureDownloads();
     setPortalState(resolution?.accession || `${chromosome}:${start}-${end}`, 'Complete');
     benchmarkStatus.textContent = hashesMatch && plotSummariesMatch
-      ? 'Query complete; exact arrays and browser plot summaries match the Python fixtures.'
+      ? 'Query complete; values and plot summaries passed validation.'
       : hashesMatch
-        ? 'Query complete; exact arrays match the Python fixture.'
+        ? 'Query complete; values passed validation.'
       : hashUnavailable
         ? 'Query complete; data retrieved, but browser hash validation is unavailable.'
         : `Query complete: ${querySubject}.`;
