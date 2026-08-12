@@ -5,8 +5,8 @@
 The GitHub Pages portal is the easiest way to query a current AgamP4.14
 `AGAP...` gene or exact transcript isoform on 2L, 2R, 3L, 3R, or X—or to enter
 AgamP4 coordinates—then inspect the figures and download exact values. It is
-an early research prototype and requires no installation. The command-line
-tool below is intended for local, batch, and reproducible workflows.
+available without installation. The command-line tool below is intended for
+local, batch, and reproducible workflows.
 
 AgamCs retrieves conservation data for the *Anopheles gambiae* AgamP4 genome
 and turns it into readable gene- or region-level figures. You can query an
@@ -63,7 +63,9 @@ agamcs --region 3R:5886340-5889928 --output my_region
 
 Results are written below `results/<output>/`. Gene accessions are resolved
 online through Ensembl/VectorBase and include the representative transcript
-model. Use `--padding 500` to include flanking bases.
+model. The command writes a summary PNG, a base-level Cs/SNP-density PNG, a
+cross-species heatmap PNG, and the exact intermediate `temp_scores.tsv` file.
+Use `--padding 500` to include flanking bases around accession-derived regions.
 
 For development and tests, install the test extra:
 
@@ -76,7 +78,13 @@ python -m pytest
 
 ![Binned conservation and SNP-density summary for AGAP006241](results/AGAP006241/AGAP006241/AGAP006241_cs_snp_summary.png)
 
+![Base-level conservation and SNP-density plot for AGAP006241](results/AGAP006241/AGAP006241/AGAP006241_cs_snp_density.png)
+
 ![AGAP006241 cross-species identity heatmap](results/AGAP006241/AGAP006241/AGAP006241_heatmap.png)
+
+These are static PNGs produced by the CLI. The Pages portal renders the same
+scientific views as interactive browser SVGs and also provides exact TSV and
+SVG downloads.
 
 ### How to read the plots
 
@@ -155,14 +163,17 @@ and the rebuild procedure are in
 
 Try the [no-install GitHub Pages portal](https://tycour.github.io/AgamCs/).
 Its versioned VectorBase-68 index resolves 13,097 AgamP4.14 genes and 15,317
-transcript isoforms on the five supported chromosomes. A bare gene ID retains
+transcript isoforms on the five supported chromosomes; it uses the published
+AgamP4 conservation arrays. A bare gene ID retains
 the representative-transcript default while showing every isoform as aligned
 annotation rows beneath both plots; an exact ID such as `AGAP000040-RA` uses
 that isoform's transcript span, exons and CDS bounds. Gene, transcript and
 coordinate queries read only the required `Cs`, raw SNP-density, species-stack,
 and separate QC ranges from the Zenodo data and render live browser plots;
-reviewed precomputed examples remain as shortcuts in the same query form.
-Publishing instructions and the prototype boundary are documented in
+featured examples remain as shortcuts in the same query form. Queries are
+limited to 20,000 bases, and failed accessibility/QC positions remain separate
+from the raw SNP-density values and are shown as unknown. Publishing and
+implementation details are documented in
 [`docs/github-pages-prototype.md`](docs/github-pages-prototype.md).
 For larger intervals, custom highlight ranges, local-HDF5 use, and fully
 reproducible batch output, use the CLI.
