@@ -3,10 +3,12 @@
 **Use AgamCs in your browser:** [open the AgamCs research portal](https://tycour.github.io/AgamCs/).
 
 The GitHub Pages portal is the easiest way to query a current AgamP4.14
-`AGAP...` gene or exact transcript isoform on 2L, 2R, 3L, 3R, or X—or to enter
-AgamP4 coordinates—then inspect the figures and download exact values. It is
-available without installation. The command-line tool below is intended for
-local, batch, and reproducible workflows.
+`AGAP...` gene or exact transcript isoform on 2L, 2R, 3L, 3R, or X, or to enter
+AgamP4 genomic coordinates, then inspect the figures and download exact values.
+The conservation arrays are from the published AgamP4 dataset; AgamP4.14 refers
+to the current VectorBase annotation index used for gene and transcript lookup.
+The portal is available without installation. The command-line tool below is
+intended for local, batch, and reproducible workflows.
 
 AgamCs retrieves conservation data for the *Anopheles gambiae* AgamP4 genome
 and turns it into readable gene- or region-level figures. You can query an
@@ -76,9 +78,21 @@ python -m pytest
 
 ## Example figures
 
+The binned summary is the most readable view for genes and longer intervals. It
+compresses the base-level Cs and SNP-density series into bins, keeps the QC
+mask visible, and makes broad conservation and variation patterns easier to
+compare.
+
 ![Binned conservation and SNP-density summary for AGAP006241](results/AGAP006241/AGAP006241/AGAP006241_cs_snp_summary.png)
 
+The CLI also writes the original base-level Cs/SNP-density plot. It preserves
+the per-base signal, but it is visually dense even for a short gene, which is
+why the binned summary is usually the better presentation view.
+
 ![Base-level conservation and SNP-density plot for AGAP006241](results/AGAP006241/AGAP006241/AGAP006241_cs_snp_density.png)
+
+The heatmap shows cross-species identity for the same interval, with CDS guides
+aligned to the signal plots.
 
 ![AGAP006241 cross-species identity heatmap](results/AGAP006241/AGAP006241/AGAP006241_heatmap.png)
 

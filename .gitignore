@@ -19,6 +19,7 @@ results/AGAP006241/*
 !results/AGAP006241/AGAP006241/
 results/AGAP006241/AGAP006241/*
 !results/AGAP006241/AGAP006241/AGAP006241_cs_snp_summary.png
+!results/AGAP006241/AGAP006241/AGAP006241_cs_snp_density.png
 !results/AGAP006241/AGAP006241/AGAP006241_heatmap.png
 
 # Local analysis and reference files not consumed by the plotting package
