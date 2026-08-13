@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "one-base",
+      "chromosome": "2L",
+      "start": 1,
+      "length": 1,
+      "stack_mode": "dense",
+      "qc_mode": "pass"
+    },
+    {
+      "id": "maximum-20000-bases",
+      "chromosome": "X",
+      "start": 1000000,
+      "length": 20000,
+      "stack_mode": "periodic",
+      "qc_mode": "mixed"
+    },
+    {
+      "id": "minus-strand",
+      "chromosome": "3R",
+      "start": 5000,
+      "length": 37,
+      "stack_mode": "dense",
+      "qc_mode": "mixed",
+      "annotation": {
+        "id": "AGAPPOC",
+        "chromosome": "3R",
+        "start_offset": 4,
+        "end_offset": 32,
+        "strand": -1
+      }
+    },
+    {
+      "id": "all-zero-cner",
+      "chromosome": "3L",
+      "start": 9000,
+      "length": 53,
+      "stack_mode": "zero",
+      "qc_mode": "pass"
+    },
+    {
+      "id": "sparse-detection",
+      "chromosome": "2R",
+      "start": 12000,
+      "length": 1001,
+      "stack_mode": "sparse",
+      "qc_mode": "mixed"
+    },
+    {
+      "id": "all-qc-failed",
+      "chromosome": "2L",
+      "start": 18000,
+      "length": 71,
+      "stack_mode": "dense",
+      "qc_mode": "failed"
+    }
+  ]
+}

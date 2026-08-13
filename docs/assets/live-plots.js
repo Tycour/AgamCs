@@ -9,7 +9,6 @@
     csOuter: '#9ecae1',
     snp: '#238b45',
     unknown: '#969696',
-    noInterval: '#2f2f2f',
     cds: '#2171b5',
     cdsEdge: '#084594',
     utr: '#deebf7',
@@ -24,66 +23,24 @@
     ['Culex', 'Cx.'],
     ['Drosophila', 'D.'],
   ]);
-  const VIRIDIS = [
-    [0, [68, 1, 84]],
-    [0.25, [59, 82, 139]],
-    [0.5, [33, 145, 140]],
-    [0.75, [94, 201, 98]],
-    [1, [253, 231, 37]],
-  ];
+  const plotModel = global.AgamCsPlotModel;
+  if (!plotModel) throw new Error('AgamCsPlotModel must load before live-plots.js.');
+  let plotContract = null;
 
-  function quantile(values, proportion) {
-    const sorted = values.filter(Number.isFinite).sort((a, b) => a - b);
-    if (!sorted.length) return Number.NaN;
-    const position = (sorted.length - 1) * proportion;
-    const lower = Math.floor(position);
-    const upper = Math.ceil(position);
-    if (lower === upper) return sorted[lower];
-    return sorted[lower] + (sorted[upper] - sorted[lower]) * (position - lower);
+  function configurePlotContract(contract) {
+    plotContract = plotModel.validateContract(contract);
+    return plotContract;
   }
 
-  function mean(values) {
-    let total = 0;
-    let count = 0;
-    for (const value of values) {
-      if (Number.isFinite(value)) {
-        total += value;
-        count += 1;
-      }
-    }
-    return count ? total / count : Number.NaN;
+  function requirePlotContract() {
+    if (!plotContract) throw new Error('Configure the versioned plot contract before plotting.');
+    return plotContract;
   }
 
-  function annotationMatches(result, annotation) {
-    return Boolean(
-      annotation
-      && String(annotation.chromosome) === String(result.chromosome)
-      && Number(annotation.start) >= result.start
-      && Number(annotation.end) <= result.end
-    );
-  }
-
-  function coordinateRecords(result, annotation) {
-    const useAnnotation = annotationMatches(result, annotation);
-    const mapper = useAnnotation
-      ? (Number(annotation.strand) === -1
-        ? (position) => Number(annotation.end) - position
-        : (position) => position - Number(annotation.start))
-      : (position) => position - result.start;
-    const records = Array.from({ length: result.values.Cs.length }, (_, index) => {
-      const position = result.start + index;
-      return {
-        index,
-        position,
-        x: mapper(position),
-        Cs: result.values.Cs[index],
-        snp: result.values.snp_density[index],
-        status: result.values.status[index],
-      };
-    });
-    records.sort((left, right) => left.x - right.x);
-    return { records, annotation: useAnnotation ? annotation : null };
-  }
+  const annotationMatches = plotModel.annotationMatches;
+  const mean = plotModel.mean;
+  const quantile = plotModel.quantile;
+  const transcriptAnnotationsForDisplay = plotModel.transcriptAnnotationsForDisplay;
 
   function summarizeQuery(result, annotation = null) {
     const useAnnotation = annotationMatches(result, annotation)
@@ -120,73 +77,20 @@
     };
   }
 
-  function assignBins(records, maximumBins) {
-    const binCount = Math.min(Math.max(1, maximumBins), records.length);
-    const minimum = records[0].x;
-    const maximum = records[records.length - 1].x;
-    const span = maximum - minimum;
-    const bins = Array.from({ length: binCount }, () => []);
-    records.forEach((record) => {
-      const index = span === 0
-        ? 0
-        : Math.min(binCount - 1, Math.floor((record.x - minimum) * binCount / span));
-      bins[index].push(record);
-    });
-    return { bins: bins.filter((bin) => bin.length), minimum, maximum, span, binCount };
-  }
-
-  function summarizeSignals(result, annotation = null, maximumBins = 240) {
-    const mapped = coordinateRecords(result, annotation);
-    const assigned = assignBins(mapped.records, maximumBins);
-    const cs = assigned.bins.map((bin) => {
-      const values = bin.map((record) => record.Cs);
-      return {
-        position: mean(bin.map((record) => record.x)),
-        mean: mean(values),
-        q10: quantile(values, 0.10),
-        q25: quantile(values, 0.25),
-        median: quantile(values, 0.50),
-        q75: quantile(values, 0.75),
-        q90: quantile(values, 0.90),
-      };
-    });
-    const snp = assigned.bins.map((bin) => {
-      const accessible = bin.filter((record) => (record.status & 1) === 1);
-      return {
-        position: mean(bin.map((record) => record.x)),
-        mean: mean(accessible.map((record) => record.snp)),
-        accessibleFraction: accessible.length / bin.length,
-      };
-    });
-    return { ...mapped, ...assigned, cs, snp };
-  }
-
-  function summarizeHeatmap(result, annotation = null, maximumBins = 500) {
-    const mapped = coordinateRecords(result, annotation);
-    const assigned = assignBins(mapped.records, maximumBins);
-    const rowCount = result.stackRows.length;
-    const sourceWidth = result.values.Cs.length;
-    const cells = Array.from({ length: rowCount }, () => []);
-    for (let row = 0; row < rowCount; row += 1) {
-      for (const bin of assigned.bins) {
-        let detected = 0;
-        let totalIdentity = 0;
-        for (const record of bin) {
-          const value = result.values.stack[row * sourceWidth + record.index];
-          if (value !== 0 && Number.isFinite(value)) {
-            detected += 1;
-            totalIdentity += value;
-          }
-        }
-        cells[row].push({
-          identity: detected ? totalIdentity / detected : 0,
-          detectedFraction: detected / bin.length,
-          genomicStart: Math.min(...bin.map((record) => record.position)),
-          genomicEnd: Math.max(...bin.map((record) => record.position)),
-        });
-      }
+  function summarizeSignals(result, annotation = null, maximumBins = null) {
+    const contract = requirePlotContract();
+    if (maximumBins != null && Number(maximumBins) !== contract.binning.signal_maximum_bins) {
+      throw new Error('Signal summaries must use the versioned plot-contract bin count.');
     }
-    return { ...mapped, ...assigned, cells };
+    return plotModel.summarizeSignals(result, annotation, contract);
+  }
+
+  function summarizeHeatmap(result, annotation = null, maximumBins = null) {
+    const contract = requirePlotContract();
+    if (maximumBins != null && Number(maximumBins) !== contract.binning.heatmap_maximum_bins) {
+      throw new Error('Heatmap summaries must use the versioned plot-contract bin count.');
+    }
+    return plotModel.summarizeHeatmap(result, annotation, contract);
   }
 
   function svgElement(name, attributes = {}) {
@@ -305,26 +209,6 @@
         return start <= end ? mappedInterval(start, end) : null;
       }).filter(Boolean).sort((left, right) => left[0] - right[0]);
     return { transcript, exons, cds };
-  }
-
-  function transcriptAnnotationsForDisplay(displayAnnotation, annotations = []) {
-    if (!displayAnnotation) return [];
-    const unique = new Map();
-    annotations.forEach((annotation) => {
-      if (!annotation?.transcript_id) return;
-      if (String(annotation.chromosome) !== String(displayAnnotation.chromosome)) return;
-      if (Number(annotation.strand) !== Number(displayAnnotation.strand)) return;
-      if (Number(annotation.end) < Number(displayAnnotation.start)
-          || Number(annotation.start) > Number(displayAnnotation.end)) return;
-      if (!Array.isArray(annotation.exons) || !annotation.exons.length) return;
-      unique.set(annotation.transcript_id, annotation);
-    });
-    if (!unique.size && displayAnnotation.transcript_id) {
-      unique.set(displayAnnotation.transcript_id, displayAnnotation);
-    }
-    return [...unique.values()].sort((left, right) => (
-      String(left.transcript_id).localeCompare(String(right.transcript_id))
-    ));
   }
 
   function drawCdsStrip(svg, annotation, xScale, y) {
@@ -668,29 +552,10 @@
     return summary;
   }
 
-  function interpolateColor(value) {
-    const bounded = Math.max(0, Math.min(1, value));
-    let lower = VIRIDIS[0];
-    let upper = VIRIDIS[VIRIDIS.length - 1];
-    for (let index = 1; index < VIRIDIS.length; index += 1) {
-      if (bounded <= VIRIDIS[index][0]) {
-        lower = VIRIDIS[index - 1];
-        upper = VIRIDIS[index];
-        break;
-      }
-    }
-    const fraction = (bounded - lower[0]) / (upper[0] - lower[0] || 1);
-    const rgb = lower[1].map((channel, index) => Math.round(channel + (upper[1][index] - channel) * fraction));
-    return rgb;
-  }
-
   function blendedIdentityColor(identity, detectedFraction) {
-    if (!detectedFraction) return COLORS.noInterval;
-    const identityRgb = interpolateColor(identity / 100);
-    const background = [47, 47, 47];
-    const strength = 0.35 + detectedFraction * 0.65;
-    const rgb = identityRgb.map((channel, index) => Math.round(background[index] + (channel - background[index]) * strength));
-    return `rgb(${rgb.join(',')})`;
+    return plotModel.blendedIdentityColor(
+      identity, detectedFraction, requirePlotContract(),
+    );
   }
 
   function abbreviatedSpeciesName(name) {
@@ -789,28 +654,30 @@
       summary.annotation,
       transcriptAnnotations || (summary.annotation ? [summary.annotation] : []),
     );
-    const width = 1000;
-    const rowTop = 78;
-    const rowHeight = 23;
-    const plotLeft = 210;
-    const plotRight = 930;
-    const plotWidth = plotRight - plotLeft;
-    const plotHeight = result.stackRows.length * rowHeight;
-    const singleAnnotationHeight = rowTop + plotHeight + 290;
-    const multiAnnotationHeight = rowTop + plotHeight + 201 + annotationModels.length * 24;
-    const height = hasAnnotation
-      ? Math.max(singleAnnotationHeight, multiAnnotationHeight)
-      : rowTop + plotHeight + 92;
+    const geometry = plotModel.heatmapGeometry(
+      result.stackRows.length,
+      summary.bins.length,
+      requirePlotContract(),
+      hasAnnotation ? annotationModels.length : 0,
+    );
+    const {
+      width, height, rowTop, rowHeight, plotLeft, plotRight, plotWidth, plotHeight,
+    } = geometry;
     const svg = svgElement('svg', {
       viewBox: `0 0 ${width} ${height}`,
       role: 'img',
-      'aria-label': `Cross-species conserved-interval heatmap for ${result.chromosome}:${result.start}-${result.end}`,
+      'aria-labelledby': 'agamcs-live-heatmap-title agamcs-live-heatmap-description',
       class: 'live-svg heatmap-svg',
     });
+    const accessibleTitle = svgElement('title', { id: 'agamcs-live-heatmap-title' });
+    accessibleTitle.textContent = requirePlotContract().heatmap_layout.title;
+    const accessibleDescription = svgElement('desc', { id: 'agamcs-live-heatmap-description' });
+    accessibleDescription.textContent = `AgamP4 ${result.chromosome}:${result.start}-${result.end}; ${summary.bins.length} display bins. Zero means no detected CNEr interval, not measured zero percent identity. QC-failed SNP positions remain unknown.`;
+    svg.append(accessibleTitle, accessibleDescription);
     const xScale = linearScale(summary.minimum, summary.maximum, plotLeft, plotRight);
     const cellWidth = plotWidth / summary.bins.length;
 
-    addText(svg, 'Conserved intervals mapped to AgamP4 positions', plotLeft, 27, {
+    addText(svg, requirePlotContract().heatmap_layout.title, plotLeft, 27, {
       fill: COLORS.ink, 'font-size': 18, 'font-weight': 700,
     });
     addText(svg, `${result.stackRows.length} metadata-ordered species · ${summary.bins.length} display bins`, plotLeft, 49, {
@@ -853,9 +720,12 @@
     });
 
     const legendY = rowTop + plotHeight + 27;
-    addLegendItem(svg, plotLeft, legendY, 'No detected CNEr interval', { color: COLORS.noInterval });
+    const noIntervalColor = `rgb(${requirePlotContract().palette.no_interval_rgb.join(',')})`;
+    addLegendItem(svg, plotLeft, legendY, requirePlotContract().heatmap_layout.no_interval_label, {
+      color: noIntervalColor,
+    });
     const gradient = svgElement('linearGradient', { id: 'identity-gradient', x1: 0, x2: 1, y1: 0, y2: 0 });
-    VIRIDIS.forEach(([offset, rgb]) => gradient.append(svgElement('stop', {
+    requirePlotContract().palette.viridis_anchors.forEach(([offset, rgb]) => gradient.append(svgElement('stop', {
       offset: `${offset * 100}%`, 'stop-color': `rgb(${rgb.join(',')})`,
     })));
     const defs = svgElement('defs');
@@ -864,7 +734,7 @@
     svg.append(svgElement('rect', { x: 700, y: legendY - 13, width: 190, height: 13, fill: 'url(#identity-gradient)' }));
     addText(svg, '0', 696, legendY + 16, { 'text-anchor': 'middle', fill: COLORS.muted, 'font-size': 10 });
     addText(svg, '100', 894, legendY + 16, { 'text-anchor': 'middle', fill: COLORS.muted, 'font-size': 10 });
-    addText(svg, 'Identity (%) when interval detected', 795, legendY + 32, {
+    addText(svg, requirePlotContract().heatmap_layout.identity_label, 795, legendY + 32, {
       'text-anchor': 'middle', fill: COLORS.muted, 'font-size': 11,
     });
 
@@ -909,7 +779,10 @@
 
   global.AgamCsPlots = {
     annotationMatches,
+    blendedIdentityColor,
     cdsSegments,
+    configurePlotContract,
+    requirePlotContract,
     transcriptModelGeometry,
     transcriptAnnotationsForDisplay,
     quantile,

@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-11-padding-feedback1';
+const PAGES_RELEASE = '2026-08-13-plot-contract1';
 
 function versionedAsset(path) {
   const separator = path.includes('?') ? '&' : '?';
@@ -60,6 +60,7 @@ let examples = [];
 let queryRequestId = 0;
 let benchmarkDownloadUrl;
 let queryManifestPromise;
+let plotContractPromise;
 let accessionIndexPromise;
 let accessionIndexSnapshot;
 let queryManifestSnapshot;
@@ -100,6 +101,20 @@ async function loadPlotValidation() {
   const response = await fetch(versionedAsset('assets/data/plot-validation.json'));
   if (!response.ok) throw new Error(`Plot validation fixture request failed (${response.status}).`);
   return response.json();
+}
+
+async function loadPlotContract() {
+  if (!plotContractPromise) {
+    plotContractPromise = fetch(versionedAsset('assets/data/plot-contract.json')).then(
+      async (response) => {
+        if (!response.ok) throw new Error(`Plot contract request failed (${response.status}).`);
+        const contract = await response.json();
+        globalThis.AgamCsPlots.configurePlotContract(contract);
+        return contract;
+      },
+    );
+  }
+  return plotContractPromise;
 }
 
 async function loadAccessionIndex() {
@@ -569,6 +584,7 @@ benchmarkForm.addEventListener('submit', async (event) => {
       workerQuery(chromosome, start, end),
       loadValidation(),
       loadPlotValidation(),
+      loadPlotContract(),
       cataloguePromise,
     ]);
     const pinned = resolution ? null : findPinnedAnnotation(chromosome, start, end);

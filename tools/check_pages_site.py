@@ -23,10 +23,12 @@ QUERY_ASSETS = (
     ROOT / 'assets/data/query-validation.json',
     ROOT / 'assets/data/plot-validation.json',
     ROOT / 'assets/query-worker.js',
+    ROOT / 'assets/plot-model.js',
     ROOT / 'assets/live-plots.js',
     ROOT / 'assets/query-contract.js',
     ROOT / 'assets/accession-lookup.js',
     ACCESSION_INDEX_PATH,
+    ROOT / 'assets/data/plot-contract.json',
 )
 QUERY_ARRAYS = {'Cs', 'snp_density', 'stack'}
 VALIDATION_ARRAYS = QUERY_ARRAYS | {'status'}
@@ -285,6 +287,22 @@ def validate_live_plot_renderer() -> list[str]:
         errors.append('live heatmap is missing its aligned CDS annotation strip')
     if 'transcript-model-row' not in text or 'transcriptAnnotationsForDisplay' not in text:
         errors.append('live plots are missing the shared multi-transcript annotation track')
+    plot_model = (ROOT / 'assets/plot-model.js').read_text(encoding='utf-8')
+    site = (ROOT / 'assets/site.js').read_text(encoding='utf-8')
+    if 'buildPlotModel' not in plot_model or 'blendedIdentityRgb' not in plot_model:
+        errors.append('live plots are missing the language-neutral plot model')
+    if 'installHeatmapTooltip' not in text or 'installSignalTooltip' not in text:
+        errors.append('live plots are missing browser-only tooltip enhancements')
+    if 'configureFigureDownload' not in site or 'XMLSerializer' not in site:
+        errors.append('live plots are missing standalone SVG downloads')
+    if 'loadPlotContract' not in site or 'configurePlotContract' not in site:
+        errors.append('live plots do not load the versioned plot contract')
+    packaged_contract = ROOT.parent / 'AgamCs/data/plot-contract.json'
+    browser_contract = ROOT / 'assets/data/plot-contract.json'
+    if not packaged_contract.exists() or packaged_contract.read_bytes() != browser_contract.read_bytes():
+        errors.append(
+            'generated Pages plot contract is stale; run tools/sync_plot_contract.py'
+        )
     return errors
 
 

@@ -64,10 +64,14 @@ agamcs --region 3R:5886340-5889928 --output my_region
 ```
 
 Results are written below `results/<output>/`. Gene accessions are resolved
-online through Ensembl/VectorBase and include the representative transcript
-model. The command writes a summary PNG, a base-level Cs/SNP-density PNG, a
-cross-species heatmap PNG, and the exact intermediate `temp_scores.tsv` file.
-Use `--padding 500` to include flanking bases around accession-derived regions.
+online through Ensembl/VectorBase. The canonical heatmap includes every
+compatible transcript model with the representative transcript highlighted;
+the existing signal plots retain their representative-transcript annotation.
+The command writes a summary PNG, a base-level Cs/SNP-density PNG, canonical
+cross-species heatmap SVG and PNG files, and the exact intermediate
+`temp_scores.tsv` file. Use `--padding 500` to include flanking bases around
+accession-derived regions. Use `--heatmap-mode base-level` when the legacy
+per-base heatmap PNG is required.
 
 For development and tests, install the test extra:
 
@@ -96,9 +100,10 @@ aligned to the signal plots.
 
 ![AGAP006241 cross-species identity heatmap](results/AGAP006241/AGAP006241/AGAP006241_heatmap.png)
 
-These are static PNGs produced by the CLI. The Pages portal renders the same
-scientific views as interactive browser SVGs and also provides exact TSV and
-SVG downloads.
+The CLI heatmap is canonical SVG with a retained PNG counterpart; the other CLI
+figures remain PNG. The Pages portal renders the same contract-defined heatmap
+model as an interactive browser SVG and also provides exact TSV and SVG
+downloads.
 
 ### How to read the plots
 
@@ -116,10 +121,12 @@ panels.
 highly conserved regions by scanning genome alignments for windows above chosen
 sequence-identity thresholds. Here it used 30 bp and 50 bp windows; detected
 interval identities were then mapped onto every covered AgamP4 base. The
-heatmap therefore has per-base columns, but neighbouring bases can share one
-window-derived identity value. Viridis shows the assigned identity percentage;
-charcoal means no interval was detected, not measured 0% identity. Thin
-dark-blue blocks and dashed guides mark CDS segments. Species-label colours
+default heatmap groups those exact values into at most 500 display bins. Within
+each bin it averages finite non-zero identities and blends the Viridis colour
+toward charcoal according to the fraction of positions where an interval was
+detected. Charcoal means no interval was detected, not measured 0% identity;
+the exact per-base values remain in the TSV. Thin dark-blue blocks and dashed
+guides mark CDS segments. Species-label colours
 progress from the *A. gambiae* complex through other *Anopheles* to the
 outgroups; these are broad visual groups, not numeric distance bins.
 
