@@ -8,7 +8,7 @@ from .gene_regions import (
     load_lookup_cache,
     parse_list_values,
     read_list_file,
-    resolve_accession_details,
+    resolve_accession_plot_details,
     save_annotation_cache,
     save_lookup_cache,
 )
@@ -25,6 +25,8 @@ def process_region(
     reference_file=None,
     remote_url=None,
     accessibility_file=None,
+    transcript_annotations=None,
+    heatmap_mode='binned',
 ):
     from .create_heatmap import create_heatmap, plot_cs_snp_density
     from .fetch_score import fetch_scores
@@ -44,12 +46,25 @@ def process_region(
         accessibility_file=accessibility_file,
     )
 
-    heatmap_path = os.path.join(results_dir, f"{output_name}_heatmap.png")
-    create_heatmap(
-        tsv_filename,
-        heatmap_path,
-        gene_annotation=gene_annotation,
-    )
+    heatmap_png_path = os.path.join(results_dir, f"{output_name}_heatmap.png")
+    if heatmap_mode == 'binned':
+        from .heatmap_renderer import render_heatmap
+
+        render_heatmap(
+            tsv_filename,
+            os.path.join(results_dir, f"{output_name}_heatmap.svg"),
+            heatmap_png_path,
+            gene_annotation=gene_annotation,
+            transcript_annotations=transcript_annotations,
+        )
+    elif heatmap_mode == 'base-level':
+        create_heatmap(
+            tsv_filename,
+            heatmap_png_path,
+            gene_annotation=gene_annotation,
+        )
+    else:
+        raise ValueError(f'Unsupported heatmap mode: {heatmap_mode}')
 
     cs_snp_density_output_path = os.path.join(results_dir, f"{output_name}_cs_snp_density.png")
     plot_cs_snp_density(
@@ -87,10 +102,10 @@ def build_jobs(args):
 
     for region in parse_list_values(args.region):
         output_name = Path(args.output).stem if args.output and len(parse_list_values(args.region)) == 1 else region.replace(':', '_').replace('-', '_')
-        jobs.append((region, output_name, None))
+        jobs.append((region, output_name, None, []))
 
     for region in read_list_file(args.regions_file) if args.regions_file else []:
-        jobs.append((region, region.replace(':', '_').replace('-', '_'), None))
+        jobs.append((region, region.replace(':', '_').replace('-', '_'), None, []))
 
     accessions = parse_list_values(args.accessions)
     if args.accessions_file:
@@ -100,7 +115,7 @@ def build_jobs(args):
         try:
             before_lookup_cache = dict(lookup_cache) if lookup_cache is not None else None
             before_annotation_cache = dict(annotation_cache) if annotation_cache is not None else None
-            region, gene_annotation = resolve_accession_details(
+            region, gene_annotation, transcript_annotations = resolve_accession_plot_details(
                 accession,
                 args.annotation,
                 args.padding,
@@ -116,7 +131,7 @@ def build_jobs(args):
         except Exception as error:
             print(f'Warning: skipped {accession}: {error}')
             continue
-        jobs.append((region, accession, gene_annotation))
+        jobs.append((region, accession, gene_annotation, transcript_annotations))
 
     if lookup_cache_changed:
         save_lookup_cache(lookup_cache)
@@ -160,25 +175,36 @@ def main():
     )
     parser.add_argument('--highlight', nargs='+',
                         help='One or more ranges to highlight. E.g., --highlight 5887000-5888000')
+    parser.add_argument(
+        '--heatmap-mode',
+        choices=('binned', 'base-level'),
+        default='binned',
+        help=(
+            'Heatmap resolution: contract-driven, at most 500 display bins with SVG and PNG '
+            '(default), or the legacy per-base PNG.'
+        ),
+    )
 
     args = parser.parse_args()
     jobs = build_jobs(args)
     batch_mode = len(jobs) > 1 or args.regions_file or args.accessions or args.accessions_file
     results_root = os.path.join('results', Path(args.output).stem) if batch_mode else 'results'
 
-    for region, output_name, gene_annotation in jobs:
+    for region, output_name, gene_annotation, transcript_annotations in jobs:
         print(f'Processing {output_name}: {region}')
         process_region(
-            region,
-            output_name,
-            args.highlight,
-            args.keep_tsv,
-            results_root,
-            gene_annotation,
-            args.data_source,
-            args.reference_file,
-            args.remote_url,
-            args.accessibility_file,
+            region=region,
+            output_name=output_name,
+            highlight_ranges=args.highlight,
+            keep_tsv=args.keep_tsv,
+            results_root=results_root,
+            gene_annotation=gene_annotation,
+            transcript_annotations=transcript_annotations,
+            heatmap_mode=args.heatmap_mode,
+            data_source=args.data_source,
+            reference_file=args.reference_file,
+            remote_url=args.remote_url,
+            accessibility_file=args.accessibility_file,
         )
 
 

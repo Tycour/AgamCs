@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "contract_id": "agamcs-plot-contract-v1",
+  "generated_browser_copy": "docs/assets/data/plot-contract.json",
+  "coordinate_convention": "AgamP4 1-based inclusive input; display coordinates increase left-to-right and accession plots run 5-prime to 3-prime",
+  "binning": {
+    "assignment": "min(bin_count - 1, floor((x - minimum) * bin_count / (maximum - minimum)))",
+    "empty_bins": "omit",
+    "signal_maximum_bins": 240,
+    "heatmap_maximum_bins": 500
+  },
+  "aggregation": {
+    "signal": {
+      "conservation": "mean plus linear-interpolated q10, q25, median, q75, q90",
+      "snp_density": "mean over QC-accessible positions only",
+      "qc_failed": "unknown; exclude from SNP mean and retain accessible fraction"
+    },
+    "heatmap": {
+      "identity": "arithmetic mean over finite non-zero identities",
+      "detected_fraction": "finite non-zero positions divided by every position in the display bin",
+      "zero": "no detected CNEr interval; not measured 0 percent identity"
+    }
+  },
+  "palette": {
+    "viridis_anchors": [
+      [0.0, [68, 1, 84]],
+      [0.25, [59, 82, 139]],
+      [0.5, [33, 145, 140]],
+      [0.75, [94, 201, 98]],
+      [1.0, [253, 231, 37]]
+    ],
+    "no_interval_rgb": [47, 47, 47],
+    "coverage_strength": "0.35 + 0.65 * detected_fraction",
+    "maximum_channel_delta": 1
+  },
+  "heatmap_layout": {
+    "width": 1000,
+    "row_top": 78,
+    "row_height": 23,
+    "plot_left": 210,
+    "plot_right": 930,
+    "footer_without_annotation": 92,
+    "footer_single_annotation": 290,
+    "footer_multi_annotation_base": 201,
+    "transcript_row_height": 24,
+    "title": "Conserved intervals mapped to AgamP4 positions",
+    "identity_label": "Identity (%) when interval detected",
+    "no_interval_label": "No detected CNEr interval"
+  },
+  "accessibility": {
+    "svg_role": "img",
+    "description_requirements": [
+      "AgamP4 interval",
+      "display-bin count",
+      "zero semantics",
+      "QC unknown semantics"
+    ],
+    "browser_interaction": "Tooltips remain browser-only enhancements outside the static plot model."
+  },
+  "parity": {
+    "target": "semantic, normalized-geometry, and bounded-palette parity; not pixel identity",
+    "normalized_geometry_tolerance": 1e-9,
+    "palette_samples": [[0, 0], [0, 0.25], [25, 0.5], [50, 0.75], [75, 1], [100, 1]]
+  }
+}

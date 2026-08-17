@@ -201,11 +201,17 @@ def region_from_ensembl_record(accession, record, padding=0):
     return format_region(record['seq_region_name'], record['start'], record['end'], padding)
 
 
-def annotation_from_ensembl_record(accession, record):
-    """Reduce an expanded Ensembl record to the fields needed by the plot."""
+def annotations_from_ensembl_record(accession, record):
+    """Return representative and complete transcript annotations for plotting."""
     region_from_ensembl_record(accession, record)
     strand = int(record.get('strand', 1))
     transcripts = record.get('Transcript') or []
+    record_type = str(record.get('object_type') or record.get('biotype') or '').lower()
+    exact_transcript = not transcripts and (
+        'Exon' in record or record_type in {'transcript', 'mrna'}
+    )
+    if exact_transcript:
+        transcripts = [record]
 
     def transcript_rank(transcript):
         return (
@@ -214,38 +220,58 @@ def annotation_from_ensembl_record(accession, record):
             int(transcript.get('end', 0)) - int(transcript.get('start', 0)),
         )
 
-    transcript = max(transcripts, key=transcript_rank) if transcripts else None
-    exons = []
-    cds_start = None
-    cds_end = None
-    transcript_id = None
-
-    if transcript is not None:
-        transcript_id = transcript.get('id')
+    def transcript_annotation(transcript):
         exons = [
             {'start': int(exon['start']), 'end': int(exon['end'])}
             for exon in transcript.get('Exon', [])
             if 'start' in exon and 'end' in exon
         ]
         exons.sort(key=lambda exon: exon['start'], reverse=strand == -1)
-
         translation = transcript.get('Translation') or {}
-        if 'start' in translation and 'end' in translation:
-            cds_start = int(translation['start'])
-            cds_end = int(translation['end'])
+        return {
+            'id': str(
+                record.get('Parent') or record.get('parent') or record.get('id', accession)
+            ).split(':')[-1],
+            'assembly': record.get('assembly_name'),
+            'chromosome': normalize_chromosome(record['seq_region_name']),
+            'start': int(transcript.get('start', record['start'])),
+            'end': int(transcript.get('end', record['end'])),
+            'strand': strand,
+            'transcript_id': transcript.get('id'),
+            'exons': exons,
+            'cds_start': int(translation['start']) if 'start' in translation else None,
+            'cds_end': int(translation['end']) if 'end' in translation else None,
+        }
 
-    return {
-        'id': record.get('id', accession),
-        'assembly': record.get('assembly_name'),
-        'chromosome': normalize_chromosome(record['seq_region_name']),
-        'start': int(record['start']),
-        'end': int(record['end']),
-        'strand': strand,
-        'transcript_id': transcript_id,
-        'exons': exons,
-        'cds_start': cds_start,
-        'cds_end': cds_end,
-    }
+    models = [transcript_annotation(transcript) for transcript in transcripts]
+    models = [model for model in models if model['transcript_id'] and model['exons']]
+    models.sort(key=lambda model: str(model['transcript_id']))
+    selected = max(transcripts, key=transcript_rank) if transcripts else None
+    if selected is None:
+        representative = {
+            'id': record.get('id', accession),
+            'assembly': record.get('assembly_name'),
+            'chromosome': normalize_chromosome(record['seq_region_name']),
+            'start': int(record['start']),
+            'end': int(record['end']),
+            'strand': strand,
+            'transcript_id': None,
+            'exons': [],
+            'cds_start': None,
+            'cds_end': None,
+        }
+    elif exact_transcript:
+        representative = transcript_annotation(selected)
+    else:
+        representative = transcript_annotation(selected)
+        representative['start'] = int(record['start'])
+        representative['end'] = int(record['end'])
+    return representative, models
+
+
+def annotation_from_ensembl_record(accession, record):
+    """Return the stable representative annotation used by existing callers."""
+    return annotations_from_ensembl_record(accession, record)[0]
 
 
 def _normalized_feature_ids(value):
@@ -256,8 +282,8 @@ def _normalized_feature_ids(value):
     }
 
 
-def annotation_from_gff(accession, annotation_file):
-    """Read a gene and one representative transcript from a GFF3 file."""
+def annotations_from_gff(accession, annotation_file):
+    """Read a gene, its representative transcript, and every GFF3 isoform."""
     records = []
     with Path(annotation_file).open() as handle:
         for line in handle:
@@ -276,6 +302,17 @@ def annotation_from_gff(accession, annotation_file):
                 'attributes': parse_attributes(attributes),
             })
 
+    requested_transcript = next(
+        (
+            record for record in records
+            if (record['type'] in {'transcript', 'mrna'} or record['type'].endswith('rna'))
+            and any(
+                accession_matches(accession, {key: record['attributes'].get(key)})
+                for key in ('ID', 'transcript_id', 'Name')
+            )
+        ),
+        None,
+    )
     gene = next(
         (
             record for record in records
@@ -284,6 +321,21 @@ def annotation_from_gff(accession, annotation_file):
         ),
         None,
     )
+    if gene is None and requested_transcript is not None:
+        parent_ids = _normalized_feature_ids(
+            requested_transcript['attributes'].get('Parent')
+        )
+        gene = next(
+            (
+                record for record in records
+                if record['type'] in {'gene', 'pseudogene'}
+                and any(
+                    parent_ids.intersection(_normalized_feature_ids(record['attributes'].get(key)))
+                    for key in ('ID', 'gene_id', 'Name', 'locus_tag')
+                )
+            ),
+            None,
+        )
     if gene is None:
         raise KeyError(f'Accession {accession} was not found in {annotation_file}')
 
@@ -308,14 +360,7 @@ def annotation_from_gff(accession, annotation_file):
             and transcript_ids.intersection(_normalized_feature_ids(record['attributes'].get('Parent')))
         ]
 
-    if transcripts:
-        transcript = max(
-            transcripts,
-            key=lambda item: (
-                len(transcript_children(item, {'cds'})) > 0,
-                item['end'] - item['start'],
-            ),
-        )
+    def transcript_annotation(transcript):
         exons = transcript_children(transcript, {'exon'})
         cds = transcript_children(transcript, {'cds'})
         transcript_id = (
@@ -323,8 +368,46 @@ def annotation_from_gff(accession, annotation_file):
             or transcript['attributes'].get('transcript_id')
             or transcript['attributes'].get('Name')
         )
+        exon_intervals = [
+            {'start': record['start'], 'end': record['end']}
+            for record in exons
+        ]
+        exon_intervals.sort(key=lambda exon: exon['start'], reverse=gene['strand'] == -1)
+        return {
+            'id': accession if requested_transcript is None else (
+                gene['attributes'].get('Name')
+                or gene['attributes'].get('ID')
+                or accession
+            ).split(':')[-1],
+            'assembly': None,
+            'chromosome': gene['chromosome'],
+            'start': transcript['start'],
+            'end': transcript['end'],
+            'strand': gene['strand'],
+            'transcript_id': transcript_id,
+            'exons': exon_intervals,
+            'cds_start': min((record['start'] for record in cds), default=None),
+            'cds_end': max((record['end'] for record in cds), default=None),
+        }
+
+    if requested_transcript is not None:
+        representative = transcript_annotation(requested_transcript)
+        models = [representative] if representative['exons'] else []
+    elif transcripts:
+        selected = max(
+            transcripts,
+            key=lambda item: (
+                len(transcript_children(item, {'cds'})) > 0,
+                item['end'] - item['start'],
+            ),
+        )
+        models = [transcript_annotation(transcript) for transcript in transcripts]
+        models = [model for model in models if model['transcript_id'] and model['exons']]
+        models.sort(key=lambda model: str(model['transcript_id']))
+        representative = transcript_annotation(selected)
+        representative['start'] = gene['start']
+        representative['end'] = gene['end']
     else:
-        transcript = gene
         exons = [
             record for record in records
             if record['type'] == 'exon'
@@ -335,26 +418,30 @@ def annotation_from_gff(accession, annotation_file):
             if record['type'] == 'cds'
             and gene_ids.intersection(_normalized_feature_ids(record['attributes'].get('Parent')))
         ]
-        transcript_id = None
+        exon_intervals = [
+            {'start': record['start'], 'end': record['end']}
+            for record in exons
+        ]
+        exon_intervals.sort(key=lambda exon: exon['start'], reverse=gene['strand'] == -1)
+        representative = {
+            'id': accession,
+            'assembly': None,
+            'chromosome': gene['chromosome'],
+            'start': gene['start'],
+            'end': gene['end'],
+            'strand': gene['strand'],
+            'transcript_id': None,
+            'exons': exon_intervals,
+            'cds_start': min((record['start'] for record in cds), default=None),
+            'cds_end': max((record['end'] for record in cds), default=None),
+        }
+        models = []
+    return representative, models
 
-    exon_intervals = [
-        {'start': record['start'], 'end': record['end']}
-        for record in exons
-    ]
-    exon_intervals.sort(key=lambda exon: exon['start'], reverse=gene['strand'] == -1)
 
-    return {
-        'id': accession,
-        'assembly': None,
-        'chromosome': gene['chromosome'],
-        'start': gene['start'],
-        'end': gene['end'],
-        'strand': gene['strand'],
-        'transcript_id': transcript_id,
-        'exons': exon_intervals,
-        'cds_start': min((record['start'] for record in cds), default=None),
-        'cds_end': max((record['end'] for record in cds), default=None),
-    }
+def annotation_from_gff(accession, annotation_file):
+    """Return the stable representative GFF3 annotation for existing callers."""
+    return annotations_from_gff(accession, annotation_file)[0]
 
 
 def load_lookup_cache(cache_path=LOOKUP_CACHE_PATH):
@@ -389,6 +476,68 @@ def validate_annotation_assembly(accession, annotation):
         )
 
 
+def _cached_plot_annotations(entry):
+    """Read both the versioned multi-isoform cache and legacy single records."""
+    if isinstance(entry, dict) and entry.get('cache_schema_version') == 2:
+        return entry['representative'], list(entry.get('transcripts') or [])
+    transcripts = [entry] if entry.get('transcript_id') and entry.get('exons') else []
+    return entry, transcripts
+
+
+def resolve_accession_plot_details(
+    accession,
+    annotation_file=None,
+    padding=0,
+    region_cache=None,
+    annotation_cache=None,
+):
+    """Return a padded region, representative annotation, and all isoforms."""
+    cache_key = accession.upper()
+
+    if annotation_file is not None:
+        if Path(annotation_file).suffix.lower() in {'.gff', '.gff3'}:
+            annotation, transcripts = annotations_from_gff(accession, annotation_file)
+            region = format_region(
+                annotation['chromosome'], annotation['start'], annotation['end'], padding
+            )
+            return region, annotation, transcripts
+        return resolve_from_table(accession, annotation_file, padding), None, []
+
+    if annotation_cache is not None and cache_key in annotation_cache:
+        annotation, transcripts = _cached_plot_annotations(annotation_cache[cache_key])
+        validate_annotation_assembly(accession, annotation)
+        for transcript in transcripts:
+            validate_annotation_assembly(accession, transcript)
+        region = format_region(
+            annotation['chromosome'], annotation['start'], annotation['end'], padding
+        )
+        return region, annotation, transcripts
+
+    try:
+        record = fetch_ensembl_record(accession, expand=True)
+    except Exception:
+        if region_cache is not None and cache_key in region_cache:
+            return add_padding_to_region(region_cache[cache_key], padding), None, []
+        raise
+
+    annotation, transcripts = annotations_from_ensembl_record(accession, record)
+    validate_annotation_assembly(accession, annotation)
+    for transcript in transcripts:
+        validate_annotation_assembly(accession, transcript)
+    unpadded_region = format_region(
+        annotation['chromosome'], annotation['start'], annotation['end']
+    )
+    if region_cache is not None:
+        region_cache[cache_key] = unpadded_region
+    if annotation_cache is not None:
+        annotation_cache[cache_key] = {
+            'cache_schema_version': 2,
+            'representative': annotation,
+            'transcripts': transcripts,
+        }
+    return add_padding_to_region(unpadded_region, padding), annotation, transcripts
+
+
 def resolve_accession_details(
     accession,
     annotation_file=None,
@@ -396,43 +545,15 @@ def resolve_accession_details(
     region_cache=None,
     annotation_cache=None,
 ):
-    """Return a padded region plus optional transcript annotation for plotting."""
-    cache_key = accession.upper()
-
-    if annotation_file is not None:
-        if Path(annotation_file).suffix.lower() in {'.gff', '.gff3'}:
-            annotation = annotation_from_gff(accession, annotation_file)
-            region = format_region(
-                annotation['chromosome'], annotation['start'], annotation['end'], padding
-            )
-            return region, annotation
-        return resolve_from_table(accession, annotation_file, padding), None
-
-    if annotation_cache is not None and cache_key in annotation_cache:
-        annotation = annotation_cache[cache_key]
-        validate_annotation_assembly(accession, annotation)
-        region = format_region(
-            annotation['chromosome'], annotation['start'], annotation['end'], padding
-        )
-        return region, annotation
-
-    try:
-        record = fetch_ensembl_record(accession, expand=True)
-    except Exception:
-        if region_cache is not None and cache_key in region_cache:
-            return add_padding_to_region(region_cache[cache_key], padding), None
-        raise
-
-    annotation = annotation_from_ensembl_record(accession, record)
-    validate_annotation_assembly(accession, annotation)
-    unpadded_region = format_region(
-        annotation['chromosome'], annotation['start'], annotation['end']
+    """Return the legacy region and representative-annotation pair."""
+    region, annotation, _transcripts = resolve_accession_plot_details(
+        accession,
+        annotation_file,
+        padding,
+        region_cache,
+        annotation_cache,
     )
-    if region_cache is not None:
-        region_cache[cache_key] = unpadded_region
-    if annotation_cache is not None:
-        annotation_cache[cache_key] = annotation
-    return add_padding_to_region(unpadded_region, padding), annotation
+    return region, annotation
 
 
 def resolve_accession(accession, annotation_file=None, padding=0, cache=None):

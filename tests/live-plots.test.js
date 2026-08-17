@@ -1,8 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const manifest = require('../docs/assets/data/query-manifest.json');
+const plotContract = require('../docs/assets/data/plot-contract.json');
 
+require('../docs/assets/plot-model.js');
 require('../docs/assets/live-plots.js');
+globalThis.AgamCsPlots.configurePlotContract(plotContract);
 
 const {
   annotationMatches,
@@ -11,9 +16,37 @@ const {
   transcriptModelGeometry,
   transcriptAnnotationsForDisplay,
   abbreviatedSpeciesName,
+  renderHeatmap,
   topologyTipCodes,
   validateSpeciesTopology,
 } = globalThis.AgamCsPlots;
+
+class FakeElement {
+  constructor(name) {
+    this.name = name;
+    this.attributes = new Map();
+    this.children = [];
+    this.listeners = new Map();
+    this.style = {};
+    this.hidden = false;
+    this.innerHTML = '';
+    this.textContent = '';
+  }
+
+  setAttribute(key, value) { this.attributes.set(key, String(value)); }
+
+  getAttribute(key) { return this.attributes.get(key); }
+
+  append(...children) { this.children.push(...children); }
+
+  prepend(...children) { this.children.unshift(...children); }
+
+  replaceChildren(...children) { this.children = [...children]; }
+
+  addEventListener(type, listener) { this.listeners.set(type, listener); }
+
+  getBoundingClientRect() { return { left: 0, top: 0, width: 1000, height: 653 }; }
+}
 
 test('annotations remain active when the query includes flanking padding', () => {
   const annotation = { chromosome: '2L', start: 100, end: 200 };
@@ -192,4 +225,60 @@ test('multi-transcript tracks retain unique overlapping models on the same stran
     transcriptAnnotationsForDisplay(display, annotations).map((item) => item.transcript_id),
     ['AGAP000001-RA', 'AGAP000001-RB'],
   );
+});
+
+test('Pages heatmap retains accessible SVG metadata and browser-only tooltips', () => {
+  const previousDocument = globalThis.document;
+  globalThis.document = {
+    createElementNS: (_namespace, name) => new FakeElement(name),
+    createElement: (name) => new FakeElement(name),
+  };
+  try {
+    const container = new FakeElement('container');
+    const width = 3;
+    const result = {
+      chromosome: '2L', start: 10, end: 12,
+      stackRows: manifest.stack.rows,
+      stackSpecies: manifest.stack.species,
+      stackTopology: manifest.stack.topology,
+      values: {
+        Cs: Float32Array.from([0.1, 0.2, 0.3]),
+        snp_density: Float32Array.from([0, 0.1, 0]),
+        status: Uint8Array.from([1, 0, 1]),
+        stack: Float32Array.from(
+          manifest.stack.rows.flatMap((_row, row) => [0, 50 + row, 75 + row]),
+        ),
+      },
+    };
+    const summary = renderHeatmap(container, result);
+    const [svg, tooltip] = container.children;
+    assert.equal(summary.cells.length, 21);
+    assert.equal(svg.name, 'svg');
+    assert.equal(svg.getAttribute('role'), 'img');
+    assert.equal(
+      svg.getAttribute('aria-labelledby'),
+      'agamcs-live-heatmap-title agamcs-live-heatmap-description',
+    );
+    assert.equal(svg.children.some((child) => child.name === 'title'), true);
+    assert.equal(svg.children.some((child) => child.name === 'desc'), true);
+    assert.equal(tooltip.name, 'div');
+    assert.ok(svg.listeners.has('pointermove'));
+    assert.ok(svg.listeners.has('pointerleave'));
+    svg.listeners.get('pointermove')({ clientX: 500, clientY: 90 });
+    assert.equal(tooltip.hidden, false);
+    assert.match(tooltip.innerHTML, /mean identity|No detected CNEr interval/);
+    svg.listeners.get('pointerleave')();
+    assert.equal(tooltip.hidden, true);
+    assert.equal(result.values.stack.length, manifest.stack.rows.length * width);
+  } finally {
+    globalThis.document = previousDocument;
+  }
+});
+
+test('standalone SVG download path remains present after plot-model extraction', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
+  assert.match(source, /function configureFigureDownload/);
+  assert.match(source, /cloneNode\(true\)/);
+  assert.match(source, /new XMLSerializer\(\)\.serializeToString/);
+  assert.match(source, /type: 'image\/svg\+xml;charset=utf-8'/);
 });

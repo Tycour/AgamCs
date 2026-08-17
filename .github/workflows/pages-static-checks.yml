@@ -3,27 +3,19 @@ name: Pages static checks
 on:
   pull_request:
     paths:
+      - 'AgamCs/**'
       - 'docs/**'
-      - 'tools/check_pages_site.py'
-      - 'tools/build_pages_examples.py'
-      - 'tools/build_pages_query_assets.py'
-      - 'tools/build_pages_accession_index.py'
-      - 'tests/accession-lookup.test.js'
-      - 'tests/query-contract.test.js'
-      - 'tests/query-worker.test.js'
+      - 'tools/**'
+      - 'tests/**'
       - '.github/workflows/pages-static-checks.yml'
   push:
     branches:
       - main
     paths:
+      - 'AgamCs/**'
       - 'docs/**'
-      - 'tools/check_pages_site.py'
-      - 'tools/build_pages_examples.py'
-      - 'tools/build_pages_query_assets.py'
-      - 'tools/build_pages_accession_index.py'
-      - 'tests/accession-lookup.test.js'
-      - 'tests/query-contract.test.js'
-      - 'tests/query-worker.test.js'
+      - 'tools/**'
+      - 'tests/**'
       - '.github/workflows/pages-static-checks.yml'
 
 permissions:
@@ -40,8 +32,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - run: python tools/sync_plot_contract.py --check
       - run: python tools/check_pages_site.py
       - run: node --check docs/assets/accession-lookup.js
+      - run: node --check docs/assets/plot-model.js
       - run: node --check docs/assets/query-contract.js
       - run: node --check docs/assets/query-worker.js
       - run: node --check docs/assets/live-plots.js

@@ -25,7 +25,10 @@ from AgamCs.create_heatmap import (
 from AgamCs.gene_regions import (
     annotation_from_ensembl_record,
     annotation_from_gff,
+    annotations_from_ensembl_record,
+    annotations_from_gff,
     resolve_accession_details,
+    resolve_accession_plot_details,
 )
 from AgamCs.species_topology import (
     SPECIES_TOPOLOGY,
@@ -288,6 +291,44 @@ def test_expanded_ensembl_record_uses_canonical_transcript():
     assert annotation['cds_start'] == 150
     assert annotation['cds_end'] == 450
 
+    representative, transcripts = annotations_from_ensembl_record('AGAPTEST', record)
+    assert representative == annotation
+    assert representative['start'] == 100
+    assert representative['end'] == 500
+    assert [item['transcript_id'] for item in transcripts] == [
+        'AGAPTEST-RA', 'AGAPTEST-RB',
+    ]
+    assert transcripts[1]['start'] == 150
+    assert transcripts[1]['end'] == 450
+
+
+def test_exact_ensembl_transcript_retains_its_own_span_and_model():
+    record = {
+        'id': 'AGAPTEST-RB',
+        'Parent': 'AGAPTEST',
+        'object_type': 'Transcript',
+        'assembly_name': 'AgamP4',
+        'seq_region_name': '3L',
+        'start': 150,
+        'end': 450,
+        'strand': -1,
+        'Exon': [
+            {'start': 400, 'end': 450},
+            {'start': 150, 'end': 200},
+        ],
+        'Translation': {'start': 175, 'end': 425},
+    }
+
+    representative, transcripts = annotations_from_ensembl_record(
+        'AGAPTEST-RB', record,
+    )
+
+    assert representative == transcripts[0]
+    assert representative['id'] == 'AGAPTEST'
+    assert representative['transcript_id'] == 'AGAPTEST-RB'
+    assert representative['start'] == 150
+    assert representative['end'] == 450
+
 
 def test_cached_annotation_resolves_without_an_online_lookup():
     annotation = example_annotation()
@@ -300,6 +341,31 @@ def test_cached_annotation_resolves_without_an_online_lookup():
 
     assert region == '3L:75-525'
     assert resolved == annotation
+
+
+def test_versioned_annotation_cache_retains_every_isoform():
+    representative = example_annotation()
+    alternate = {
+        **representative,
+        'transcript_id': 'AGAPTEST-RB',
+        'start': 125,
+        'end': 475,
+    }
+    cache = {
+        'AGAPTEST': {
+            'cache_schema_version': 2,
+            'representative': representative,
+            'transcripts': [representative, alternate],
+        },
+    }
+
+    region, resolved, transcripts = resolve_accession_plot_details(
+        'AGAPTEST', padding=25, region_cache={}, annotation_cache=cache,
+    )
+
+    assert region == '3L:75-525'
+    assert resolved == representative
+    assert transcripts == [representative, alternate]
 
 
 def test_vectorbase_style_gff_supplies_exons_and_cds(tmp_path):
@@ -325,6 +391,37 @@ def test_vectorbase_style_gff_supplies_exons_and_cds(tmp_path):
     ]
     assert annotation['cds_start'] == 150
     assert annotation['cds_end'] == 450
+
+
+def test_vectorbase_style_gff_retains_all_isoforms(tmp_path):
+    gff_path = tmp_path / 'annotation.gff3'
+    gff_path.write_text(
+        '##gff-version 3\n'
+        'AgamP4_3L\tVectorBase\tgene\t100\t500\t.\t+\t.\tID=gene:AGAPTEST;Name=AGAPTEST\n'
+        'AgamP4_3L\tVectorBase\tmRNA\t100\t500\t.\t+\t.\tID=transcript:AGAPTEST-RA;Parent=gene:AGAPTEST\n'
+        'AgamP4_3L\tVectorBase\texon\t100\t200\t.\t+\t.\tParent=transcript:AGAPTEST-RA\n'
+        'AgamP4_3L\tVectorBase\tCDS\t150\t200\t.\t+\t0\tParent=transcript:AGAPTEST-RA\n'
+        'AgamP4_3L\tVectorBase\tmRNA\t120\t480\t.\t+\t.\tID=transcript:AGAPTEST-RB;Parent=gene:AGAPTEST\n'
+        'AgamP4_3L\tVectorBase\texon\t120\t240\t.\t+\t.\tParent=transcript:AGAPTEST-RB\n'
+    )
+
+    representative, transcripts = annotations_from_gff('AGAPTEST', gff_path)
+
+    assert representative['transcript_id'] == 'transcript:AGAPTEST-RA'
+    assert representative['start'] == 100
+    assert representative['end'] == 500
+    assert [item['transcript_id'] for item in transcripts] == [
+        'transcript:AGAPTEST-RA', 'transcript:AGAPTEST-RB',
+    ]
+    assert transcripts[1]['start'] == 120
+    assert transcripts[1]['end'] == 480
+
+    selected, selected_models = annotations_from_gff('AGAPTEST-RB', gff_path)
+    assert selected['id'] == 'AGAPTEST'
+    assert selected['transcript_id'] == 'transcript:AGAPTEST-RB'
+    assert selected['start'] == 120
+    assert selected['end'] == 480
+    assert selected_models == [selected]
 
 
 def test_annotation_plot_renders_with_genomic_highlights(tmp_path):
