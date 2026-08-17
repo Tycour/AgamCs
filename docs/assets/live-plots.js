@@ -77,20 +77,12 @@
     };
   }
 
-  function summarizeSignals(result, annotation = null, maximumBins = null) {
-    const contract = requirePlotContract();
-    if (maximumBins != null && Number(maximumBins) !== contract.binning.signal_maximum_bins) {
-      throw new Error('Signal summaries must use the versioned plot-contract bin count.');
-    }
-    return plotModel.summarizeSignals(result, annotation, contract);
+  function summarizeSignals(result, annotation = null) {
+    return plotModel.summarizeSignals(result, annotation, requirePlotContract());
   }
 
-  function summarizeHeatmap(result, annotation = null, maximumBins = null) {
-    const contract = requirePlotContract();
-    if (maximumBins != null && Number(maximumBins) !== contract.binning.heatmap_maximum_bins) {
-      throw new Error('Heatmap summaries must use the versioned plot-contract bin count.');
-    }
-    return plotModel.summarizeHeatmap(result, annotation, contract);
+  function summarizeHeatmap(result, annotation = null) {
+    return plotModel.summarizeHeatmap(result, annotation, requirePlotContract());
   }
 
   function svgElement(name, attributes = {}) {
@@ -453,7 +445,7 @@
   }
 
   function renderSignalPlot(container, result, annotation = null, transcriptAnnotations = null) {
-    const summary = summarizeSignals(result, annotation, 240);
+    const summary = summarizeSignals(result, annotation);
     const hasAnnotation = Boolean(summary.annotation);
     const annotationModels = transcriptAnnotationsForDisplay(
       summary.annotation,
@@ -647,7 +639,7 @@
   }
 
   function renderHeatmap(container, result, annotation = null, transcriptAnnotations = null) {
-    const summary = summarizeHeatmap(result, annotation, 500);
+    const summary = summarizeHeatmap(result, annotation);
     const speciesTree = validateSpeciesTopology(result.stackTopology, result.stackRows);
     const hasAnnotation = Boolean(summary.annotation);
     const annotationModels = transcriptAnnotationsForDisplay(

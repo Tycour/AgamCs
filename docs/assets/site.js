@@ -461,8 +461,8 @@ function findValidationFixture(validation, region) {
 
 function validatePlotSummaries(result, fixture, annotation) {
   if (fixture.region !== `${result.chromosome}:${result.start}-${result.end}`) return false;
-  const signal = globalThis.AgamCsPlots.summarizeSignals(result, annotation, fixture.signal_bins);
-  const heatmap = globalThis.AgamCsPlots.summarizeHeatmap(result, annotation, fixture.heatmap_bins);
+  const signal = globalThis.AgamCsPlots.summarizeSignals(result, annotation);
+  const heatmap = globalThis.AgamCsPlots.summarizeHeatmap(result, annotation);
   const csFields = ['position', 'mean', 'q10', 'q25', 'median', 'q75', 'q90'];
   const csMatches = fixture.cs.length === signal.cs.length && fixture.cs.every((expected, index) => (
     csFields.every((field) => valuesMatch(signal.cs[index][field], expected[field]))

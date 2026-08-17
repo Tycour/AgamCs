@@ -120,6 +120,18 @@ def _javascript_model(result, annotation, transcript_annotations=None):
     return json.loads(process.stdout)
 
 
+def _javascript_palette_samples(samples):
+    process = subprocess.run(
+        [_node_executable(), str(NODE_RUNNER)],
+        input=json.dumps({'palette_samples': samples}),
+        text=True,
+        capture_output=True,
+        check=True,
+        timeout=90,
+    )
+    return json.loads(process.stdout)
+
+
 def _assert_close(actual, expected, path='model'):
     if isinstance(actual, (int, float)) and not isinstance(actual, bool) \
             and isinstance(expected, (int, float)) and not isinstance(expected, bool):
@@ -189,10 +201,22 @@ def _agap006241_result_and_annotation():
     }, example['annotation']
 
 
-def test_agap006241_matches_javascript_and_the_existing_python_golden_fixture():
+def test_agap006241_model_and_six_palette_samples_match_javascript_and_golden_fixture():
     result, annotation = _agap006241_result_and_annotation()
     python_model = build_plot_model(result, annotation, [annotation])
     _assert_close(python_model, _javascript_model(result, annotation, [annotation]))
+
+    contract = load_plot_contract()
+    palette_samples = contract['parity']['palette_samples']
+    javascript_rgb = _javascript_palette_samples(palette_samples)
+    python_rgb = [
+        blended_identity_rgb(identity, fraction, contract)
+        for identity, fraction in palette_samples
+    ]
+    for python_sample, javascript_sample in zip(python_rgb, javascript_rgb):
+        assert max(abs(left - right) for left, right in zip(
+            python_sample, javascript_sample,
+        )) <= contract['palette']['maximum_channel_delta']
 
     fixture = json.loads((ROOT / 'docs/assets/data/plot-validation.json').read_text())
     assert fixture['region'] == f"{result['chromosome']}:{result['start']}-{result['end']}"
@@ -275,10 +299,6 @@ def test_renderer_writes_contract_geometry_svg_and_png_without_node(tmp_path, mo
     assert mpimg.imread(png).shape[:2] == (
         expected_geometry['height'], expected_geometry['width'],
     )
-    sampled_rgb = model['rendering']['paletteSamples'][-1]['rgb']
-    assert max(abs(actual - expected) for actual, expected in zip(
-        sampled_rgb, blended_identity_rgb(100, 1, contract),
-    )) <= contract['palette']['maximum_channel_delta']
 
 
 def test_generated_contract_copy_and_tsv_are_unchanged_by_model_construction(tmp_path):

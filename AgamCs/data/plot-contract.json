@@ -47,16 +47,6 @@
     "identity_label": "Identity (%) when interval detected",
     "no_interval_label": "No detected CNEr interval"
   },
-  "topology": {
-    "schema_version": 1,
-    "representation": "Evidence-bounded broad clades with intentional polytomies; branch lengths are not evolutionary distances.",
-    "required_tip_order": [
-      "AcolM1", "AaraD1", "AquaS1", "AmelC2", "AmerM2", "AchrA1",
-      "AsinC2", "AepiE1", "AminM1", "AmacM1", "AculA1", "AsteI2",
-      "AfunF1", "AatrE3", "AdirW1", "AfarF2", "AdarC3", "AalbS2",
-      "AaegL5", "CpipJ2", "DmelP6"
-    ]
-  },
   "accessibility": {
     "svg_role": "img",
     "description_requirements": [

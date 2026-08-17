@@ -110,7 +110,6 @@
   }
 
   function summarizeSignals(result, annotation, contract) {
-    validateContract(contract);
     const mapped = coordinateRecords(result, annotation);
     const assigned = assignBins(mapped.records, contract.binning.signal_maximum_bins);
     const cs = assigned.bins.map((bin) => {
@@ -137,7 +136,6 @@
   }
 
   function summarizeHeatmap(result, annotation, contract) {
-    validateContract(contract);
     const mapped = coordinateRecords(result, annotation);
     const assigned = assignBins(mapped.records, contract.binning.heatmap_maximum_bins);
     const rowCount = result.stackRows.length;
@@ -166,7 +164,6 @@
   }
 
   function interpolateIdentityColor(identity, contract) {
-    validateContract(contract);
     const bounded = Math.max(0, Math.min(1, Number(identity) / 100));
     const anchors = contract.palette.viridis_anchors;
     let lower = anchors[0];
@@ -185,7 +182,6 @@
   }
 
   function blendedIdentityRgb(identity, detectedFraction, contract) {
-    validateContract(contract);
     if (!detectedFraction) return [...contract.palette.no_interval_rgb];
     const identityRgb = interpolateIdentityColor(identity, contract);
     const background = contract.palette.no_interval_rgb;
@@ -200,7 +196,6 @@
   }
 
   function heatmapGeometry(rowCount, binCount, contract, annotationCount = 0) {
-    validateContract(contract);
     const layout = contract.heatmap_layout;
     const plotWidth = layout.plot_right - layout.plot_left;
     const plotHeight = Number(rowCount) * layout.row_height;
@@ -230,6 +225,7 @@
   }
 
   function buildPlotModel(result, annotation, transcriptAnnotations, contract) {
+    validateContract(contract);
     const signal = summarizeSignals(result, annotation, contract);
     const heatmap = summarizeHeatmap(result, annotation, contract);
     const annotationModels = transcriptAnnotationsForDisplay(
@@ -271,24 +267,15 @@
           contract,
           annotationModels.length,
         ),
-        paletteSamples: contract.parity.palette_samples.map(([identity, fraction]) => ({
-          identity,
-          detectedFraction: fraction,
-          rgb: blendedIdentityRgb(identity, fraction, contract),
-        })),
       },
     };
   }
 
   return {
     annotationMatches,
-    assignBins,
     blendedIdentityColor,
-    blendedIdentityRgb,
     buildPlotModel,
-    coordinateRecords,
     heatmapGeometry,
-    interpolateIdentityColor,
     mean,
     quantile,
     summarizeHeatmap,

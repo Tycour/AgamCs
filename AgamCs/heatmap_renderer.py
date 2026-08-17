@@ -28,7 +28,6 @@ from .plot_model import (
     blended_identity_rgb,
     build_plot_model,
     dataframe_to_result,
-    heatmap_geometry,
     interpolate_identity_rgb,
     load_plot_contract,
     transcript_annotations_for_display,
@@ -120,10 +119,7 @@ def render_heatmap(
     transcript_annotations = transcript_annotations_for_display(
         applied_annotation, transcript_annotations,
     )
-    annotation_count = len(transcript_annotations) if applied_annotation else 0
-    geometry = heatmap_geometry(
-        len(result['stackRows']), model['heatmap']['binCount'], contract, annotation_count,
-    )
+    geometry = model['rendering']['geometry']
     layout = contract['heatmap_layout']
 
     fig = plt.figure(

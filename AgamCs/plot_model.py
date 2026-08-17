@@ -33,8 +33,6 @@ def load_plot_contract(path=None):
         'heatmap_maximum_bins': 500,
     }:
         raise ValueError('The plot contract has unexpected binning semantics.')
-    if contract['topology']['required_tip_order'] != SPECIES_GENOME_CODES:
-        raise ValueError('The plot contract topology does not match the metadata species order.')
     return contract
 
 
@@ -260,14 +258,6 @@ def build_plot_model(
                 len(result['stackRows']), heatmap_count, contract,
                 annotation_count=len(annotation_models),
             ),
-            'paletteSamples': [
-                {
-                    'identity': identity,
-                    'detectedFraction': fraction,
-                    'rgb': list(blended_identity_rgb(identity, fraction, contract)),
-                }
-                for identity, fraction in contract['parity']['palette_samples']
-            ],
         },
     }
 

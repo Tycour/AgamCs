@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const contract = require('../docs/assets/data/plot-contract.json');
 const model = require('../docs/assets/plot-model.js');
 
-test('versioned contract pins binning, semantics, topology, and accessibility', () => {
+test('versioned contract pins binning, aggregation semantics, and accessibility', () => {
   assert.equal(model.validateContract(contract), contract);
   assert.equal(contract.contract_id, 'agamcs-plot-contract-v1');
   assert.equal(contract.generated_browser_copy, 'docs/assets/data/plot-contract.json');
@@ -12,7 +12,6 @@ test('versioned contract pins binning, semantics, topology, and accessibility', 
   assert.equal(contract.binning.heatmap_maximum_bins, 500);
   assert.match(contract.aggregation.heatmap.zero, /no detected CNEr interval/i);
   assert.match(contract.aggregation.signal.qc_failed, /unknown/i);
-  assert.equal(contract.topology.required_tip_order.length, 21);
   assert.equal(contract.accessibility.svg_role, 'img');
 });
 test('contract palette has stable bounded RGB samples', () => {
@@ -25,7 +24,8 @@ test('contract palette has stable bounded RGB samples', () => {
     [253, 231, 37],
   ];
   const actual = contract.parity.palette_samples.map(([identity, fraction]) => (
-    model.blendedIdentityRgb(identity, fraction, contract)
+    model.blendedIdentityColor(identity, fraction, contract)
+      .match(/\d+/g).map(Number)
   ));
   actual.forEach((rgb, index) => rgb.forEach((channel, channelIndex) => {
     assert.ok(

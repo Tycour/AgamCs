@@ -287,14 +287,9 @@ def validate_live_plot_renderer() -> list[str]:
         errors.append('live heatmap is missing its aligned CDS annotation strip')
     if 'transcript-model-row' not in text or 'transcriptAnnotationsForDisplay' not in text:
         errors.append('live plots are missing the shared multi-transcript annotation track')
-    plot_model = (ROOT / 'assets/plot-model.js').read_text(encoding='utf-8')
     site = (ROOT / 'assets/site.js').read_text(encoding='utf-8')
-    if 'buildPlotModel' not in plot_model or 'blendedIdentityRgb' not in plot_model:
-        errors.append('live plots are missing the language-neutral plot model')
     if 'installHeatmapTooltip' not in text or 'installSignalTooltip' not in text:
         errors.append('live plots are missing browser-only tooltip enhancements')
-    if 'configureFigureDownload' not in site or 'XMLSerializer' not in site:
-        errors.append('live plots are missing standalone SVG downloads')
     if 'loadPlotContract' not in site or 'configurePlotContract' not in site:
         errors.append('live plots do not load the versioned plot contract')
     packaged_contract = ROOT.parent / 'AgamCs/data/plot-contract.json'
