@@ -18,6 +18,14 @@
       "qc_mode": "mixed"
     },
     {
+      "id": "prospective-maximum-50000-bases",
+      "chromosome": "2L",
+      "start": 2000000,
+      "length": 50000,
+      "stack_mode": "periodic",
+      "qc_mode": "mixed"
+    },
+    {
       "id": "minus-strand",
       "chromosome": "3R",
       "start": 5000,

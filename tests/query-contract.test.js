@@ -2,10 +2,12 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 
 const contract = require('../docs/assets/query-contract.js');
+const productionManifest = require('../docs/assets/data/query-manifest.json');
+const accessionIndex = require('../docs/assets/data/accession-index.json');
 
 const manifest = {
   assembly: 'AgamP4',
-  maximum_query_bases: 20_000,
+  maximum_query_bases: 50_000,
   chromosomes: {
     '2L': { length: 49_364_325 },
     X: { length: 24_393_108 },
@@ -22,7 +24,11 @@ test('accepts single-base queries at both chromosome boundaries', () => {
 });
 
 test('accepts the exact maximum query length', () => {
-  assert.equal(contract.validateCoordinates(manifest, '2L', 10, 20_009).length, 20_000);
+  assert.equal(contract.validateCoordinates(manifest, '2L', 10, 50_009).length, 50_000);
+  assert.throws(
+    () => contract.validateCoordinates(manifest, '2L', 10, 50_010),
+    (error) => error.code === 'maximum-length',
+  );
 });
 
 test('rejects unknown chromosomes and invalid coordinate order', () => {
@@ -44,7 +50,7 @@ test('rejects chromosome overflow and over-limit intervals', () => {
     (error) => error.code === 'chromosome-bound',
   );
   assert.throws(
-    () => contract.validateCoordinates(manifest, '2L', 1, 20_001),
+    () => contract.validateCoordinates(manifest, '2L', 1, 50_001),
     (error) => error.code === 'maximum-length',
   );
 });
@@ -78,13 +84,37 @@ test('rejects invalid padding and padded intervals over the query limit', () => 
     );
   }
   assert.throws(
-    () => contract.padCoordinates(manifest, '2L', 20_000, 20_100, 10_000),
+    () => contract.padCoordinates(manifest, '2L', 100_000, 100_100, 25_000),
     (error) => error.code === 'maximum-length',
   );
 });
 
 test('calculates maximum per-side padding within the interval limit', () => {
-  assert.equal(contract.maximumSymmetricPadding(manifest, '2L', 20_000, 20_100), 9_949);
-  assert.equal(contract.maximumSymmetricPadding(manifest, '2L', 1, 101), 19_899);
-  assert.equal(contract.maximumSymmetricPadding(manifest, '2L', 1, 20_000), 0);
+  assert.equal(contract.maximumSymmetricPadding(manifest, '2L', 100_000, 100_100), 24_949);
+  assert.equal(contract.maximumSymmetricPadding(manifest, '2L', 1, 101), 49_899);
+  assert.equal(contract.maximumSymmetricPadding(manifest, '2L', 1, 50_000), 0);
+});
+
+test('production contract pins the AGAP008118 padding boundary', () => {
+  const annotation = accessionIndex.accessions.AGAP008118.annotation;
+  assert.equal(productionManifest.maximum_query_bases, 50_000);
+  assert.equal(annotation.end - annotation.start + 1, 17_947);
+  assert.equal(
+    contract.maximumSymmetricPadding(
+      productionManifest, annotation.chromosome, annotation.start, annotation.end,
+    ),
+    16_026,
+  );
+  assert.equal(
+    contract.padCoordinates(
+      productionManifest, annotation.chromosome, annotation.start, annotation.end, 16_026,
+    ).length,
+    49_999,
+  );
+  assert.throws(
+    () => contract.padCoordinates(
+      productionManifest, annotation.chromosome, annotation.start, annotation.end, 16_027,
+    ),
+    (error) => error.code === 'maximum-length',
+  );
 });

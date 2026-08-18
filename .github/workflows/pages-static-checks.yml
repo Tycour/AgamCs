@@ -7,6 +7,7 @@ on:
       - 'docs/**'
       - 'tools/**'
       - 'tests/**'
+      - 'README.md'
       - '.github/workflows/pages-static-checks.yml'
   push:
     branches:
@@ -16,6 +17,7 @@ on:
       - 'docs/**'
       - 'tools/**'
       - 'tests/**'
+      - 'README.md'
       - '.github/workflows/pages-static-checks.yml'
 
 permissions:

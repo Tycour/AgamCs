@@ -58,6 +58,12 @@ function metrics() {
 
 const uncompressed = { filters: [] };
 
+test('worker retains bounded concurrency, retries, and the 64 MiB cache', () => {
+  assert.match(workerSource, /const MAX_CACHE_BYTES = 64 \* 1024 \* 1024;/);
+  assert.match(workerSource, /const MAX_CONCURRENT_RANGE_REQUESTS = 4;/);
+  assert.match(workerSource, /const MAX_RANGE_ATTEMPTS = 6;/);
+});
+
 test('refuses a host response that could be a full-file download', async () => {
   const worker = harness(async () => ({ status: 200 }));
   await assert.rejects(

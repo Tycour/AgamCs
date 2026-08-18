@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-13-plot-contract1';
+const PAGES_RELEASE = '2026-08-18-query-limit-50000';
 
 function versionedAsset(path) {
   const separator = path.includes('?') ? '&' : '?';
@@ -157,9 +157,9 @@ function updatePaddingHelp() {
     const maximum = globalThis.AgamCsQueryContract.maximumSymmetricPadding(
       queryManifestSnapshot, chromosome, start, end,
     );
-    paddingHelp.textContent = `For ${resolution.accession}, use 0–${maximum.toLocaleString()} bp per side to remain within the ${Number(queryManifestSnapshot.maximum_query_bases).toLocaleString()}-base browser limit. Padding is clipped at chromosome boundaries.`;
+    paddingHelp.textContent = `For ${resolution.accession}, use 0–${maximum.toLocaleString()} bp per side to remain within the ${Number(queryManifestSnapshot.maximum_query_bases).toLocaleString()}-base browser query limit. Padding is clipped at chromosome boundaries.`;
   } catch (_error) {
-    paddingHelp.textContent = 'Enter a supported accession to calculate its allowable padding. The padded interval must remain within the 20,000-base browser limit.';
+    paddingHelp.textContent = 'Enter a supported accession to calculate its allowable padding. The padded interval must remain within the 50,000-base browser query limit.';
   }
 }
 
@@ -554,7 +554,7 @@ benchmarkForm.addEventListener('submit', async (event) => {
     }
   } catch (error) {
     const subject = resolution && error.code === 'maximum-length'
-      ? `${resolution.accession} with the requested padding exceeds the browser interval limit. `
+      ? `${resolution.accession} with the requested padding exceeds the browser query limit. `
       : '';
     const maximumPadding = resolution && manifest
       ? globalThis.AgamCsQueryContract.maximumSymmetricPadding(
