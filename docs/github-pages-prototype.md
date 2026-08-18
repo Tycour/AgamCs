@@ -99,16 +99,17 @@ tailored messages.
   transcript-ID input, an isoform selector, and stacked all-isoform annotation
   tracks for gene queries; independent manual
   coordinates; live `Cs`, unchanged SNP density,
-  species-stack and accessibility/QC queries up to 20,000 bases; interactive
-  browser plots; exact TSV downloads; and explicit annotation provenance.
+  species-stack and accessibility/QC queries up to the 50,000-base browser
+  query limit; interactive browser plots; exact TSV downloads; and explicit
+  annotation provenance.
 - Not included: genes on unplaced/unknown scaffolds, IDs absent from the
-  VectorBase-68 annotation, live Ensembl lookup, intervals over 20,000 bases,
+  VectorBase-68 annotation, live Ensembl lookup, intervals over 50,000 bases,
   or server-side plotting.
 
 The example catalogue is accompanied by the Stage 7–9 browser client. It
 accepts a versioned AgamP4.14 gene or transcript accession, or an independent
-AgamP4 interval of at most 20,000 bases. It reads only the required `Cs`, unchanged
-`snp_density`, species
+AgamP4 interval within the 50,000-base browser query limit. It reads only the
+required `Cs`, unchanged `snp_density`, species
 `stack`, and separate accessibility chunks through HTTP range requests.
 Decoding runs in a persistent worker with a bounded in-memory chunk cache, so
 repeat and nearby queries can reuse data without freezing the interface. Exact

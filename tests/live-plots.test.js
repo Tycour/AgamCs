@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const vm = require('node:vm');
 const manifest = require('../docs/assets/data/query-manifest.json');
 const plotContract = require('../docs/assets/data/plot-contract.json');
 
@@ -46,6 +47,19 @@ class FakeElement {
   addEventListener(type, listener) { this.listeners.set(type, listener); }
 
   getBoundingClientRect() { return { left: 0, top: 0, width: 1000, height: 653 }; }
+}
+
+function siteExportHelpers() {
+  const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
+  const start = source.indexOf('function statusLabel');
+  const end = source.indexOf('function displayNumber');
+  assert.ok(start >= 0 && end > start, 'site TSV helpers must remain discoverable');
+  const context = {};
+  vm.runInNewContext(
+    `${source.slice(start, end)}\nthis.exports = { statusLabel, buildTsv };`,
+    context,
+  );
+  return context.exports;
 }
 
 test('annotations remain active when the query includes flanking padding', () => {
@@ -281,4 +295,46 @@ test('standalone SVG download path remains present after plot-model extraction',
   assert.match(source, /cloneNode\(true\)/);
   assert.match(source, /new XMLSerializer\(\)\.serializeToString/);
   assert.match(source, /type: 'image\/svg\+xml;charset=utf-8'/);
+});
+
+test('exact 50,000-base TSV retains every position and all 21 stack values', () => {
+  const { buildTsv } = siteExportHelpers();
+  const width = 50_000;
+  const stackRows = Array.from({ length: 21 }, (_value, row) => `row${row}`);
+  const stack = new Float32Array(stackRows.length * width);
+  stackRows.forEach((_code, row) => stack.fill(row, row * width, (row + 1) * width));
+  const tsv = buildTsv({
+    chromosome: '2L',
+    start: 1_000_001,
+    stackRows,
+    statusFields: ['is_accessible'],
+    values: {
+      Cs: new Float32Array(width),
+      snp_density: new Float32Array(width),
+      status: new Uint8Array(width).fill(1),
+      stack,
+    },
+  });
+  const lines = tsv.trimEnd().split('\n');
+  assert.equal(lines.length, width + 1);
+  assert.equal(lines[0].split('\t').length, 7 + stackRows.length);
+  const expectedStack = stackRows.map((_code, row) => String(row)).join('\t');
+  for (let index = 0; index < width; index += 1) {
+    const columns = lines[index + 1].split('\t');
+    assert.equal(columns.length, 7 + stackRows.length);
+    assert.equal(Number(columns[1]), 1_000_001 + index);
+    assert.equal(columns.slice(7).join('\t'), expectedStack);
+  }
+});
+
+test('replacement validation failures preserve previous figures and downloads', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
+  const submitStart = source.indexOf("benchmarkForm.addEventListener('submit'");
+  const submit = source.slice(submitStart);
+  const arrayFailure = submit.indexOf('Local validation failed');
+  const plotFailure = submit.indexOf('Plot validation failed');
+  const replacementClear = submit.indexOf('clearFigureDownloads();');
+  assert.ok(arrayFailure >= 0 && plotFailure > arrayFailure);
+  assert.ok(replacementClear > plotFailure);
+  assert.doesNotMatch(submit.slice(submit.lastIndexOf('} catch (error) {')), /clearFigureDownloads|benchmarkDownload\.hidden|liveVisuals\.hidden|querySummary\.hidden/);
 });

@@ -191,8 +191,8 @@ annotation rows beneath both plots; an exact ID such as `AGAP000040-RA` uses
 that isoform's transcript span, exons and CDS bounds. Gene, transcript and
 coordinate queries read only the required `Cs`, raw SNP-density, species-stack,
 and separate QC ranges from the Zenodo data and render live browser plots;
-featured examples remain as shortcuts in the same query form. Queries are
-limited to 20,000 bases, and failed accessibility/QC positions remain separate
+featured examples remain as shortcuts in the same query form. The browser query
+limit is 50,000 bases, and failed accessibility/QC positions remain separate
 from the raw SNP-density values and are shown as unknown. Publishing and
 implementation details are documented in
 [`docs/github-pages-prototype.md`](docs/github-pages-prototype.md).

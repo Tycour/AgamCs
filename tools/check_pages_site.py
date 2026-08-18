@@ -350,7 +350,7 @@ def main() -> None:
             errors.append('browser-query manifest has an unexpected assembly')
         if manifest.get('coordinate_convention') != '1-based inclusive':
             errors.append('browser-query manifest has an unexpected coordinate convention')
-        if manifest.get('maximum_query_bases') != 20_000:
+        if manifest.get('maximum_query_bases') != 50_000:
             errors.append('browser-query manifest has an unexpected query limit')
         if set(manifest.get('chromosomes', {})) != QUERY_CHROMOSOMES:
             errors.append('browser-query manifest has unexpected chromosomes')

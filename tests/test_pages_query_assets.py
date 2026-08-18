@@ -62,7 +62,7 @@ def test_query_manifest_publishes_coordinate_contract_and_lengths():
 
     assert manifest['assembly'] == 'AgamP4'
     assert manifest['coordinate_convention'] == '1-based inclusive'
-    assert manifest['maximum_query_bases'] == 20_000
+    assert manifest['maximum_query_bases'] == 50_000
     assert manifest['arrays'] == ['Cs', 'snp_density', 'stack']
     assert manifest['chromosomes']['X']['length'] == 500
     assert manifest['accessibility']['available'] is True
