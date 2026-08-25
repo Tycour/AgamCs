@@ -5,6 +5,9 @@ from setuptools import setup, find_packages
 setup(
     name='AgamCs',
     version='0.1',
+    description='Conservation-score plots for the Anopheles gambiae AgamP4 genome',
+    url='https://github.com/Tycour/AgamCs',
+    python_requires='>=3.11',
     packages=find_packages(),
     include_package_data=True,
     package_data={'AgamCs': ['data/*.json', 'data/*.h5']},

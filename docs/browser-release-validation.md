@@ -17,7 +17,7 @@ byte and element count matches its case.
 | `plus-gene-2l` | `2L:28585064-28586748` | AGAP006241, plus strand, golden plots | Partly accessible (98.1%) | Exact arrays and Python plot summaries match |
 | `mixed-manual-2r` | `2R:30000000-30000199` | Manual 2R query | Partly accessible (41.0%) | Exact arrays match |
 | `fully-accessible-gene-3l` | `3L:2905395-2905525` | AGAP013705, non-coding gene | Fully accessible | Exact arrays match |
-| `unavailable-gene-3l` | `3L:16180434-16185732` | AGAP011065, no interpretable SNP bases | No accessible bases | Exact arrays match; SNP/QC remains unknown |
+| `unavailable-gene-3l` | `3L:3855186-3858609` | AGAP010449, no interpretable SNP bases | No accessible bases | Exact arrays match; SNP/QC remains unknown |
 | `minus-gene-3r` | `3R:5886340-5904286` | AGAP008118, minus strand | Partly accessible (71.1%) | Exact arrays match; 5-prime to 3-prime orientation preserved |
 | `fully-accessible-manual-x` | `X:10000000-10000199` | Manual X query | Fully accessible | Exact arrays match |
 | `left-boundary-2l` | `2L:1-21` | First one-based chromosome position | No accessible bases | Exact arrays match |
@@ -31,8 +31,8 @@ and slices only the logical chromosome interval.
 ## Failure, cache, and deployment checks
 
 - Coordinates reject unknown chromosomes, zero/reversed/non-integer bounds,
-  chromosome overflow, and intervals over 20,000 bases before a worker query.
-- The exact first and last chromosome bases and an exact 20,000-base interval
+  chromosome overflow, and intervals over 50,000 bases before a worker query.
+- The exact first and last chromosome bases and an exact 50,000-base interval
   are accepted.
 - HTTP 200 range responses are refused so the browser cannot silently download
   the full 3.4 GiB archive.

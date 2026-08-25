@@ -1,0 +1,56 @@
+name: Bug report
+description: Report a reproducible problem with the CLI or browser portal
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping test AgamCs. Please use a minimal public accession or region and do not paste unpublished accession lists or other sensitive data.
+  - type: dropdown
+    id: interface
+    attributes:
+      label: Interface
+      options:
+        - Command-line tool
+        - Browser portal
+        - Both
+    validations:
+      required: true
+  - type: input
+    id: command_or_query
+    attributes:
+      label: Command or query
+      description: Provide the exact command, accession, or genomic region using a public example where possible.
+      placeholder: agamcs --accessions AGAP006241 --output example
+    validations:
+      required: true
+  - type: textarea
+    id: observed
+    attributes:
+      label: What happened?
+      description: Include the complete error message or describe the unexpected figure or result.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, Python version, browser if relevant, and AgamCs commit or version.
+      placeholder: macOS 15, Python 3.12, Safari 19, commit abc1234
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Data check
+      options:
+        - label: I have not included unpublished or sensitive accession lists.
+          required: true

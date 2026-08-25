@@ -56,8 +56,8 @@ RELEASE_VALIDATION_CASES = (
     },
     {
         'id': 'unavailable-gene-3l', 'chromosome': '3L',
-        'start': 16_180_434, 'end': 16_185_732,
-        'accession': 'AGAP011065', 'strand': -1,
+        'start': 3_855_186, 'end': 3_858_609,
+        'accession': 'AGAP010449', 'strand': -1,
         'purpose': 'Pinned gene with no accessible bases; SNP interpretation remains unknown.',
         'expected_qc': 'no_accessible_bases',
     },

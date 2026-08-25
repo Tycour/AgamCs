@@ -153,12 +153,16 @@ Method details are available in the
 Process several genes at once:
 
 ```commandline
-agamcs --accessions AGAP008118 AGAP001234 --output accession_batch
-agamcs --accessions-file accessions.txt --output accession_batch
+agamcs --accessions AGAP006241 AGAP013705 --output accession_batch
+agamcs --accessions-file batch_accessions_example.txt --output accession_batch
 ```
 
 The accession file should contain one `AGAP...` ID per line. Each gene gets its
-own subdirectory. `--highlight` accepts absolute genomic `start-end` ranges.
+own subdirectory, and lines beginning with `#` can document the list. The
+checked-in example spans all five supported chromosomes and deliberately mixes
+plus/minus strands, coding/non-coding genes, short/long models, one to eleven
+transcript isoforms, and different QC outcomes. `--highlight` accepts absolute
+genomic `start-end` ranges.
 
 For accession queries, figures are displayed 5′→3′ and positions are relative
 to the transcription start site, including minus-strand genes. Coordinate-only
@@ -216,3 +220,13 @@ AGAP008118	3R:5886340-5889928
 ```commandline
 python -m pytest -q
 ```
+
+## Beta feedback
+
+AgamCs is ready for research-group beta testing, but it is not yet published on
+PyPI. Please report confusing output, failed accessions or regions, installation
+problems, and feature requests on the
+[GitHub issues page](https://github.com/Tycour/AgamCs/issues). When reporting a
+problem, include the command used, the accession or region, the operating system
+and Python version, and the complete error message. Do not attach unpublished or
+sensitive accession lists; a minimal public example is preferable.

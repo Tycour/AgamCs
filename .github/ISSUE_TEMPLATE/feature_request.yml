@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest an improvement to AgamCs
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping shape AgamCs. Describe the research task rather than sharing unpublished accession lists or other sensitive data.
+  - type: textarea
+    id: need
+    attributes:
+      label: Research need
+      description: What are you trying to learn or accomplish?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Suggested change
+      description: What would make the CLI or browser workflow clearer or more useful?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Current workaround
+      description: How do you handle this task now, if at all?
+  - type: dropdown
+    id: interface
+    attributes:
+      label: Most relevant interface
+      options:
+        - Browser portal
+        - Command-line tool
+        - Both
+        - Documentation
+    validations:
+      required: true

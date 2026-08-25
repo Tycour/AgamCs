@@ -1,10 +1,20 @@
-AGAP005025
-AGAP012201
-AGAP012199
-AGAP028159
-AGAP011067
-AGAP011065
-AGAP009365
-AGAP028112
-AGAP011592
-AGAP029252
+# Compact plus-strand coding model (one transcript, three exons)
+AGAP006241
+# Single-exon non-coding model
+AGAP013705
+# Three transcript isoforms on chromosome X
+AGAP000040
+# Eleven transcript isoforms in a compact gene span
+AGAP004559
+# Eleven isoforms and a ten-exon representative transcript
+AGAP005079
+# Nine isoforms on the minus strand
+AGAP004592
+# Long minus-strand, seven-exon model
+AGAP008118
+# Compact gene with four transcript isoforms
+AGAP008727
+# Minus-strand gene with four isoforms and twelve representative exons
+AGAP010139
+# Coding model whose SNP-density positions fail the companion QC mask
+AGAP010449

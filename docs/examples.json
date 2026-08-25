@@ -65,33 +65,33 @@
       }
     },
     {
-      "accession": "AGAP011065",
-      "region": "3L:16180434-16185732",
-      "transcript_id": "AGAP011065-RA",
+      "accession": "AGAP010449",
+      "region": "3L:3855186-3858609",
+      "transcript_id": "AGAP010449-RA",
       "strand": "−",
       "feature_summary": "Four-exon coding transcript",
       "description": "A minus-strand coding example with inaccessible positions, showing why a zero SNP-density value cannot be treated as confirmed invariance.",
       "qc_note": "SNP density is unknown where the accessibility mask fails",
       "annotation": {
-        "id": "AGAP011065",
+        "id": "AGAP010449",
         "assembly": "AgamP4",
         "chromosome": "3L",
-        "start": 16180434,
-        "end": 16185732,
+        "start": 3855186,
+        "end": 3858609,
         "strand": -1,
-        "transcript_id": "AGAP011065-RA",
+        "transcript_id": "AGAP010449-RA",
         "exons": [
-          {"start": 16185247, "end": 16185732},
-          {"start": 16183094, "end": 16183282},
-          {"start": 16182178, "end": 16183027},
-          {"start": 16180434, "end": 16181021}
+          {"start": 3858337, "end": 3858609},
+          {"start": 3855785, "end": 3855819},
+          {"start": 3855559, "end": 3855698},
+          {"start": 3855186, "end": 3855499}
         ],
-        "cds_start": 16180892,
-        "cds_end": 16185355
+        "cds_start": 3855186,
+        "cds_end": 3858341
       },
       "assets": {
-        "summary": "examples/AGAP011065/cs_snp_summary.png",
-        "heatmap": "examples/AGAP011065/heatmap.png"
+        "summary": "examples/AGAP010449/cs_snp_summary.png",
+        "heatmap": "examples/AGAP010449/heatmap.png"
       }
     },
     {
