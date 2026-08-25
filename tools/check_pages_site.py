@@ -9,12 +9,13 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from build_pages_accession_index import validate_index
-from build_pages_examples import load_catalogue, verify_assets
+from build_pages_examples import load_accession_list, load_catalogue, verify_assets
 
 
 ROOT = Path(__file__).resolve().parents[1] / 'docs'
 PAGES = (ROOT / 'index.html', ROOT / '404.html')
 EXAMPLES_PATH = ROOT / 'examples.json'
+BATCH_ACCESSIONS_PATH = ROOT.parent / 'batch_accessions_example.txt'
 ACCESSION_INDEX_PATH = ROOT / 'assets/data/accession-index.json'
 QUERY_ASSETS = (
     ROOT / 'assets/data/score-reference.json',
@@ -33,7 +34,7 @@ QUERY_ASSETS = (
 QUERY_ARRAYS = {'Cs', 'snp_density', 'stack'}
 VALIDATION_ARRAYS = QUERY_ARRAYS | {'status'}
 QUERY_CHROMOSOMES = {'2L', '2R', '3L', '3R', 'X'}
-REQUIRED_META_NAMES = {'description', 'theme-color', 'twitter:card'}
+REQUIRED_META_NAMES = {'author', 'description', 'theme-color', 'twitter:card'}
 REQUIRED_META_PROPERTIES = {'og:type', 'og:title', 'og:description', 'og:url', 'og:image'}
 FORBIDDEN_PAGES_SUFFIXES = {'.h5', '.hdf5', '.zarr', '.zip', '.tar', '.gz'}
 MAX_PAGES_FILE_BYTES = 10 * 1024 * 1024
@@ -147,6 +148,7 @@ def validate_page(page: Path) -> list[str]:
                 )
         required_ids = {
             'explorer', 'benchmark-form', 'live-accession', 'example-select',
+            'about', 'about-title',
             'accession-padding',
             'padding-help',
             'accession-query-panel', 'isoform-control', 'isoform-select',
@@ -173,7 +175,8 @@ def validate_page(page: Path) -> list[str]:
             errors.append('index.html: obsolete per-position preview remains')
         for required_summary_text in (
             'Base pairs (bp)', 'Aggregated exons', 'Gene or transcript accession',
-            'Transcript isoform',
+            'Transcript isoform', 'Thomas Courty', 'Windbichler Lab',
+            'Imperial College London',
         ):
             if required_summary_text not in page_text:
                 errors.append(
@@ -194,13 +197,20 @@ def validate_page(page: Path) -> list[str]:
 
 
 def validate_examples() -> list[str]:
-    """Ensure every catalogue example points to committed image assets."""
+    """Ensure the catalogue matches the public batch example and its assets."""
     try:
         catalogue = load_catalogue(EXAMPLES_PATH)
+        batch_accessions = load_accession_list(BATCH_ACCESSIONS_PATH)
     except (OSError, ValueError) as error:
         return [f'could not read examples.json: {error}']
-    return [f'missing generated asset: {path.relative_to(ROOT)}'
-            for path in verify_assets(catalogue['examples'], ROOT / 'assets')]
+    errors = [f'missing generated asset: {path.relative_to(ROOT)}'
+              for path in verify_assets(catalogue['examples'], ROOT / 'assets')]
+    catalogue_accessions = [example['accession'] for example in catalogue['examples']]
+    if catalogue_accessions != batch_accessions:
+        errors.append(
+            'featured examples must match batch_accessions_example.txt in the same order'
+        )
+    return errors
 
 
 def validate_accessions() -> list[str]:

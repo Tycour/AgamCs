@@ -58,3 +58,13 @@ def test_verify_assets_reports_only_missing_catalogue_outputs(tmp_path):
     paths['summary'].write_bytes(b'png')
 
     assert build_pages_examples.verify_assets([item], tmp_path) == [paths['heatmap']]
+
+
+def test_checked_in_catalogue_matches_the_public_batch_example():
+    root = Path(__file__).resolve().parents[1]
+    catalogue = build_pages_examples.load_catalogue(root / 'docs/examples.json')
+    batch_accessions = build_pages_examples.load_accession_list(
+        root / 'batch_accessions_example.txt'
+    )
+
+    assert [example['accession'] for example in catalogue['examples']] == batch_accessions

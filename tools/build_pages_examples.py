@@ -25,6 +25,15 @@ REQUIRED_EXAMPLE_KEYS = {
 REQUIRED_ASSET_KEYS = {'summary', 'heatmap'}
 
 
+def load_accession_list(path: Path) -> list[str]:
+    """Read a commented accession list in the same format as the CLI."""
+    accessions = []
+    for line in path.read_text(encoding='utf-8').splitlines():
+        content = line.split('#', 1)[0].replace(',', ' ')
+        accessions.extend(content.split())
+    return accessions
+
+
 def load_catalogue(path: Path) -> dict:
     """Load and validate the small, pinned catalogue manifest."""
     catalogue = json.loads(path.read_text(encoding='utf-8'))

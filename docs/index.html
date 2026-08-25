@@ -4,8 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Explore AgamP4.14 conservation, SNP density, and cross-species identity around Anopheles gambiae genes, transcripts, or any given genomic intervals.">
+  <meta name="author" content="Thomas Courty">
   <meta name="theme-color" content="#0c675a">
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="AgamCs">
   <meta property="og:title" content="AgamCs conservation explorer">
   <meta property="og:description" content="Explore AgamP4.14 conservation, SNP density, and cross-species identity around Anopheles gambiae genes, transcripts, or any given genomic intervals.">
   <meta property="og:url" content="https://tycour.github.io/AgamCs/">
@@ -14,12 +16,12 @@
   <title>AgamCs conservation explorer</title>
   <link rel="canonical" href="https://tycour.github.io/AgamCs/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/site.css?v=2026-08-18-query-limit-50000">
-  <script src="assets/plot-model.js?v=2026-08-18-query-limit-50000" defer></script>
-  <script src="assets/live-plots.js?v=2026-08-18-query-limit-50000" defer></script>
-  <script src="assets/accession-lookup.js?v=2026-08-18-query-limit-50000" defer></script>
-  <script src="assets/query-contract.js?v=2026-08-18-query-limit-50000" defer></script>
-  <script src="assets/site.js?v=2026-08-18-query-limit-50000" defer></script>
+  <link rel="stylesheet" href="assets/site.css?v=2026-08-25-featured-lab-info1">
+  <script src="assets/plot-model.js?v=2026-08-25-featured-lab-info1" defer></script>
+  <script src="assets/live-plots.js?v=2026-08-25-featured-lab-info1" defer></script>
+  <script src="assets/accession-lookup.js?v=2026-08-25-featured-lab-info1" defer></script>
+  <script src="assets/query-contract.js?v=2026-08-25-featured-lab-info1" defer></script>
+  <script src="assets/site.js?v=2026-08-25-featured-lab-info1" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -30,6 +32,7 @@
     <nav aria-label="Primary navigation">
       <a href="#explorer">Explorer</a>
       <a href="#interpretation">Interpretation</a>
+      <a href="#about">About</a>
       <a href="https://github.com/Tycour/AgamCs">GitHub</a>
     </nav>
   </header>
@@ -211,11 +214,54 @@
         </article>
       </div>
     </section>
+
+    <section class="project-credits" id="about" aria-labelledby="about-title">
+      <div class="project-intro">
+        <p class="eyebrow">Project and people</p>
+        <h2 id="about-title">Open research software, developed in a scientific setting.</h2>
+        <p>AgamCs was created to make conservation evidence around <em>Anopheles gambiae</em> genes easier to inspect, compare, and export. The project keeps its code, scientific provenance, quality-control semantics, and feedback process public.</p>
+      </div>
+      <div class="affiliation-grid">
+        <article class="affiliation-card">
+          <p class="card-kicker">Creator and maintainer</p>
+          <h3>Thomas Courty</h3>
+          <p>Developed AgamCs and maintains the command-line and browser workflows.</p>
+          <a href="https://github.com/Tycour/AgamCs">View the project on GitHub</a>
+        </article>
+        <article class="affiliation-card">
+          <p class="card-kicker">Research group</p>
+          <h3><a href="https://www.windbichlerlab.org/">Windbichler Lab</a></h3>
+          <p>The research-group home for work on synthetic biology, genome editing, and genetic control.</p>
+          <a href="https://www.windbichlerlab.org/">Visit the lab website</a>
+        </article>
+        <article class="affiliation-card">
+          <p class="card-kicker">Institution</p>
+          <h3><a href="https://www.imperial.ac.uk/">Imperial College London</a></h3>
+          <p>Academic affiliation for the project creator and the Windbichler Lab.</p>
+          <a href="https://www.imperial.ac.uk/">Visit Imperial College London</a>
+        </article>
+      </div>
+      <nav class="project-links" aria-label="Project resources">
+        <a href="https://github.com/Tycour/AgamCs">Source code</a>
+        <a href="https://github.com/Tycour/AgamCs/issues">Report an issue</a>
+        <a href="https://doi.org/10.5281/zenodo.4304586">Source dataset</a>
+        <a href="https://doi.org/10.3390/insects12020097">Methods paper</a>
+      </nav>
+    </section>
   </main>
 
-  <footer>
-    <p>AgamCs is an open-source research tool for exploring conservation across the Anopheles gambiae AgamP4 genome.</p>
-    <a href="https://doi.org/10.5281/zenodo.4304586">Source dataset on Zenodo</a>
+  <footer class="site-footer">
+    <div class="footer-identity">
+      <strong>AgamCs</strong>
+      <p>Created by Thomas Courty in the Windbichler Lab at Imperial College London.</p>
+    </div>
+    <div class="footer-links">
+      <a href="https://www.windbichlerlab.org/">Windbichler Lab</a>
+      <a href="https://www.imperial.ac.uk/">Imperial College London</a>
+      <a href="https://github.com/Tycour/AgamCs">GitHub</a>
+      <a href="https://github.com/Tycour/AgamCs/issues">Feedback</a>
+    </div>
+    <p class="footer-note">Open-source research software for the <em>Anopheles gambiae</em> AgamP4 genome. Scientific interpretation should retain the source dataset, annotation release, and QC provenance reported with each query.</p>
   </footer>
 </body>
 </html>

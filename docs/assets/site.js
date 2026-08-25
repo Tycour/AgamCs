@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-18-query-limit-50000';
+const PAGES_RELEASE = '2026-08-25-featured-lab-info1';
 
 function versionedAsset(path) {
   const separator = path.includes('?') ? '&' : '?';
@@ -260,13 +260,18 @@ async function loadCatalogue() {
 }
 
 exampleSelect.addEventListener('change', () => {
-  if (!exampleSelect.value) return;
+  if (!exampleSelect.value) {
+    catalogueHelp.textContent = `${examples.length} featured examples. Selecting one fills the accession query.`;
+    return;
+  }
+  const example = examples.find((item) => item.accession === exampleSelect.value);
   const accessionMode = document.querySelector('input[name="live-query-mode"][value="accession"]');
   accessionMode.checked = true;
   setLiveQueryMode('accession');
   liveAccession.value = exampleSelect.value;
   configureIsoformControl(liveAccession.value);
   updatePaddingHelp();
+  if (example) catalogueHelp.textContent = `${example.description} ${example.qc_note}`;
   setPortalState(`Ready to query ${exampleSelect.value}`, 'Ready');
   benchmarkStatus.textContent = `${exampleSelect.value} selected from the featured examples. Run the query to retrieve its values.`;
 });
