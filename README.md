@@ -188,8 +188,9 @@ and the rebuild procedure are in
 
 Try the [no-install GitHub Pages portal](https://tycour.github.io/AgamCs/).
 Its versioned VectorBase-68 index resolves 13,097 AgamP4.14 genes and 15,317
-transcript isoforms on the five supported chromosomes; it uses the published
-AgamP4 conservation arrays. A bare gene ID retains
+transcript isoforms on the five supported chromosomes; an autocomplete also
+matches 2,255 official AgamP4 gene symbols from a separately versioned naming
+index. It uses the published AgamP4 conservation arrays. A bare gene ID retains
 the representative-transcript default while showing every isoform as aligned
 annotation rows beneath both plots; an exact ID such as `AGAP000040-RA` uses
 that isoform's transcript span, exons and CDS bounds. Gene, transcript and

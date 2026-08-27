@@ -1,4 +1,5 @@
-const PAGES_RELEASE = '2026-08-26-ga4-analytics1';
+const PAGES_RELEASE = '2026-08-27-gene-name-search3';
+const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
   const separator = path.includes('?') ? '&' : '?';
@@ -43,7 +44,11 @@ const liveAnnotationNote = document.querySelector('#live-annotation-note');
 const accessionQueryPanel = document.querySelector('#accession-query-panel');
 const coordinateQueryPanel = document.querySelector('#coordinate-query-panel');
 const liveAccession = document.querySelector('#live-accession');
-const liveAccessionList = document.querySelector('#live-accession-list');
+const accessionCombobox = document.querySelector('#accession-combobox');
+const accessionSuggestionsPanel = document.querySelector('#accession-suggestions-panel');
+const accessionSuggestions = document.querySelector('#accession-suggestions');
+const accessionSuggestionsNote = document.querySelector('#accession-suggestions-note');
+const accessionSearchStatus = document.querySelector('#accession-search-status');
 const accessionIndexHelp = document.querySelector('#accession-index-help');
 const paddingHelp = document.querySelector('#padding-help');
 const isoformControl = document.querySelector('#isoform-control');
@@ -54,7 +59,10 @@ const exampleSelect = document.querySelector('#example-select');
 const catalogueHelp = document.querySelector('#catalogue-help');
 const resultTitle = document.querySelector('#result-title');
 const resultStatus = document.querySelector('#result-status');
-const queryWorker = new Worker(versionedAsset('assets/query-worker.js'));
+const localFilePreview = window.location.protocol === 'file:';
+const queryWorker = localFilePreview
+  ? null
+  : new Worker(versionedAsset('assets/query-worker.js'));
 const pendingQueries = new Map();
 let examples = [];
 let queryRequestId = 0;
@@ -62,8 +70,12 @@ let benchmarkDownloadUrl;
 let queryManifestPromise;
 let plotContractPromise;
 let accessionIndexPromise;
+let geneSearchPromise;
 let accessionIndexSnapshot;
+let geneSearchSnapshot;
 let queryManifestSnapshot;
+let currentAccessionSuggestions = [];
+let activeAccessionSuggestion = -1;
 const figureDownloadUrls = new Map();
 
 function trackUsage(eventName, parameters) {
@@ -150,17 +162,172 @@ async function loadAccessionIndex() {
   return accessionIndexPromise;
 }
 
-function configureAccessionIndex(index) {
+async function loadGeneSearch() {
+  if (!geneSearchPromise) {
+    geneSearchPromise = fetch(versionedAsset('assets/data/gene-search.json')).then(async (response) => {
+      if (!response.ok) throw new Error(`Gene-name index request failed (${response.status}).`);
+      const searchIndex = await response.json();
+      if (searchIndex.schema_version !== 1 || searchIndex.assembly !== 'AgamP4'
+          || !searchIndex.names || searchIndex.live_lookup !== false) {
+        throw new Error('The versioned gene-name index is not compatible with this client.');
+      }
+      return searchIndex;
+    });
+  }
+  return geneSearchPromise;
+}
+
+function closeAccessionSuggestions() {
+  accessionSuggestionsPanel.hidden = true;
+  liveAccession.setAttribute('aria-expanded', 'false');
+  liveAccession.removeAttribute('aria-activedescendant');
+  currentAccessionSuggestions = [];
+  activeAccessionSuggestion = -1;
+}
+
+function setActiveAccessionSuggestion(index) {
+  if (!currentAccessionSuggestions.length) return;
+  const bounded = (index + currentAccessionSuggestions.length) % currentAccessionSuggestions.length;
+  activeAccessionSuggestion = bounded;
+  [...accessionSuggestions.children].forEach((option, optionIndex) => {
+    const selected = optionIndex === bounded;
+    option.setAttribute('aria-selected', String(selected));
+    if (selected) option.scrollIntoView({ block: 'nearest' });
+  });
+  liveAccession.setAttribute(
+    'aria-activedescendant', `accession-suggestion-${bounded}`,
+  );
+}
+
+function suggestionElement(match, index) {
+  const option = document.createElement('li');
+  option.id = `accession-suggestion-${index}`;
+  option.className = 'accession-suggestion';
+  option.setAttribute('role', 'option');
+  option.setAttribute('aria-selected', 'false');
+
+  const heading = document.createElement('div');
+  heading.className = 'accession-suggestion-heading';
+  const primary = document.createElement('strong');
+  primary.textContent = match.kind === 'transcript'
+    ? match.accession
+    : (match.name || match.accession);
+  heading.append(primary);
+  if (match.kind === 'gene' && match.name) {
+    const accession = document.createElement('span');
+    accession.className = 'accession-suggestion-accession';
+    accession.textContent = match.accession;
+    heading.append(accession);
+  } else if (match.kind === 'transcript') {
+    const gene = document.createElement('span');
+    gene.className = 'accession-suggestion-accession';
+    gene.textContent = match.name
+      ? `${match.name} · ${match.geneAccession}`
+      : match.geneAccession;
+    heading.append(gene);
+  }
+  option.append(heading);
+
+  if (match.description) {
+    const description = document.createElement('span');
+    description.className = 'accession-suggestion-description';
+    description.textContent = match.description;
+    option.append(description);
+  }
+
+  const metadata = document.createElement('span');
+  metadata.className = 'accession-suggestion-metadata';
+  const metadataParts = [match.region];
+  if (match.kind === 'transcript') metadataParts.push('transcript');
+  if (match.biotype) metadataParts.push(match.biotype.replaceAll('_', ' '));
+  if (match.kind === 'gene') {
+    metadataParts.push(
+      `${match.transcriptCount} transcript${match.transcriptCount === 1 ? '' : 's'}`,
+    );
+    const annotation = accessionIndexSnapshot.accessions[match.geneAccession].annotation;
+    const span = annotation.end - annotation.start + 1;
+    const maximum = Number(queryManifestSnapshot?.maximum_query_bases);
+    if (Number.isFinite(maximum) && span > maximum) {
+      metadataParts.push(
+        `${span.toLocaleString()} bp exceeds the ${maximum.toLocaleString()}-base browser limit`,
+      );
+      metadata.classList.add('accession-suggestion-limit');
+    }
+  }
+  metadata.textContent = metadataParts.join(' · ');
+  option.append(metadata);
+
+  option.addEventListener('mousedown', (event) => event.preventDefault());
+  option.addEventListener('click', () => selectAccessionSuggestion(match));
+  return option;
+}
+
+function renderAccessionSuggestions(value) {
+  if (!accessionIndexSnapshot || !geneSearchSnapshot || !String(value).trim()) {
+    closeAccessionSuggestions();
+    return;
+  }
+  const result = globalThis.AgamCsGeneSearch.search(
+    accessionIndexSnapshot, geneSearchSnapshot, value,
+  );
+  currentAccessionSuggestions = result.matches;
+  activeAccessionSuggestion = -1;
+  accessionSuggestions.replaceChildren(
+    ...result.matches.map((match, index) => suggestionElement(match, index)),
+  );
+  liveAccession.removeAttribute('aria-activedescendant');
+  liveAccession.setAttribute('aria-expanded', 'true');
+  accessionSuggestionsPanel.hidden = false;
+  if (result.total === 0) {
+    accessionSuggestionsNote.textContent = 'No indexed accession or official gene symbol matches this text.';
+    accessionSearchStatus.textContent = 'No matching genes or transcripts.';
+  } else if (result.total > result.matches.length) {
+    accessionSuggestionsNote.textContent = `Showing ${result.matches.length.toLocaleString()} of ${result.total.toLocaleString()} matches. Type more to narrow the list.`;
+    accessionSearchStatus.textContent = `${result.total.toLocaleString()} matches; ${result.matches.length.toLocaleString()} shown.`;
+  } else {
+    accessionSuggestionsNote.textContent = `${result.total.toLocaleString()} match${result.total === 1 ? '' : 'es'}. Use arrow keys and Enter, or click a choice.`;
+    accessionSearchStatus.textContent = `${result.total.toLocaleString()} match${result.total === 1 ? '' : 'es'} available.`;
+  }
+}
+
+function selectAccessionSuggestion(match) {
+  liveAccession.value = match.value;
+  closeAccessionSuggestions();
+  configureIsoformControl(match.value);
+  updatePaddingHelp();
+  const subject = match.kind === 'transcript'
+    ? match.accession
+    : match.name
+      ? `${match.name} (${match.accession})`
+      : match.accession;
+  accessionSearchStatus.textContent = `${subject} selected.`;
+  setPortalState(`Ready to query ${match.accession}`, 'Ready');
+  benchmarkStatus.textContent = match.kind === 'transcript'
+    ? `${match.accession} selected. Run the query to retrieve its transcript span.`
+    : `${subject} selected. Run the query to retrieve its gene span, or choose a transcript isoform below.`;
+}
+
+function configureAccessionIndex(index, namingIndex) {
+  if (namingIndex.coordinate_index_version !== index.index_version) {
+    throw new Error('The gene-name index does not match the versioned accession index.');
+  }
   accessionIndexSnapshot = index;
-  liveAccessionList.replaceChildren(...Object.entries(index.accessions).map(([accession, record]) => {
-    const option = document.createElement('option');
-    option.value = accession;
-    option.label = `${record.region}; ${record.annotation.transcript_id}`;
-    return option;
-  }));
+  geneSearchSnapshot = namingIndex;
   const geneCount = Object.keys(index.accessions).length;
   const transcriptCount = Object.keys(index.transcripts).length;
-  accessionIndexHelp.textContent = `${geneCount.toLocaleString()} genes · ${transcriptCount.toLocaleString()} transcripts · 2L, 2R, 3L, 3R, and X · ${index.annotation.gene_build} · ${index.index_version}.`;
+  const namedGeneCount = Number(namingIndex.coverage.named_gene_records);
+  accessionIndexHelp.textContent = `${geneCount.toLocaleString()} genes · ${transcriptCount.toLocaleString()} transcripts · ${namedGeneCount.toLocaleString()} official symbols · 2L, 2R, 3L, 3R, and X · ${index.annotation.gene_build}.`;
+  accessionIndexHelp.title = `${index.index_version}; symbol names from ${namingIndex.source.release} (${namingIndex.search_version}).`;
+  configureIsoformControl(liveAccession.value);
+  updatePaddingHelp();
+}
+
+function configureAccessionOnly(index, error) {
+  accessionIndexSnapshot = index;
+  geneSearchSnapshot = { names: {}, source: { release: 'unavailable naming index' } };
+  const geneCount = Object.keys(index.accessions).length;
+  const transcriptCount = Object.keys(index.transcripts).length;
+  accessionIndexHelp.textContent = `Gene-symbol search unavailable: ${error.message} Exact lookup still covers ${geneCount.toLocaleString()} genes and ${transcriptCount.toLocaleString()} transcripts.`;
   configureIsoformControl(liveAccession.value);
   updatePaddingHelp();
 }
@@ -172,12 +339,19 @@ function updatePaddingHelp() {
       accessionIndexSnapshot, liveAccession.value,
     );
     const { chromosome, start, end } = resolution.annotation;
+    const span = end - start + 1;
+    const maximumLength = Number(queryManifestSnapshot.maximum_query_bases);
+    if (span > maximumLength) {
+      const kind = resolution.matchedAs === 'transcript' ? 'transcript' : 'gene';
+      paddingHelp.textContent = `${resolution.accession} spans ${span.toLocaleString()} bp, so the full ${kind} exceeds the ${maximumLength.toLocaleString()}-base browser query limit. Choose a shorter transcript if available, use manual coordinates for a smaller interval, or use the CLI.`;
+      return;
+    }
     const maximum = globalThis.AgamCsQueryContract.maximumSymmetricPadding(
       queryManifestSnapshot, chromosome, start, end,
     );
     paddingHelp.textContent = `For ${resolution.accession}, use 0–${maximum.toLocaleString()} bp per side to remain within the ${Number(queryManifestSnapshot.maximum_query_bases).toLocaleString()}-base browser query limit. Padding is clipped at chromosome boundaries.`;
   } catch (_error) {
-    paddingHelp.textContent = 'Enter a supported accession to calculate its allowable padding. The padded interval must remain within the 50,000-base browser query limit.';
+    paddingHelp.textContent = 'Choose a supported gene or transcript to calculate its allowable padding. The padded interval must remain within the 50,000-base browser query limit.';
   }
 }
 
@@ -217,10 +391,49 @@ function configureIsoformControl(value) {
 liveAccession.addEventListener('input', () => {
   configureIsoformControl(liveAccession.value);
   updatePaddingHelp();
+  renderAccessionSuggestions(liveAccession.value);
+});
+
+liveAccession.addEventListener('focus', () => {
+  renderAccessionSuggestions(liveAccession.value);
+});
+
+liveAccession.addEventListener('keydown', (event) => {
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    event.preventDefault();
+    if (accessionSuggestionsPanel.hidden) {
+      renderAccessionSuggestions(liveAccession.value);
+    }
+    if (currentAccessionSuggestions.length) {
+      const direction = event.key === 'ArrowDown' ? 1 : -1;
+      const next = activeAccessionSuggestion < 0
+        ? (direction > 0 ? 0 : currentAccessionSuggestions.length - 1)
+        : activeAccessionSuggestion + direction;
+      setActiveAccessionSuggestion(next);
+    }
+    return;
+  }
+  if (event.key === 'Enter' && !accessionSuggestionsPanel.hidden
+      && activeAccessionSuggestion >= 0) {
+    event.preventDefault();
+    selectAccessionSuggestion(currentAccessionSuggestions[activeAccessionSuggestion]);
+    return;
+  }
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    closeAccessionSuggestions();
+  } else if (event.key === 'Tab') {
+    closeAccessionSuggestions();
+  }
+});
+
+document.addEventListener('pointerdown', (event) => {
+  if (!accessionCombobox.contains(event.target)) closeAccessionSuggestions();
 });
 
 isoformSelect.addEventListener('change', () => {
   liveAccession.value = isoformSelect.value;
+  closeAccessionSuggestions();
   setPortalState(`Ready to query ${isoformSelect.value}`, 'Ready');
   const geneRecord = accessionIndexSnapshot?.accessions?.[isoformSelect.value];
   benchmarkStatus.textContent = geneRecord
@@ -245,9 +458,10 @@ function setLiveQueryMode(mode) {
   querySummary.hidden = true;
   liveVisuals.hidden = true;
   resolvedAccession.hidden = true;
+  closeAccessionSuggestions();
   setPortalState('Ready for a query', 'Ready');
   benchmarkStatus.textContent = byAccession
-    ? 'Ready to resolve a gene from the versioned AgamP4.14 index.'
+    ? 'Ready to resolve a gene accession or official symbol, or a transcript accession.'
     : 'Ready for an independent manual AgamP4 coordinate query.';
 }
 
@@ -287,6 +501,7 @@ exampleSelect.addEventListener('change', () => {
   accessionMode.checked = true;
   setLiveQueryMode('accession');
   liveAccession.value = exampleSelect.value;
+  closeAccessionSuggestions();
   configureIsoformControl(liveAccession.value);
   updatePaddingHelp();
   if (example) catalogueHelp.textContent = `${example.description} ${example.qc_note}`;
@@ -294,11 +509,27 @@ exampleSelect.addEventListener('change', () => {
   benchmarkStatus.textContent = `${exampleSelect.value} selected from the featured examples. Run the query to retrieve its values.`;
 });
 
-const cataloguePromise = loadCatalogue();
+const cataloguePromise = localFilePreview ? Promise.resolve([]) : loadCatalogue();
 
-loadAccessionIndex().then(configureAccessionIndex).catch((error) => {
-  accessionIndexHelp.textContent = `Versioned accession lookup unavailable: ${error.message} Manual coordinates still work.`;
-});
+if (localFilePreview) {
+  accessionIndexHelp.textContent = LOCAL_FILE_PREVIEW_MESSAGE;
+  paddingHelp.textContent = 'Start the local web server before using accession padding.';
+  catalogueHelp.textContent = 'Start the local web server to load the featured examples.';
+  benchmarkSubmit.disabled = true;
+  setPortalState('Local web server required', 'Unavailable', 'error');
+  benchmarkStatus.textContent = LOCAL_FILE_PREVIEW_MESSAGE;
+} else {
+  loadAccessionIndex().then(async (index) => {
+    try {
+      configureAccessionIndex(index, await loadGeneSearch());
+    } catch (error) {
+      configureAccessionOnly(index, error);
+      console.error(error);
+    }
+  }).catch((error) => {
+    accessionIndexHelp.textContent = `Versioned accession lookup unavailable: ${error.message} Manual coordinates still work.`;
+  });
+}
 
 async function loadQueryManifest() {
   if (!queryManifestPromise) {
@@ -311,6 +542,7 @@ async function loadQueryManifest() {
 }
 
 function workerQuery(chromosome, start, end) {
+  if (!queryWorker) return Promise.reject(new Error(LOCAL_FILE_PREVIEW_MESSAGE));
   queryRequestId += 1;
   const requestId = queryRequestId;
   return new Promise((resolve, reject) => {
@@ -319,7 +551,7 @@ function workerQuery(chromosome, start, end) {
   });
 }
 
-queryWorker.addEventListener('message', ({ data }) => {
+queryWorker?.addEventListener('message', ({ data }) => {
   const pending = pendingQueries.get(data.requestId);
   if (!pending) return;
   pendingQueries.delete(data.requestId);
@@ -327,7 +559,7 @@ queryWorker.addEventListener('message', ({ data }) => {
   else pending.reject(new Error(data.message));
 });
 
-queryWorker.addEventListener('error', () => {
+queryWorker?.addEventListener('error', () => {
   pendingQueries.forEach(({ reject }) => reject(new Error('The query worker stopped unexpectedly.')));
   pendingQueries.clear();
 });
@@ -430,8 +662,17 @@ function transcriptAnnotationsForResolution(index, resolution, annotation) {
 
 function renderResolvedAccession(resolution, index, paddingDetails) {
   const annotation = resolution.annotation;
-  document.querySelector('#resolved-accession-id').textContent = resolution.accession;
-  document.querySelector('#resolved-gene-id').textContent = resolution.geneAccession;
+  const name = geneSearchSnapshot?.names?.[resolution.geneAccession]?.name || null;
+  const queryLabel = name ? `${resolution.accession} (${name})` : resolution.accession;
+  const geneLabel = name
+    ? `${resolution.geneAccession} (${name})`
+    : resolution.geneAccession;
+  renderVectorBaseGeneLink(
+    document.querySelector('#resolved-accession-id'), resolution.geneAccession, queryLabel,
+  );
+  renderVectorBaseGeneLink(
+    document.querySelector('#resolved-gene-id'), resolution.geneAccession, geneLabel,
+  );
   document.querySelector('#resolved-transcript').textContent = annotation.transcript_id;
   const requestedPadding = paddingDetails?.requestedPadding || 0;
   document.querySelector('#resolved-padding').textContent = requestedPadding > 0
@@ -443,6 +684,16 @@ function renderResolvedAccession(resolution, index, paddingDetails) {
   document.querySelector('#resolved-annotation').textContent = `${index.annotation.gene_build} (${index.annotation.released})`;
   document.querySelector('#resolved-index-version').textContent = index.index_version;
   resolvedAccession.hidden = false;
+}
+
+function renderVectorBaseGeneLink(element, accession, label) {
+  const link = document.createElement('a');
+  link.href = `https://vectorbase.org/vectorbase/app/record/gene/${encodeURIComponent(accession)}`;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = `${label} ↗`;
+  link.setAttribute('aria-label', `View ${label} in VectorBase`);
+  element.replaceChildren(link);
 }
 
 function renderLivePlots(
@@ -517,12 +768,19 @@ function configureQueryMetadata(manifest) {
   updatePaddingHelp();
 }
 
-loadQueryManifest().then(configureQueryMetadata).catch((error) => {
-  benchmarkStatus.textContent = `Query unavailable: ${error.message}`;
-});
+if (!localFilePreview) {
+  loadQueryManifest().then(configureQueryMetadata).catch((error) => {
+    benchmarkStatus.textContent = `Query unavailable: ${error.message}`;
+  });
+}
 
 benchmarkForm.addEventListener('submit', async (event) => {
   event.preventDefault();
+  if (localFilePreview) {
+    setPortalState('Local web server required', 'Unavailable', 'error');
+    benchmarkStatus.textContent = LOCAL_FILE_PREVIEW_MESSAGE;
+    return;
+  }
   const form = new FormData(benchmarkForm);
   const mode = String(form.get('live-query-mode') || 'accession');
   let chromosome;
@@ -533,19 +791,29 @@ benchmarkForm.addEventListener('submit', async (event) => {
   let paddingDetails = null;
   setPortalState('Preparing query', 'Loading', 'loading');
   benchmarkStatus.textContent = mode === 'accession'
-    ? 'Resolving the accession from the versioned AgamP4.14 index…'
+    ? 'Resolving the gene or transcript from the versioned AgamP4 indexes…'
     : 'Validating the requested coordinates…';
   benchmarkSubmit.disabled = true;
 
   if (mode === 'accession') {
     try {
       accessionIndex = await loadAccessionIndex();
-      resolution = globalThis.AgamCsAccessions.resolve(accessionIndex, form.get('live-accession'));
+      const namingIndex = geneSearchSnapshot || await loadGeneSearch().catch(() => ({ names: {} }));
+      const canonical = globalThis.AgamCsGeneSearch.canonicalize(
+        accessionIndex, namingIndex, form.get('live-accession'),
+      );
+      resolution = globalThis.AgamCsAccessions.resolve(accessionIndex, canonical.value);
+      if (canonical.matchedAs === 'name') {
+        resolution = { ...resolution, matchedAs: 'name', matchedName: canonical.name };
+      }
       ({ chromosome, start, end } = resolution.annotation);
       liveAccession.value = resolution.accession;
+      closeAccessionSuggestions();
+      configureIsoformControl(resolution.accession);
+      updatePaddingHelp();
     } catch (error) {
       setPortalState('Query not run', 'Check input', 'error');
-      benchmarkStatus.textContent = `Accession lookup stopped: ${error.message}`;
+      benchmarkStatus.textContent = `Gene lookup stopped: ${error.message}`;
       benchmarkSubmit.disabled = false;
       return;
     }
@@ -576,17 +844,26 @@ benchmarkForm.addEventListener('submit', async (event) => {
       ));
     }
   } catch (error) {
+    const originalSpan = resolution
+      ? resolution.annotation.end - resolution.annotation.start + 1
+      : null;
+    const sourceFits = originalSpan != null
+      && originalSpan <= Number(manifest.maximum_query_bases);
     const subject = resolution && error.code === 'maximum-length'
-      ? `${resolution.accession} with the requested padding exceeds the browser query limit. `
+      ? sourceFits
+        ? `${resolution.accession} with the requested padding exceeds the browser query limit. `
+        : `${resolution.accession} spans more than the browser query limit. `
       : '';
-    const maximumPadding = resolution && manifest
+    const maximumPadding = resolution && manifest && sourceFits
       ? globalThis.AgamCsQueryContract.maximumSymmetricPadding(
         manifest, resolution.annotation.chromosome,
         resolution.annotation.start, resolution.annotation.end,
       )
       : null;
-    const guidance = error.code === 'maximum-length' && resolution
+    const guidance = error.code === 'maximum-length' && resolution && sourceFits
       ? ` Use no more than ${maximumPadding.toLocaleString()} bp per side for this accession, or use manual coordinates for a smaller interval.`
+      : error.code === 'maximum-length' && resolution
+        ? ' Choose a shorter transcript if available, use manual coordinates for a smaller interval, or use the CLI for the full span.'
       : '';
     setPortalState('Query not run', 'Check input', 'error');
     benchmarkStatus.textContent = `${subject}${error.message}${guidance}`;
