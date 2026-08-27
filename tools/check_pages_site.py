@@ -45,6 +45,7 @@ REQUIRED_ACCESSIONS = {'AGAP004568'}
 REQUIRED_TRANSCRIPTS = {'AGAP000040-RA', 'AGAP000040-RB', 'AGAP000040-RC'}
 RELEASE_PATTERN = re.compile(r"(?:PAGES|WORKER)_RELEASE\s*=\s*['\"]([^'\"]+)['\"]")
 HTML_RELEASE_PATTERN = re.compile(r"[?&]v=([A-Za-z0-9._-]+)")
+ANALYTICS_ID_PATTERN = re.compile(r'data-measurement-id=["\'](G-[A-Za-z0-9]+)["\']')
 
 
 class PageChecker(HTMLParser):
@@ -158,6 +159,9 @@ def validate_page(page: Path) -> list[str]:
             'summary-exons-card', 'summary-cs-exons', 'summary-snp-exons',
             'summary-exon-count', 'summary-method-note',
             'live-signal-download', 'live-heatmap-download',
+            'analytics-settings', 'analytics-consent', 'analytics-consent-title',
+            'analytics-consent-description', 'analytics-consent-status',
+            'analytics-accept', 'analytics-reject',
         }
         if missing_ids := required_ids - checker.ids:
             errors.append(f'index.html: missing live-query controls: {sorted(missing_ids)}')
@@ -176,7 +180,8 @@ def validate_page(page: Path) -> list[str]:
         for required_summary_text in (
             'Base pairs (bp)', 'Aggregated exons', 'Gene or transcript accession',
             'Transcript isoform', 'Thomas Courty', 'Windbichler Lab',
-            'Imperial College London',
+            'Imperial College London', 'Query processing runs in your browser',
+            'only if you accept them', 'accessions, coordinates, results, filenames, and errors',
         ):
             if required_summary_text not in page_text:
                 errors.append(
@@ -193,6 +198,49 @@ def validate_page(page: Path) -> list[str]:
             )
         if checker.form_count != 1:
             errors.append(f'index.html: expected one query form, found {checker.form_count}')
+    return errors
+
+
+def validate_analytics() -> list[str]:
+    """Require explicit, consented, privacy-bounded Pages analytics wiring."""
+    index_text = PAGES[0].read_text(encoding='utf-8')
+    analytics_path = ROOT / 'assets/analytics.js'
+    errors = []
+    match = ANALYTICS_ID_PATTERN.search(index_text)
+    if not match:
+        errors.append('index.html: analytics tag is missing a GA4 Measurement ID')
+    elif re.fullmatch(
+        r'G-(?:X+|TEST[A-Z0-9]*|LOCAL[A-Z0-9]*|PLACEHOLDER[A-Z0-9]*)',
+        match.group(1),
+        flags=re.IGNORECASE,
+    ):
+        errors.append('index.html: replace the placeholder GA4 Measurement ID')
+    if 'assets/analytics.js?' not in index_text:
+        errors.append('index.html: versioned analytics script is missing')
+    if not analytics_path.exists():
+        errors.append('missing Pages analytics controller: assets/analytics.js')
+        return errors
+
+    analytics_text = analytics_path.read_text(encoding='utf-8')
+    for required_fragment in (
+        'query_success', 'file_download', 'query_mode', 'query_kind',
+        'artifact_type', 'allow_google_signals: false',
+        'allow_ad_personalization_signals: false', 'safePageLocation',
+        'safePageReferrer',
+    ):
+        if required_fragment not in analytics_text:
+            errors.append(f'analytics controller is missing {required_fragment!r}')
+    if 'assets/analytics.js' in PAGES[1].read_text(encoding='utf-8'):
+        errors.append('404.html must remain outside analytics for the first release')
+    site_text = (ROOT / 'assets/site.js').read_text(encoding='utf-8')
+    for required_hook in (
+        "trackUsage('query_success'",
+        "trackUsage('file_download', { artifact_type: 'tsv' })",
+        "trackUsage('file_download', { artifact_type: 'signal_svg' })",
+        "trackUsage('file_download', { artifact_type: 'heatmap_svg' })",
+    ):
+        if required_hook not in site_text:
+            errors.append(f'site analytics integration is missing {required_hook!r}')
     return errors
 
 
@@ -321,6 +369,7 @@ def main() -> None:
     errors.extend(validate_examples())
     errors.extend(validate_accessions())
     errors.extend(validate_pages_payload())
+    errors.extend(validate_analytics())
     errors.extend(validate_release_versions())
     errors.extend(validate_live_plot_renderer())
     for asset in QUERY_ASSETS:

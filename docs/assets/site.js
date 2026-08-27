@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-25-featured-lab-info1';
+const PAGES_RELEASE = '2026-08-26-ga4-analytics1';
 
 function versionedAsset(path) {
   const separator = path.includes('?') ? '&' : '?';
@@ -65,6 +65,24 @@ let accessionIndexPromise;
 let accessionIndexSnapshot;
 let queryManifestSnapshot;
 const figureDownloadUrls = new Map();
+
+function trackUsage(eventName, parameters) {
+  try {
+    globalThis.AgamCsAnalytics?.track(eventName, parameters);
+  } catch (_error) {
+    // Usage measurement must never affect scientific queries or downloads.
+  }
+}
+
+benchmarkDownload.addEventListener('click', () => {
+  trackUsage('file_download', { artifact_type: 'tsv' });
+});
+liveSignalDownload.addEventListener('click', () => {
+  trackUsage('file_download', { artifact_type: 'signal_svg' });
+});
+liveHeatmapDownload.addEventListener('click', () => {
+  trackUsage('file_download', { artifact_type: 'heatmap_svg' });
+});
 
 function clearFigureDownloads() {
   figureDownloadUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -652,6 +670,12 @@ benchmarkForm.addEventListener('submit', async (event) => {
       ? `AgamCs_${resolution.accession}_${chromosome}_${start}-${end}.tsv`
       : `AgamCs_${chromosome}_${start}-${end}.tsv`;
     benchmarkDownload.hidden = false;
+    trackUsage('query_success', {
+      query_mode: mode,
+      query_kind: resolution
+        ? (resolution.matchedAs === 'transcript' ? 'transcript' : 'gene')
+        : 'coordinates',
+    });
   } catch (error) {
     setPortalState(resolution?.accession || `${chromosome}:${start}-${end}`, 'Failed', 'error');
     benchmarkStatus.textContent = `Query failed: ${error.message}`;
