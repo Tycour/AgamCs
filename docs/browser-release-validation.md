@@ -83,6 +83,13 @@ and slices only the logical chromosome interval.
   accessions retain their representative default, while exact transcript IDs
   use isoform-specific spans, exon unions and CDS bounds. `AGAP000040-RA`,
   `-RB`, and `-RC` are explicit multi-isoform regression records.
+- The custom combobox searches canonical gene accessions, official gene
+  symbols, and accession-like transcript prefixes. `ZPG` resolves to
+  `AGAP006241`; the three `Mocs2` loci remain separate labelled choices, and
+  free-text product descriptions are display context rather than identifiers.
+- The companion naming asset contains 2,255 official symbols. Its source
+  checksum is pinned, and all 13,097 source genes must match the coordinate
+  index before the asset can be regenerated.
 - Bare multi-isoform gene queries render every transcript as an aligned row
   beneath both browser plots. The representative transcript is bold and still
   supplies the exon summary and CDS guides, so additional displayed isoforms
@@ -101,12 +108,13 @@ and slices only the logical chromosome interval.
 
 The Phase 2 candidate passes:
 
-- 64 Python tests, including 150,000- and 200,000-base Python/JavaScript model
+- 68 Python tests, including 150,000- and 200,000-base Python/JavaScript model
   parity with zero semantic or numeric drift;
-- 61 JavaScript contract, interaction, worker, accession, plot, and exact-TSV
-  tests;
+- 67 JavaScript contract, interaction, worker, accession, search, plot, and
+  exact-TSV tests;
 - regenerated query-asset verification against the local authoritative HDF5;
 - complete versioned accession-index verification;
+- complete gene-name-index provenance, coordinate-join, and ambiguity verification;
 - static Pages metadata, payload, provenance, and asset validation;
 - JavaScript syntax checks for every Pages script.
 

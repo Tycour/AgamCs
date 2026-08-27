@@ -14,6 +14,11 @@
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
+.visually-hidden {
+  position: absolute !important; width: 1px !important; height: 1px !important;
+  padding: 0 !important; margin: -1px !important; overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important; white-space: nowrap !important; border: 0 !important;
+}
 html { scroll-behavior: smooth; }
 body {
   margin: 0;
@@ -110,6 +115,34 @@ input { width: 100%; height: 44px; padding: 0 12px; color: var(--ink); border: 1
 .accession-query-panel { max-width: 560px; }
 .accession-query-panel label { display: block; margin-bottom: 6px; }
 .accession-query-panel .field-help { margin-bottom: 0; }
+.accession-combobox { position: relative; }
+.accession-suggestions-panel {
+  position: absolute; z-index: 12; top: calc(100% + 5px); right: 0; left: 0;
+  overflow: hidden; background: white; border: 1px solid #9caaa5; border-radius: 8px;
+  box-shadow: 0 14px 35px rgba(23, 41, 37, .18);
+}
+.accession-suggestions {
+  max-height: min(370px, 55vh); margin: 0; padding: 4px; overflow-y: auto; list-style: none;
+}
+.accession-suggestion {
+  display: grid; gap: 2px; padding: 9px 10px; border-radius: 5px; cursor: pointer;
+}
+.accession-suggestion + .accession-suggestion { border-top: 1px solid #edf0ed; }
+.accession-suggestion[aria-selected="true"],
+.accession-suggestion:hover { background: #e7f1ee; }
+.accession-suggestion-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 8px; }
+.accession-suggestion-heading strong { color: var(--ink); font-size: 13px; }
+.accession-suggestion-accession {
+  color: var(--teal-dark); font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px; font-weight: 750;
+}
+.accession-suggestion-description { color: #394a45; font-size: 11px; line-height: 1.35; }
+.accession-suggestion-metadata { color: var(--muted); font-size: 10px; line-height: 1.35; }
+.accession-suggestion-limit { color: #7b4b14; font-weight: 750; }
+.accession-suggestions-note {
+  margin: 0; padding: 7px 11px; color: var(--muted); background: #f4f6f3;
+  border-top: 1px solid #dfe5e1; font-size: 10px;
+}
 .padding-control, .isoform-control { margin-top: 16px; }
 .padding-control .field-help,
 .isoform-control .field-help { margin-top: 7px; }

@@ -1,4 +1,4 @@
-const WORKER_RELEASE = '2026-08-27-query-limit-200k1';
+const WORKER_RELEASE = '2026-08-28-query-limit-200k2';
 const SCORE_REFERENCE_URL = `data/score-reference.json?v=${WORKER_RELEASE}`;
 const ACCESSIBILITY_REFERENCE_URL = `data/accessibility-reference.json?v=${WORKER_RELEASE}`;
 const HASH_ARRAYS = ['Cs', 'snp_density', 'stack', 'status'];

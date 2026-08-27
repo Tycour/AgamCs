@@ -15,6 +15,10 @@ python3 -m http.server 8000 --directory docs
 
 Then open `http://127.0.0.1:8000`.
 
+Do not open `docs/index.html` directly as a `file://` URL. Browsers block the
+JSON requests and Web Worker required by the explorer; the page will display
+the local-server command when it detects that unsupported preview mode.
+
 Before committing a Pages change, verify the documents and local assets:
 
 ```bash
@@ -92,9 +96,34 @@ committed index silently. Unknown accessions stay unresolved; retired and
 ambiguous mappings must be recorded explicitly before they can produce
 tailored messages.
 
+## Refresh the versioned gene-symbol index
+
+The autocomplete keeps coordinate and transcript resolution in the pinned
+VectorBase-68 accession index. A smaller companion asset adds official GFF3
+`Name` values from the AgamP4 export in Ensembl Metazoa 62. The build refuses
+to publish names unless all 13,097 supported AGAP identifiers and their exact
+coordinates match the coordinate index. Product descriptions are retained only
+to help distinguish suggestions; they are not searchable identifiers.
+
+```bash
+curl -L --fail --output /tmp/Anopheles_gambiae.AgamP4.62.gff3.gz \
+  https://ftp.ensemblgenomes.ebi.ac.uk/pub/metazoa/release-62/gff3/anopheles_gambiae/Anopheles_gambiae.AgamP4.62.gff3.gz
+.venv/bin/python tools/build_pages_gene_search.py \
+  --gff /tmp/Anopheles_gambiae.AgamP4.62.gff3.gz
+```
+
+The reviewed compressed-source SHA-256 is
+`fb1e13c3265b966901cd01524bb16d49ff854c3a002745489daaeae54f638bce`.
+The generated asset contains 2,255 named genes. Forty-five case-insensitive
+names are shared by more than one locus, so the browser always presents those
+accessions as separate choices and never resolves an ambiguous name silently.
+Use `--verify` to validate the committed asset without retaining the GFF.
+
 ## Prototype boundary
 
-- Included: four precomputed examples; a versioned 13,097-gene and
+- Included: four precomputed examples; accession and official-symbol
+  autocomplete backed by separately versioned coordinate and naming indexes;
+  a versioned 13,097-gene and
   15,317-transcript AgamP4.14 index covering 2L, 2R, 3L, 3R, and X; direct
   transcript-ID input, an isoform selector, and stacked all-isoform annotation
   tracks for gene queries; independent manual
