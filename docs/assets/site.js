@@ -1,4 +1,5 @@
-const PAGES_RELEASE = '2026-08-27-gene-name-search1';
+const PAGES_RELEASE = '2026-08-27-gene-name-search2';
+const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
   const separator = path.includes('?') ? '&' : '?';
@@ -58,7 +59,10 @@ const exampleSelect = document.querySelector('#example-select');
 const catalogueHelp = document.querySelector('#catalogue-help');
 const resultTitle = document.querySelector('#result-title');
 const resultStatus = document.querySelector('#result-status');
-const queryWorker = new Worker(versionedAsset('assets/query-worker.js'));
+const localFilePreview = window.location.protocol === 'file:';
+const queryWorker = localFilePreview
+  ? null
+  : new Worker(versionedAsset('assets/query-worker.js'));
 const pendingQueries = new Map();
 let examples = [];
 let queryRequestId = 0;
@@ -505,18 +509,27 @@ exampleSelect.addEventListener('change', () => {
   benchmarkStatus.textContent = `${exampleSelect.value} selected from the featured examples. Run the query to retrieve its values.`;
 });
 
-const cataloguePromise = loadCatalogue();
+const cataloguePromise = localFilePreview ? Promise.resolve([]) : loadCatalogue();
 
-loadAccessionIndex().then(async (index) => {
-  try {
-    configureAccessionIndex(index, await loadGeneSearch());
-  } catch (error) {
-    configureAccessionOnly(index, error);
-    console.error(error);
-  }
-}).catch((error) => {
-  accessionIndexHelp.textContent = `Versioned accession lookup unavailable: ${error.message} Manual coordinates still work.`;
-});
+if (localFilePreview) {
+  accessionIndexHelp.textContent = LOCAL_FILE_PREVIEW_MESSAGE;
+  paddingHelp.textContent = 'Start the local web server before using accession padding.';
+  catalogueHelp.textContent = 'Start the local web server to load the featured examples.';
+  benchmarkSubmit.disabled = true;
+  setPortalState('Local web server required', 'Unavailable', 'error');
+  benchmarkStatus.textContent = LOCAL_FILE_PREVIEW_MESSAGE;
+} else {
+  loadAccessionIndex().then(async (index) => {
+    try {
+      configureAccessionIndex(index, await loadGeneSearch());
+    } catch (error) {
+      configureAccessionOnly(index, error);
+      console.error(error);
+    }
+  }).catch((error) => {
+    accessionIndexHelp.textContent = `Versioned accession lookup unavailable: ${error.message} Manual coordinates still work.`;
+  });
+}
 
 async function loadQueryManifest() {
   if (!queryManifestPromise) {
@@ -529,6 +542,7 @@ async function loadQueryManifest() {
 }
 
 function workerQuery(chromosome, start, end) {
+  if (!queryWorker) return Promise.reject(new Error(LOCAL_FILE_PREVIEW_MESSAGE));
   queryRequestId += 1;
   const requestId = queryRequestId;
   return new Promise((resolve, reject) => {
@@ -537,7 +551,7 @@ function workerQuery(chromosome, start, end) {
   });
 }
 
-queryWorker.addEventListener('message', ({ data }) => {
+queryWorker?.addEventListener('message', ({ data }) => {
   const pending = pendingQueries.get(data.requestId);
   if (!pending) return;
   pendingQueries.delete(data.requestId);
@@ -545,7 +559,7 @@ queryWorker.addEventListener('message', ({ data }) => {
   else pending.reject(new Error(data.message));
 });
 
-queryWorker.addEventListener('error', () => {
+queryWorker?.addEventListener('error', () => {
   pendingQueries.forEach(({ reject }) => reject(new Error('The query worker stopped unexpectedly.')));
   pendingQueries.clear();
 });
@@ -735,12 +749,19 @@ function configureQueryMetadata(manifest) {
   updatePaddingHelp();
 }
 
-loadQueryManifest().then(configureQueryMetadata).catch((error) => {
-  benchmarkStatus.textContent = `Query unavailable: ${error.message}`;
-});
+if (!localFilePreview) {
+  loadQueryManifest().then(configureQueryMetadata).catch((error) => {
+    benchmarkStatus.textContent = `Query unavailable: ${error.message}`;
+  });
+}
 
 benchmarkForm.addEventListener('submit', async (event) => {
   event.preventDefault();
+  if (localFilePreview) {
+    setPortalState('Local web server required', 'Unavailable', 'error');
+    benchmarkStatus.textContent = LOCAL_FILE_PREVIEW_MESSAGE;
+    return;
+  }
   const form = new FormData(benchmarkForm);
   const mode = String(form.get('live-query-mode') || 'accession');
   let chromosome;

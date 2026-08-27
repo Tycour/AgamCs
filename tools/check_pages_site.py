@@ -376,6 +376,22 @@ def validate_release_versions() -> list[str]:
     return errors
 
 
+def validate_local_preview_guard() -> list[str]:
+    """Require direct-file previews to fail with actionable server guidance."""
+    site_text = (ROOT / 'assets/site.js').read_text(encoding='utf-8')
+    required_fragments = (
+        "window.location.protocol === 'file:'",
+        'python3 -m http.server 8000 --directory docs',
+        'benchmarkSubmit.disabled = true',
+        'if (!queryWorker)',
+    )
+    return [
+        f'local preview guard is missing {fragment!r}'
+        for fragment in required_fragments
+        if fragment not in site_text
+    ]
+
+
 def validate_live_plot_renderer() -> list[str]:
     """Keep the browser heatmap annotation convention aligned with the CLI."""
     text = (ROOT / 'assets/live-plots.js').read_text(encoding='utf-8')
@@ -411,6 +427,7 @@ def main() -> None:
     errors.extend(validate_pages_payload())
     errors.extend(validate_analytics())
     errors.extend(validate_release_versions())
+    errors.extend(validate_local_preview_guard())
     errors.extend(validate_live_plot_renderer())
     for asset in QUERY_ASSETS:
         if not asset.exists() or asset.stat().st_size == 0:

@@ -15,6 +15,10 @@ python3 -m http.server 8000 --directory docs
 
 Then open `http://127.0.0.1:8000`.
 
+Do not open `docs/index.html` directly as a `file://` URL. Browsers block the
+JSON requests and Web Worker required by the explorer; the page will display
+the local-server command when it detects that unsupported preview mode.
+
 Before committing a Pages change, verify the documents and local assets:
 
 ```bash
