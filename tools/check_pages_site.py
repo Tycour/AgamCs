@@ -27,6 +27,7 @@ QUERY_ASSETS = (
     ROOT / 'assets/plot-model.js',
     ROOT / 'assets/live-plots.js',
     ROOT / 'assets/query-contract.js',
+    ROOT / 'assets/query-interaction.js',
     ROOT / 'assets/accession-lookup.js',
     ACCESSION_INDEX_PATH,
     ROOT / 'assets/data/plot-contract.json',
@@ -41,7 +42,7 @@ MAX_PAGES_FILE_BYTES = 10 * 1024 * 1024
 EXPECTED_ACCESSION_RECORDS = 13_097
 EXPECTED_TRANSCRIPT_RECORDS = 15_317
 EXPECTED_ACCESSION_SOURCE_SHA256 = '916a1e0e4d4613d36be31dc03c53871f6f62c94f4d8bc4662d0002131658c0c7'
-REQUIRED_ACCESSIONS = {'AGAP004568'}
+REQUIRED_ACCESSIONS = {'AGAP001683', 'AGAP004568'}
 REQUIRED_TRANSCRIPTS = {'AGAP000040-RA', 'AGAP000040-RB', 'AGAP000040-RC'}
 RELEASE_PATTERN = re.compile(r"(?:PAGES|WORKER)_RELEASE\s*=\s*['\"]([^'\"]+)['\"]")
 HTML_RELEASE_PATTERN = re.compile(r"[?&]v=([A-Za-z0-9._-]+)")
@@ -359,6 +360,42 @@ def validate_live_plot_renderer() -> list[str]:
     return errors
 
 
+def validate_query_hardening() -> list[str]:
+    """Pin the Phase 2 submit, over-limit, cancellation, and cooldown guards."""
+    errors = []
+    interaction_path = ROOT / 'assets/query-interaction.js'
+    if not interaction_path.exists():
+        return ['missing Pages query-interaction controller']
+    interaction = interaction_path.read_text(encoding='utf-8')
+    for fragment in (
+        'let queryInFlight = false',
+        'if (queryInFlight) return false',
+        "button.setAttribute('aria-busy', 'true')",
+        'finally',
+    ):
+        if fragment not in interaction:
+            errors.append(f'query-interaction controller is missing {fragment!r}')
+    site = (ROOT / 'assets/site.js').read_text(encoding='utf-8')
+    for fragment in (
+        'complete-locus-over-limit',
+        'remains available through the CLI',
+        'installQuerySubmissionGuard',
+    ):
+        if fragment not in site:
+            errors.append(f'site query lifecycle is missing {fragment!r}')
+    worker = (ROOT / 'assets/query-worker.js').read_text(encoding='utf-8')
+    for fragment in (
+        'const controller = new AbortController()',
+        'signal: context.signal',
+        'cancelQueuedRanges',
+        'rangeCooldownUntil',
+        'waitForRangeCooldown',
+    ):
+        if fragment not in worker:
+            errors.append(f'query worker hardening is missing {fragment!r}')
+    return errors
+
+
 def main() -> None:
     errors: list[str] = []
     for page in PAGES:
@@ -372,6 +409,7 @@ def main() -> None:
     errors.extend(validate_analytics())
     errors.extend(validate_release_versions())
     errors.extend(validate_live_plot_renderer())
+    errors.extend(validate_query_hardening())
     for asset in QUERY_ASSETS:
         if not asset.exists() or asset.stat().st_size == 0:
             errors.append(f'missing browser-query asset: {asset.relative_to(ROOT)}')
@@ -409,7 +447,7 @@ def main() -> None:
             errors.append('browser-query manifest has an unexpected assembly')
         if manifest.get('coordinate_convention') != '1-based inclusive':
             errors.append('browser-query manifest has an unexpected coordinate convention')
-        if manifest.get('maximum_query_bases') != 50_000:
+        if manifest.get('maximum_query_bases') != 200_000:
             errors.append('browser-query manifest has an unexpected query limit')
         if set(manifest.get('chromosomes', {})) != QUERY_CHROMOSOMES:
             errors.append('browser-query manifest has unexpected chromosomes')

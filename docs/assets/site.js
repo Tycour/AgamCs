@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-26-ga4-analytics1';
+const PAGES_RELEASE = '2026-08-27-query-limit-200k1';
 
 function versionedAsset(path) {
   const separator = path.includes('?') ? '&' : '?';
@@ -172,12 +172,19 @@ function updatePaddingHelp() {
       accessionIndexSnapshot, liveAccession.value,
     );
     const { chromosome, start, end } = resolution.annotation;
+    const locusLength = end - start + 1;
+    const maximumQueryBases = Number(queryManifestSnapshot.maximum_query_bases);
+    if (locusLength > maximumQueryBases) {
+      paddingHelp.textContent = `The complete ${resolution.accession} locus spans ${locusLength.toLocaleString()} bases, exceeds the ${maximumQueryBases.toLocaleString()}-base browser limit, and remains available through the CLI.`;
+      return;
+    }
     const maximum = globalThis.AgamCsQueryContract.maximumSymmetricPadding(
       queryManifestSnapshot, chromosome, start, end,
     );
     paddingHelp.textContent = `For ${resolution.accession}, use 0–${maximum.toLocaleString()} bp per side to remain within the ${Number(queryManifestSnapshot.maximum_query_bases).toLocaleString()}-base browser query limit. Padding is clipped at chromosome boundaries.`;
   } catch (_error) {
-    paddingHelp.textContent = 'Enter a supported accession to calculate its allowable padding. The padded interval must remain within the 50,000-base browser query limit.';
+    const maximum = Number(queryManifestSnapshot.maximum_query_bases).toLocaleString();
+    paddingHelp.textContent = `Enter a supported accession to calculate its allowable padding. The padded interval must remain within the ${maximum}-base browser query limit.`;
   }
 }
 
@@ -240,11 +247,6 @@ function setLiveQueryMode(mode) {
   const byAccession = mode === 'accession';
   accessionQueryPanel.hidden = !byAccession;
   coordinateQueryPanel.hidden = byAccession;
-  benchmarkDownload.hidden = true;
-  clearFigureDownloads();
-  querySummary.hidden = true;
-  liveVisuals.hidden = true;
-  resolvedAccession.hidden = true;
   setPortalState('Ready for a query', 'Ready');
   benchmarkStatus.textContent = byAccession
     ? 'Ready to resolve a gene from the versioned AgamP4.14 index.'
@@ -521,8 +523,7 @@ loadQueryManifest().then(configureQueryMetadata).catch((error) => {
   benchmarkStatus.textContent = `Query unavailable: ${error.message}`;
 });
 
-benchmarkForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
+async function runLiveQuery() {
   const form = new FormData(benchmarkForm);
   const mode = String(form.get('live-query-mode') || 'accession');
   let chromosome;
@@ -535,7 +536,6 @@ benchmarkForm.addEventListener('submit', async (event) => {
   benchmarkStatus.textContent = mode === 'accession'
     ? 'Resolving the accession from the versioned AgamP4.14 index…'
     : 'Validating the requested coordinates…';
-  benchmarkSubmit.disabled = true;
 
   if (mode === 'accession') {
     try {
@@ -546,7 +546,6 @@ benchmarkForm.addEventListener('submit', async (event) => {
     } catch (error) {
       setPortalState('Query not run', 'Check input', 'error');
       benchmarkStatus.textContent = `Accession lookup stopped: ${error.message}`;
-      benchmarkSubmit.disabled = false;
       return;
     }
   } else {
@@ -561,11 +560,22 @@ benchmarkForm.addEventListener('submit', async (event) => {
   } catch (error) {
     setPortalState('Query unavailable', 'Unavailable', 'error');
     benchmarkStatus.textContent = `Query unavailable: ${error.message}`;
-    benchmarkSubmit.disabled = false;
     return;
   }
   try {
     if (resolution) {
+      try {
+        globalThis.AgamCsQueryContract.validateCoordinates(
+          manifest, chromosome, start, end,
+        );
+      } catch (error) {
+        if (error.code !== 'maximum-length') throw error;
+        const locusLength = end - start + 1;
+        const maximum = Number(manifest.maximum_query_bases);
+        const locusError = new Error(`The complete ${resolution.accession} locus spans ${locusLength.toLocaleString()} bases, exceeds the ${maximum.toLocaleString()}-base browser limit, and remains available through the CLI.`);
+        locusError.code = 'complete-locus-over-limit';
+        throw locusError;
+      }
       paddingDetails = globalThis.AgamCsQueryContract.padCoordinates(
         manifest, chromosome, start, end, form.get('accession-padding'),
       );
@@ -579,7 +589,7 @@ benchmarkForm.addEventListener('submit', async (event) => {
     const subject = resolution && error.code === 'maximum-length'
       ? `${resolution.accession} with the requested padding exceeds the browser query limit. `
       : '';
-    const maximumPadding = resolution && manifest
+    const maximumPadding = resolution && manifest && error.code === 'maximum-length'
       ? globalThis.AgamCsQueryContract.maximumSymmetricPadding(
         manifest, resolution.annotation.chromosome,
         resolution.annotation.start, resolution.annotation.end,
@@ -589,8 +599,9 @@ benchmarkForm.addEventListener('submit', async (event) => {
       ? ` Use no more than ${maximumPadding.toLocaleString()} bp per side for this accession, or use manual coordinates for a smaller interval.`
       : '';
     setPortalState('Query not run', 'Check input', 'error');
-    benchmarkStatus.textContent = `${subject}${error.message}${guidance}`;
-    benchmarkSubmit.disabled = false;
+    benchmarkStatus.textContent = error.code === 'complete-locus-over-limit'
+      ? error.message
+      : `${subject}${error.message}${guidance}`;
     return;
   }
 
@@ -679,7 +690,15 @@ benchmarkForm.addEventListener('submit', async (event) => {
   } catch (error) {
     setPortalState(resolution?.accession || `${chromosome}:${start}-${end}`, 'Failed', 'error');
     benchmarkStatus.textContent = `Query failed: ${error.message}`;
-  } finally {
-    benchmarkSubmit.disabled = false;
   }
+}
+
+globalThis.AgamCsQueryInteraction.installQuerySubmissionGuard({
+  form: benchmarkForm,
+  button: benchmarkSubmit,
+  run: runLiveQuery,
+  onUnexpectedError(error) {
+    setPortalState('Query failed', 'Failed', 'error');
+    benchmarkStatus.textContent = `Query failed unexpectedly: ${error.message}`;
+  },
 });

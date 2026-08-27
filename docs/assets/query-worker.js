@@ -1,4 +1,4 @@
-const WORKER_RELEASE = '2026-08-26-ga4-analytics1';
+const WORKER_RELEASE = '2026-08-27-query-limit-200k1';
 const SCORE_REFERENCE_URL = `data/score-reference.json?v=${WORKER_RELEASE}`;
 const ACCESSIBILITY_REFERENCE_URL = `data/accessibility-reference.json?v=${WORKER_RELEASE}`;
 const HASH_ARRAYS = ['Cs', 'snp_density', 'stack', 'status'];
@@ -11,22 +11,91 @@ const referencePromises = new Map();
 const rangeQueue = [];
 let cacheBytes = 0;
 let activeRangeRequests = 0;
+let rangeCooldownUntil = 0;
 
-function wait(milliseconds) {
-  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+function queryFailure(context) {
+  return context.error || new Error('The browser query was cancelled after another range failed.');
 }
 
-async function withRangeSlot(task) {
-  if (activeRangeRequests >= MAX_CONCURRENT_RANGE_REQUESTS) {
-    await new Promise((resolve) => rangeQueue.push(resolve));
+function throwIfQueryFailed(context) {
+  if (context.failed || context.signal.aborted) throw queryFailure(context);
+}
+
+function createQueryContext() {
+  const controller = new AbortController();
+  return {
+    controller,
+    signal: controller.signal,
+    failed: false,
+    error: null,
+  };
+}
+
+function cancelQueuedRanges(context, error) {
+  for (let index = rangeQueue.length - 1; index >= 0; index -= 1) {
+    const queued = rangeQueue[index];
+    if (queued.context !== context) continue;
+    rangeQueue.splice(index, 1);
+    queued.reject(error);
   }
-  activeRangeRequests += 1;
+}
+
+function failQuery(context, failure) {
+  if (context.failed) return queryFailure(context);
+  const error = failure instanceof Error ? failure : new Error(String(failure));
+  context.failed = true;
+  context.error = error;
+  context.controller.abort(error);
+  cancelQueuedRanges(context, error);
+  return error;
+}
+
+function wait(milliseconds, signal) {
+  if (milliseconds <= 0) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason || new Error('The browser query was cancelled.'));
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timeout);
+      reject(signal.reason || new Error('The browser query was cancelled.'));
+    };
+    const timeout = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, milliseconds);
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+function drainRangeQueue() {
+  while (activeRangeRequests < MAX_CONCURRENT_RANGE_REQUESTS && rangeQueue.length) {
+    const queued = rangeQueue.shift();
+    if (queued.context.failed || queued.context.signal.aborted) {
+      queued.reject(queryFailure(queued.context));
+      continue;
+    }
+    activeRangeRequests += 1;
+    queued.resolve();
+  }
+}
+
+async function withRangeSlot(context, task) {
+  throwIfQueryFailed(context);
+  if (activeRangeRequests < MAX_CONCURRENT_RANGE_REQUESTS) {
+    activeRangeRequests += 1;
+  } else {
+    await new Promise((resolve, reject) => rangeQueue.push({ context, resolve, reject }));
+  }
   try {
+    throwIfQueryFailed(context);
     return await task();
+  } catch (error) {
+    throw failQuery(context, error);
   } finally {
     activeRangeRequests -= 1;
-    const next = rangeQueue.shift();
-    if (next) next();
+    drainRangeQueue();
   }
 }
 
@@ -39,28 +108,46 @@ function retryDelay(response, attempt) {
   return exponential;
 }
 
-async function fetchRange(source, offset, length, metrics) {
+function extendRangeCooldown(response, attempt) {
+  rangeCooldownUntil = Math.max(rangeCooldownUntil, Date.now() + retryDelay(response, attempt));
+}
+
+async function waitForRangeCooldown(context) {
+  throwIfQueryFailed(context);
+  const remaining = rangeCooldownUntil - Date.now();
+  if (remaining > 0) await wait(remaining, context.signal);
+  throwIfQueryFailed(context);
+}
+
+async function fetchRange(source, offset, length, metrics, context) {
   let lastError;
   for (let attempt = 0; attempt < MAX_RANGE_ATTEMPTS; attempt += 1) {
+    await waitForRangeCooldown(context);
     let response;
     try {
       response = await fetch(source, {
         headers: { Range: `bytes=${offset}-${offset + length - 1}` },
         cache: 'no-store',
+        signal: context.signal,
       });
+      throwIfQueryFailed(context);
     } catch (error) {
+      if (context.signal.aborted) throw queryFailure(context);
       lastError = error;
       if (attempt === MAX_RANGE_ATTEMPTS - 1) throw error;
       metrics.retries += 1;
-      await wait(500 * (2 ** attempt));
+      await wait(500 * (2 ** attempt), context.signal);
       continue;
     }
     if (response.status === 206) return response;
+    if (response.status === 429) extendRangeCooldown(response, attempt);
     if (!TRANSIENT_HTTP_STATUSES.has(response.status) || attempt === MAX_RANGE_ATTEMPTS - 1) {
       return response;
     }
     metrics.retries += 1;
-    await wait(retryDelay(response, attempt));
+    if (response.status !== 429) {
+      await wait(retryDelay(response, attempt), context.signal);
+    }
   }
   throw lastError || new Error('The data range request failed without a response.');
 }
@@ -104,49 +191,61 @@ async function decodeChunk(compressed, metadata) {
   return usesDeflate(metadata) ? inflate(compressed) : compressed;
 }
 
-async function readChunk(reference, key, expectedBytes, metadata, metrics) {
-  const entry = reference.refs[key];
-  if (!Array.isArray(entry) || entry.length !== 3) {
-    throw new Error(`The reference index has no byte range for ${key}.`);
-  }
-  const [sourceTemplate, offset, length] = entry;
-  const source = sourceTemplate === '{{source}}' ? reference.templates.source : sourceTemplate;
-  const cacheKey = `${source}|${key}`;
-  if (cache.has(cacheKey)) {
-    const cached = cache.get(cacheKey);
-    cache.delete(cacheKey);
-    cache.set(cacheKey, cached);
-    metrics.cacheHits += 1;
-    return cached;
-  }
-
-  const started = performance.now();
-  const response = await withRangeSlot(() => fetchRange(source, offset, length, metrics));
-  if (response.status !== 206) {
-    if (response.status === 200) {
-      throw new Error('The data host returned HTTP 200, not a partial-content response. Full-file downloads are refused.');
+async function readChunk(
+  reference, key, expectedBytes, metadata, metrics, context = createQueryContext(),
+) {
+  try {
+    throwIfQueryFailed(context);
+    const entry = reference.refs[key];
+    if (!Array.isArray(entry) || entry.length !== 3) {
+      throw new Error(`The reference index has no byte range for ${key}.`);
     }
-    throw new Error(`The data host returned HTTP ${response.status} after transient range-request retries.`);
+    const [sourceTemplate, offset, length] = entry;
+    const source = sourceTemplate === '{{source}}' ? reference.templates.source : sourceTemplate;
+    const cacheKey = `${source}|${key}`;
+    if (cache.has(cacheKey)) {
+      const cached = cache.get(cacheKey);
+      cache.delete(cacheKey);
+      cache.set(cacheKey, cached);
+      metrics.cacheHits += 1;
+      return cached;
+    }
+
+    const started = performance.now();
+    const decoded = await withRangeSlot(context, async () => {
+      const response = await fetchRange(source, offset, length, metrics, context);
+      if (response.status !== 206) {
+        if (response.status === 200) {
+          throw new Error('The data host returned HTTP 200, not a partial-content response. Full-file downloads are refused.');
+        }
+        throw new Error(`The data host returned HTTP ${response.status} after transient range-request retries.`);
+      }
+      const compressed = await response.arrayBuffer();
+      throwIfQueryFailed(context);
+      if (compressed.byteLength !== length) {
+        throw new Error(`Range ${key} returned ${compressed.byteLength} bytes; expected ${length}.`);
+      }
+      const decodedChunk = await decodeChunk(compressed, metadata);
+      throwIfQueryFailed(context);
+      if (decodedChunk.byteLength !== expectedBytes) {
+        throw new Error(`Chunk ${key} decoded to ${decodedChunk.byteLength} bytes; expected ${expectedBytes}.`);
+      }
+      metrics.requests += 1;
+      metrics.transferredBytes += compressed.byteLength;
+      metrics.networkAndDecodeMs += performance.now() - started;
+      return decodedChunk;
+    });
+    while (cache.size && cacheBytes + decoded.byteLength > MAX_CACHE_BYTES) {
+      const oldestKey = cache.keys().next().value;
+      cacheBytes -= cache.get(oldestKey).byteLength;
+      cache.delete(oldestKey);
+    }
+    cache.set(cacheKey, decoded);
+    cacheBytes += decoded.byteLength;
+    return decoded;
+  } catch (error) {
+    throw failQuery(context, error);
   }
-  const compressed = await response.arrayBuffer();
-  if (compressed.byteLength !== length) {
-    throw new Error(`Range ${key} returned ${compressed.byteLength} bytes; expected ${length}.`);
-  }
-  const decoded = await decodeChunk(compressed, metadata);
-  if (decoded.byteLength !== expectedBytes) {
-    throw new Error(`Chunk ${key} decoded to ${decoded.byteLength} bytes; expected ${expectedBytes}.`);
-  }
-  metrics.requests += 1;
-  metrics.transferredBytes += compressed.byteLength;
-  metrics.networkAndDecodeMs += performance.now() - started;
-  while (cache.size && cacheBytes + decoded.byteLength > MAX_CACHE_BYTES) {
-    const oldestKey = cache.keys().next().value;
-    cacheBytes -= cache.get(oldestKey).byteLength;
-    cache.delete(oldestKey);
-  }
-  cache.set(cacheKey, decoded);
-  cacheBytes += decoded.byteLength;
-  return decoded;
 }
 
 function validateBounds(metadata, chromosome, end, lengthAxis) {
@@ -156,7 +255,9 @@ function validateBounds(metadata, chromosome, end, lengthAxis) {
   }
 }
 
-async function readScoreVector(reference, chromosome, name, start, end, metrics) {
+async function readScoreVector(
+  reference, chromosome, name, start, end, metrics, context = createQueryContext(),
+) {
   const path = `${chromosome}/${name}`;
   const metadataValue = reference.refs[`${path}/.zarray`];
   if (!metadataValue) throw new Error(`Array ${name} is unavailable for chromosome ${chromosome}.`);
@@ -178,7 +279,7 @@ async function readScoreVector(reference, chromosome, name, start, end, metrics)
     const chunkStart = chunkIndex * chunkBases;
     const chunkLength = Math.min(chunkBases, metadata.shape[1] - chunkStart);
     const key = `${path}/0.${chunkIndex}`;
-    const decoded = await readChunk(reference, key, chunkBases * 4, metadata, metrics);
+    const decoded = await readChunk(reference, key, chunkBases * 4, metadata, metrics, context);
     const chunk = new Float32Array(decoded);
     const sliceStart = Math.max(startIndex, chunkStart) - chunkStart;
     const sliceEnd = Math.min(endIndex, chunkStart + chunkLength) - chunkStart;
@@ -189,7 +290,7 @@ async function readScoreVector(reference, chromosome, name, start, end, metrics)
   return output;
 }
 
-async function readStackRow(reference, path, metadata, rowIndex, startIndex, endIndex, metrics) {
+async function readStackRow(reference, path, metadata, rowIndex, startIndex, endIndex, metrics, context) {
   const chunkBases = metadata.chunks[1];
   const firstChunk = Math.floor(startIndex / chunkBases);
   const lastChunk = Math.floor((endIndex - 1) / chunkBases);
@@ -199,7 +300,7 @@ async function readStackRow(reference, path, metadata, rowIndex, startIndex, end
     const chunkStart = chunkIndex * chunkBases;
     const chunkLength = Math.min(chunkBases, metadata.shape[1] - chunkStart);
     const key = `${path}/${rowIndex}.${chunkIndex}`;
-    const decoded = await readChunk(reference, key, chunkBases * 4, metadata, metrics);
+    const decoded = await readChunk(reference, key, chunkBases * 4, metadata, metrics, context);
     const chunk = new Float32Array(decoded);
     const sliceStart = Math.max(startIndex, chunkStart) - chunkStart;
     const sliceEnd = Math.min(endIndex, chunkStart + chunkLength) - chunkStart;
@@ -210,7 +311,9 @@ async function readStackRow(reference, path, metadata, rowIndex, startIndex, end
   return output;
 }
 
-async function readStack(reference, chromosome, start, end, metrics) {
+async function readStack(
+  reference, chromosome, start, end, metrics, context = createQueryContext(),
+) {
   const path = `${chromosome}/stack`;
   const metadata = parseMetadata(reference.refs[`${path}/.zarray`]);
   const attributes = parseMetadata(reference.refs[`${path}/.zattrs`]);
@@ -225,7 +328,9 @@ async function readStack(reference, chromosome, start, end, metrics) {
   const endIndex = end;
   const rows = await Promise.all(Array.from(
     { length: metadata.shape[0] },
-    (_, rowIndex) => readStackRow(reference, path, metadata, rowIndex, startIndex, endIndex, metrics),
+    (_, rowIndex) => readStackRow(
+      reference, path, metadata, rowIndex, startIndex, endIndex, metrics, context,
+    ),
   ));
   const width = end - start + 1;
   const output = new Float32Array(metadata.shape[0] * width);
@@ -233,7 +338,9 @@ async function readStack(reference, chromosome, start, end, metrics) {
   return { values: output, rows: attributes.rows, species: attributes.species || attributes.rows };
 }
 
-async function readStatus(reference, chromosome, start, end, metrics) {
+async function readStatus(
+  reference, chromosome, start, end, metrics, context = createQueryContext(),
+) {
   const path = `${chromosome}/status`;
   const metadata = parseMetadata(reference.refs[`${path}/.zarray`]);
   const attributes = parseMetadata(reference.refs[`${path}/.zattrs`]);
@@ -251,7 +358,9 @@ async function readStatus(reference, chromosome, start, end, metrics) {
   for (let chunkIndex = firstChunk; chunkIndex <= lastChunk; chunkIndex += 1) {
     const chunkStart = chunkIndex * chunkBases;
     const chunkLength = Math.min(chunkBases, metadata.shape[0] - chunkStart);
-    const decoded = await readChunk(reference, `${path}/${chunkIndex}`, chunkBases, metadata, metrics);
+    const decoded = await readChunk(
+      reference, `${path}/${chunkIndex}`, chunkBases, metadata, metrics, context,
+    );
     const chunk = new Uint8Array(decoded);
     const sliceStart = Math.max(startIndex, chunkStart) - chunkStart;
     const sliceEnd = Math.min(endIndex, chunkStart + chunkLength) - chunkStart;
@@ -262,30 +371,34 @@ async function readStatus(reference, chromosome, start, end, metrics) {
   return { values: output, fields: attributes.status_fields || [] };
 }
 
-async function query(chromosome, start, end) {
-  const [scoreReference, accessibilityReference] = await Promise.all([
-    loadReference(SCORE_REFERENCE_URL),
-    loadReference(ACCESSIBILITY_REFERENCE_URL),
-  ]);
-  const metrics = {
-    requests: 0, retries: 0, cacheHits: 0, transferredBytes: 0, networkAndDecodeMs: 0,
-  };
-  const started = performance.now();
-  const [Cs, snpDensity, stack, status] = await Promise.all([
-    readScoreVector(scoreReference, chromosome, 'Cs', start, end, metrics),
-    readScoreVector(scoreReference, chromosome, 'snp_density', start, end, metrics),
-    readStack(scoreReference, chromosome, start, end, metrics),
-    readStatus(accessibilityReference, chromosome, start, end, metrics),
-  ]);
-  metrics.totalMs = performance.now() - started;
-  metrics.decodedCacheBytes = cacheBytes;
-  return {
-    values: { Cs, snp_density: snpDensity, stack: stack.values, status: status.values },
-    stackRows: stack.rows,
-    stackSpecies: stack.species,
-    statusFields: status.fields,
-    metrics,
-  };
+async function query(chromosome, start, end, context = createQueryContext()) {
+  try {
+    const [scoreReference, accessibilityReference] = await Promise.all([
+      loadReference(SCORE_REFERENCE_URL),
+      loadReference(ACCESSIBILITY_REFERENCE_URL),
+    ]);
+    const metrics = {
+      requests: 0, retries: 0, cacheHits: 0, transferredBytes: 0, networkAndDecodeMs: 0,
+    };
+    const started = performance.now();
+    const [Cs, snpDensity, stack, status] = await Promise.all([
+      readScoreVector(scoreReference, chromosome, 'Cs', start, end, metrics, context),
+      readScoreVector(scoreReference, chromosome, 'snp_density', start, end, metrics, context),
+      readStack(scoreReference, chromosome, start, end, metrics, context),
+      readStatus(accessibilityReference, chromosome, start, end, metrics, context),
+    ]);
+    metrics.totalMs = performance.now() - started;
+    metrics.decodedCacheBytes = cacheBytes;
+    return {
+      values: { Cs, snp_density: snpDensity, stack: stack.values, status: status.values },
+      stackRows: stack.rows,
+      stackSpecies: stack.species,
+      statusFields: status.fields,
+      metrics,
+    };
+  } catch (error) {
+    throw failQuery(context, error);
+  }
 }
 
 async function digest(values) {
@@ -301,14 +414,15 @@ self.addEventListener('message', async ({ data }) => {
     return;
   }
   if (!['query', 'benchmark'].includes(data.action)) return;
+  const context = createQueryContext();
   try {
     if (data.action === 'benchmark') {
       cache.clear();
       cacheBytes = 0;
     }
-    const result = await query(data.chromosome, data.start, data.end);
+    const result = await query(data.chromosome, data.start, data.end, context);
     const warm = data.action === 'benchmark'
-      ? await query(data.chromosome, data.start, data.end)
+      ? await query(data.chromosome, data.start, data.end, context)
       : null;
     const canHash = Boolean(globalThis.crypto?.subtle?.digest);
     const hashes = {};
@@ -337,11 +451,12 @@ self.addEventListener('message', async ({ data }) => {
     }
     self.postMessage(response, transfer);
   } catch (error) {
+    const failure = failQuery(context, error);
     self.postMessage({
       ok: false,
       action: data.action,
       requestId: data.requestId,
-      message: error instanceof Error ? error.message : String(error),
+      message: failure.message,
     });
   }
 });

@@ -9,11 +9,13 @@ const workerSource = fs.readFileSync(
   'utf8',
 );
 
-function harness(fetchImplementation) {
+function harness(fetchImplementation, options = {}) {
   let messageHandler;
   const messages = [];
   const context = vm.createContext({
+    AbortController,
     Blob,
+    Date,
     DecompressionStream,
     Error,
     Float32Array,
@@ -25,7 +27,8 @@ function harness(fetchImplementation) {
     crypto: globalThis.crypto,
     fetch: fetchImplementation,
     performance: globalThis.performance,
-    setTimeout: (callback) => callback(),
+    clearTimeout: options.clearTimeout || clearTimeout,
+    setTimeout: options.setTimeout || ((callback) => callback()),
     self: {
       addEventListener(type, handler) {
         if (type === 'message') messageHandler = handler;
@@ -39,6 +42,7 @@ function harness(fetchImplementation) {
   return {
     messages,
     message: (data) => messageHandler({ data }),
+    createQueryContext: vm.runInContext('createQueryContext', context),
     readChunk: vm.runInContext('readChunk', context),
     readScoreVector: vm.runInContext('readScoreVector', context),
     usesDeflate: vm.runInContext('usesDeflate', context),
@@ -155,4 +159,93 @@ test('accepts a full physical chunk at the right chromosome boundary', async () 
 
   assert.equal(result.length, 1);
   assert.equal(result[0], 9);
+});
+
+test('a terminal failure aborts active siblings and removes queued range work', async () => {
+  const calls = [];
+  let releaseTerminal;
+  const worker = harness((_source, options) => {
+    const call = { signal: options.signal };
+    calls.push(call);
+    if (calls.length === 1) {
+      return new Promise((resolve) => {
+        releaseTerminal = () => resolve({ status: 200 });
+      });
+    }
+    return new Promise((_resolve, reject) => {
+      options.signal.addEventListener(
+        'abort',
+        () => reject(options.signal.reason || new Error('aborted')),
+        { once: true },
+      );
+    });
+  });
+  const queryContext = worker.createQueryContext();
+  const refs = Object.fromEntries(Array.from(
+    { length: 5 },
+    (_value, index) => [`2L/Cs/0.${index}`, ['{{source}}', 100 + index * 4, 4]],
+  ));
+  const sharedReference = {
+    templates: { source: 'https://example.test/archive.h5' },
+    refs,
+  };
+  const reads = Object.keys(refs).map((key) => (
+    worker.readChunk(sharedReference, key, 4, uncompressed, metrics(), queryContext)
+  ));
+
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(calls.length, 4);
+  assert.ok(calls.every((call) => call.signal === queryContext.signal));
+  releaseTerminal();
+  const settled = await Promise.allSettled(reads);
+
+  assert.equal(calls.length, 4, 'the fifth queued fetch must never begin');
+  assert.equal(queryContext.signal.aborted, true);
+  assert.ok(settled.every((result) => result.status === 'rejected'));
+  assert.match(settled[0].reason.message, /HTTP 200, not a partial-content response/);
+});
+
+test('new and retried ranges share one worker-wide HTTP 429 cooldown', async () => {
+  const timers = [];
+  let requests = 0;
+  const bytes = Uint8Array.from([1, 2, 3, 4]);
+  const worker = harness(async () => {
+    requests += 1;
+    if (requests === 1) {
+      return {
+        status: 429,
+        headers: { get: (name) => (name === 'Retry-After' ? '2' : null) },
+      };
+    }
+    return { status: 206, arrayBuffer: async () => bytes.buffer.slice(0) };
+  }, {
+    setTimeout(callback, milliseconds) {
+      timers.push({ callback, milliseconds });
+      return timers.length;
+    },
+    clearTimeout() {},
+  });
+  const firstReference = reference();
+  const secondReference = {
+    templates: firstReference.templates,
+    refs: { '2L/Cs/0.1': ['{{source}}', 104, 4] },
+  };
+
+  const first = worker.readChunk(
+    firstReference, '2L/Cs/0.0', 4, uncompressed, metrics(), worker.createQueryContext(),
+  );
+  while (timers.length === 0) await Promise.resolve();
+  const second = worker.readChunk(
+    secondReference, '2L/Cs/0.1', 4, uncompressed, metrics(), worker.createQueryContext(),
+  );
+  await Promise.resolve();
+
+  assert.equal(requests, 1);
+  assert.ok(timers.length >= 2);
+  assert.ok(timers.every((timer) => timer.milliseconds > 0));
+  assert.ok(timers.some((timer) => timer.milliseconds >= 1_900));
+  for (const timer of timers.splice(0)) timer.callback();
+  await Promise.all([first, second]);
+  assert.equal(requests, 3);
 });
