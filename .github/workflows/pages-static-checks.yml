@@ -41,5 +41,6 @@ jobs:
       - run: node --check docs/assets/query-contract.js
       - run: node --check docs/assets/query-worker.js
       - run: node --check docs/assets/live-plots.js
+      - run: node --check docs/assets/analytics.js
       - run: node --check docs/assets/site.js
       - run: node --test tests/*.test.js
