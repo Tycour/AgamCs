@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-27-gene-name-search2';
+const PAGES_RELEASE = '2026-08-27-gene-name-search3';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -662,8 +662,17 @@ function transcriptAnnotationsForResolution(index, resolution, annotation) {
 
 function renderResolvedAccession(resolution, index, paddingDetails) {
   const annotation = resolution.annotation;
-  document.querySelector('#resolved-accession-id').textContent = resolution.accession;
-  document.querySelector('#resolved-gene-id').textContent = resolution.geneAccession;
+  const name = geneSearchSnapshot?.names?.[resolution.geneAccession]?.name || null;
+  const queryLabel = name ? `${resolution.accession} (${name})` : resolution.accession;
+  const geneLabel = name
+    ? `${resolution.geneAccession} (${name})`
+    : resolution.geneAccession;
+  renderVectorBaseGeneLink(
+    document.querySelector('#resolved-accession-id'), resolution.geneAccession, queryLabel,
+  );
+  renderVectorBaseGeneLink(
+    document.querySelector('#resolved-gene-id'), resolution.geneAccession, geneLabel,
+  );
   document.querySelector('#resolved-transcript').textContent = annotation.transcript_id;
   const requestedPadding = paddingDetails?.requestedPadding || 0;
   document.querySelector('#resolved-padding').textContent = requestedPadding > 0
@@ -675,6 +684,16 @@ function renderResolvedAccession(resolution, index, paddingDetails) {
   document.querySelector('#resolved-annotation').textContent = `${index.annotation.gene_build} (${index.annotation.released})`;
   document.querySelector('#resolved-index-version').textContent = index.index_version;
   resolvedAccession.hidden = false;
+}
+
+function renderVectorBaseGeneLink(element, accession, label) {
+  const link = document.createElement('a');
+  link.href = `https://vectorbase.org/vectorbase/app/record/gene/${encodeURIComponent(accession)}`;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.textContent = `${label} ↗`;
+  link.setAttribute('aria-label', `View ${label} in VectorBase`);
+  element.replaceChildren(link);
 }
 
 function renderLivePlots(

@@ -392,6 +392,23 @@ def validate_local_preview_guard() -> list[str]:
     ]
 
 
+def validate_vectorbase_gene_links() -> list[str]:
+    """Keep resolved gene labels linked to the official VectorBase record."""
+    site_text = (ROOT / 'assets/site.js').read_text(encoding='utf-8')
+    required_fragments = (
+        'function renderVectorBaseGeneLink',
+        'https://vectorbase.org/vectorbase/app/record/gene/',
+        "document.querySelector('#resolved-accession-id')",
+        "document.querySelector('#resolved-gene-id')",
+        "geneSearchSnapshot?.names?.[resolution.geneAccession]?.name",
+    )
+    return [
+        f'VectorBase gene-link integration is missing {fragment!r}'
+        for fragment in required_fragments
+        if fragment not in site_text
+    ]
+
+
 def validate_live_plot_renderer() -> list[str]:
     """Keep the browser heatmap annotation convention aligned with the CLI."""
     text = (ROOT / 'assets/live-plots.js').read_text(encoding='utf-8')
@@ -428,6 +445,7 @@ def main() -> None:
     errors.extend(validate_analytics())
     errors.extend(validate_release_versions())
     errors.extend(validate_local_preview_guard())
+    errors.extend(validate_vectorbase_gene_links())
     errors.extend(validate_live_plot_renderer())
     for asset in QUERY_ASSETS:
         if not asset.exists() or asset.stat().st_size == 0:
