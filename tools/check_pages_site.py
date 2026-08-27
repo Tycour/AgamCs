@@ -10,6 +10,7 @@ from urllib.parse import unquote, urlparse
 
 from build_pages_accession_index import validate_index
 from build_pages_examples import load_accession_list, load_catalogue, verify_assets
+from build_pages_gene_search import validate_gene_search
 
 
 ROOT = Path(__file__).resolve().parents[1] / 'docs'
@@ -17,6 +18,7 @@ PAGES = (ROOT / 'index.html', ROOT / '404.html')
 EXAMPLES_PATH = ROOT / 'examples.json'
 BATCH_ACCESSIONS_PATH = ROOT.parent / 'batch_accessions_example.txt'
 ACCESSION_INDEX_PATH = ROOT / 'assets/data/accession-index.json'
+GENE_SEARCH_PATH = ROOT / 'assets/data/gene-search.json'
 QUERY_ASSETS = (
     ROOT / 'assets/data/score-reference.json',
     ROOT / 'assets/data/accessibility-reference.json',
@@ -28,7 +30,9 @@ QUERY_ASSETS = (
     ROOT / 'assets/live-plots.js',
     ROOT / 'assets/query-contract.js',
     ROOT / 'assets/accession-lookup.js',
+    ROOT / 'assets/gene-search.js',
     ACCESSION_INDEX_PATH,
+    GENE_SEARCH_PATH,
     ROOT / 'assets/data/plot-contract.json',
 )
 QUERY_ARRAYS = {'Cs', 'snp_density', 'stack'}
@@ -41,6 +45,8 @@ MAX_PAGES_FILE_BYTES = 10 * 1024 * 1024
 EXPECTED_ACCESSION_RECORDS = 13_097
 EXPECTED_TRANSCRIPT_RECORDS = 15_317
 EXPECTED_ACCESSION_SOURCE_SHA256 = '916a1e0e4d4613d36be31dc03c53871f6f62c94f4d8bc4662d0002131658c0c7'
+EXPECTED_GENE_SEARCH_RECORDS = 2_255
+EXPECTED_GENE_SEARCH_SOURCE_SHA256 = 'fb1e13c3265b966901cd01524bb16d49ff854c3a002745489daaeae54f638bce'
 REQUIRED_ACCESSIONS = {'AGAP004568'}
 REQUIRED_TRANSCRIPTS = {'AGAP000040-RA', 'AGAP000040-RB', 'AGAP000040-RC'}
 RELEASE_PATTERN = re.compile(r"(?:PAGES|WORKER)_RELEASE\s*=\s*['\"]([^'\"]+)['\"]")
@@ -152,6 +158,9 @@ def validate_page(page: Path) -> list[str]:
             'about', 'about-title',
             'accession-padding',
             'padding-help',
+            'accession-combobox', 'accession-suggestions-panel',
+            'accession-suggestions', 'accession-suggestions-note',
+            'accession-search-status',
             'accession-query-panel', 'isoform-control', 'isoform-select',
             'isoform-help', 'coordinate-query-panel',
             'results-portal', 'resolved-accession', 'summary-count',
@@ -167,7 +176,7 @@ def validate_page(page: Path) -> list[str]:
             errors.append(f'index.html: missing live-query controls: {sorted(missing_ids)}')
         obsolete_ids = {
             'query-form', 'live-query', 'profile-panel', 'heatmap-panel',
-            'summary-accessible', 'query-preview',
+            'summary-accessible', 'query-preview', 'live-accession-list',
         }
         if retained_ids := obsolete_ids & checker.ids:
             errors.append(f'index.html: duplicate demo/live-query UI remains: {sorted(retained_ids)}')
@@ -178,7 +187,8 @@ def validate_page(page: Path) -> list[str]:
         if 'First five returned positions' in page_text:
             errors.append('index.html: obsolete per-position preview remains')
         for required_summary_text in (
-            'Base pairs (bp)', 'Aggregated exons', 'Gene or transcript accession',
+            'Base pairs (bp)', 'Aggregated exons',
+            'Gene accession, symbol, or transcript accession',
             'Transcript isoform', 'Thomas Courty', 'Windbichler Lab',
             'Imperial College London', 'Query processing runs in your browser',
             'only if you accept them', 'accessions, coordinates, results, filenames, and errors',
@@ -302,6 +312,35 @@ def validate_accessions() -> list[str]:
     return errors
 
 
+def validate_gene_names() -> list[str]:
+    """Validate official symbols and their exact join to the accession index."""
+    try:
+        index = json.loads(ACCESSION_INDEX_PATH.read_text(encoding='utf-8'))
+        search = json.loads(GENE_SEARCH_PATH.read_text(encoding='utf-8'))
+        validate_gene_search(search, index)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return [f'could not validate gene-name index: {error}']
+
+    errors = []
+    if len(search['names']) != EXPECTED_GENE_SEARCH_RECORDS:
+        errors.append(
+            f'gene-name index must contain {EXPECTED_GENE_SEARCH_RECORDS:,} official symbols'
+        )
+    if search['source']['snapshot_sha256'] != EXPECTED_GENE_SEARCH_SOURCE_SHA256:
+        errors.append('gene-name index does not match the reviewed AgamP4 naming snapshot')
+    if search['names'].get('AGAP006241', {}).get('name') != 'ZPG':
+        errors.append('gene-name index is missing the AGAP006241/ZPG regression mapping')
+    mocs2 = sorted(
+        accession for accession, record in search['names'].items()
+        if record['name'].casefold() == 'mocs2'
+    )
+    if mocs2 != ['AGAP004289', 'AGAP004290', 'AGAP013168']:
+        errors.append('gene-name index no longer preserves the ambiguous Mocs2 mappings')
+    if search['coverage']['gene_records_checked'] != len(index['accessions']):
+        errors.append('gene-name source was not checked against every indexed gene')
+    return errors
+
+
 def validate_pages_payload() -> list[str]:
     """Ensure Pages contains only the small client and metadata assets."""
     errors = []
@@ -368,6 +407,7 @@ def main() -> None:
             errors.extend(validate_page(page))
     errors.extend(validate_examples())
     errors.extend(validate_accessions())
+    errors.extend(validate_gene_names())
     errors.extend(validate_pages_payload())
     errors.extend(validate_analytics())
     errors.extend(validate_release_versions())

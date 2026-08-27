@@ -36,6 +36,7 @@ jobs:
           node-version: '22'
       - run: python tools/sync_plot_contract.py --check
       - run: python tools/check_pages_site.py
+      - run: node --check docs/assets/gene-search.js
       - run: node --check docs/assets/accession-lookup.js
       - run: node --check docs/assets/plot-model.js
       - run: node --check docs/assets/query-contract.js

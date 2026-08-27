@@ -16,13 +16,14 @@
   <title>AgamCs conservation explorer</title>
   <link rel="canonical" href="https://tycour.github.io/AgamCs/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/site.css?v=2026-08-26-ga4-analytics1">
-  <script src="assets/plot-model.js?v=2026-08-26-ga4-analytics1" defer></script>
-  <script src="assets/live-plots.js?v=2026-08-26-ga4-analytics1" defer></script>
-  <script src="assets/accession-lookup.js?v=2026-08-26-ga4-analytics1" defer></script>
-  <script src="assets/query-contract.js?v=2026-08-26-ga4-analytics1" defer></script>
-  <script src="assets/analytics.js?v=2026-08-26-ga4-analytics1" data-measurement-id="G-25RC4QKPP9" defer></script>
-  <script src="assets/site.js?v=2026-08-26-ga4-analytics1" defer></script>
+  <link rel="stylesheet" href="assets/site.css?v=2026-08-27-gene-name-search1">
+  <script src="assets/plot-model.js?v=2026-08-27-gene-name-search1" defer></script>
+  <script src="assets/live-plots.js?v=2026-08-27-gene-name-search1" defer></script>
+  <script src="assets/gene-search.js?v=2026-08-27-gene-name-search1" defer></script>
+  <script src="assets/accession-lookup.js?v=2026-08-27-gene-name-search1" defer></script>
+  <script src="assets/query-contract.js?v=2026-08-27-gene-name-search1" defer></script>
+  <script src="assets/analytics.js?v=2026-08-27-gene-name-search1" data-measurement-id="G-25RC4QKPP9" defer></script>
+  <script src="assets/site.js?v=2026-08-27-gene-name-search1" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -69,7 +70,7 @@
           <legend>Query by</legend>
           <label class="query-mode-control">
             <input type="radio" name="live-query-mode" value="accession" checked>
-            <span>Gene or transcript accession</span>
+            <span>Gene or transcript</span>
           </label>
           <label class="query-mode-control">
             <input type="radio" name="live-query-mode" value="coordinates">
@@ -77,9 +78,15 @@
           </label>
         </fieldset>
         <div class="query-input-panel accession-query-panel" id="accession-query-panel">
-          <label for="live-accession">Gene or transcript accession</label>
-          <input id="live-accession" name="live-accession" list="live-accession-list" value="AGAP006241" autocomplete="off" spellcheck="false">
-          <datalist id="live-accession-list"></datalist>
+          <label for="live-accession">Gene accession, symbol, or transcript accession</label>
+          <div class="accession-combobox" id="accession-combobox">
+            <input id="live-accession" name="live-accession" value="AGAP006241" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="accession-suggestions" aria-describedby="accession-index-help accession-search-status">
+            <div class="accession-suggestions-panel" id="accession-suggestions-panel" hidden>
+              <ul class="accession-suggestions" id="accession-suggestions" role="listbox" aria-label="Matching AgamP4 genes and transcripts"></ul>
+              <p class="accession-suggestions-note" id="accession-suggestions-note"></p>
+            </div>
+          </div>
+          <p class="visually-hidden" id="accession-search-status" role="status" aria-live="polite"></p>
           <p class="field-help" id="accession-index-help">Loading the versioned AgamP4.14 gene index…</p>
           <div class="padding-control">
             <label for="accession-padding">Padding per side (bp)</label>
@@ -127,7 +134,7 @@
           </div>
           <span class="ready-badge" id="result-status">Ready</span>
         </div>
-        <p class="result-description" id="benchmark-status">Choose an AgamP4.14 gene or transcript accession, manual interval, or featured example.</p>
+        <p class="result-description" id="benchmark-status">Choose an AgamP4.14 gene accession or symbol, transcript accession, manual interval, or featured example.</p>
         <dl class="resolved-accession" id="resolved-accession" hidden>
           <div><dt>Query ID</dt><dd id="resolved-accession-id">—</dd></div>
           <div><dt>Gene</dt><dd id="resolved-gene-id">—</dd></div>
@@ -166,7 +173,7 @@
           <p class="summary-method" id="summary-method-note"></p>
         </div>
         <a class="download-link" id="benchmark-download" hidden download="AgamCs-browser-query.tsv">Download exact TSV values</a>
-        <p class="field-help">Browser query limit: 50,000 bases. The versioned index covers AGAP genes and transcript isoforms on 2L, 2R, 3L, 3R, and X. Failed accessibility/QC positions are shown separately as unknown.</p>
+        <p class="field-help">Browser query limit: 50,000 bases. The versioned index covers AGAP genes and transcript isoforms on 2L, 2R, 3L, 3R, and X; official gene symbols come from a separately versioned AgamP4 naming index. Failed accessibility/QC positions are shown separately as unknown.</p>
       </div>
       <div class="live-visuals" id="live-visuals" hidden>
         <div class="live-visual-heading">
