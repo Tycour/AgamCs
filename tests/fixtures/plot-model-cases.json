@@ -26,6 +26,22 @@
       "qc_mode": "mixed"
     },
     {
+      "id": "phase2-150000-bases",
+      "chromosome": "2R",
+      "start": 3000000,
+      "length": 150000,
+      "stack_mode": "periodic",
+      "qc_mode": "mixed"
+    },
+    {
+      "id": "phase2-maximum-200000-bases",
+      "chromosome": "3L",
+      "start": 4000000,
+      "length": 200000,
+      "stack_mode": "periodic",
+      "qc_mode": "mixed"
+    },
+    {
       "id": "minus-strand",
       "chromosome": "3R",
       "start": 5000,

@@ -174,10 +174,14 @@ def test_python_and_pages_models_match_for_complete_synthetic_cases(specificatio
     if specification['id'] == 'maximum-20000-bases':
         assert python_model['heatmap']['binCount'] == 500
         assert sum(map(len, python_model['heatmap']['bins'])) == 20_000
-    if specification['id'] == 'prospective-maximum-50000-bases':
+    if specification['id'] in {
+        'prospective-maximum-50000-bases',
+        'phase2-150000-bases',
+        'phase2-maximum-200000-bases',
+    }:
         assert python_model['signal']['binCount'] == 240
         assert python_model['heatmap']['binCount'] == 500
-        assert sum(map(len, python_model['heatmap']['bins'])) == 50_000
+        assert sum(map(len, python_model['heatmap']['bins'])) == specification['length']
 
 
 def _agap006241_result_and_annotation():

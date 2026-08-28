@@ -128,21 +128,30 @@ Use `--verify` to validate the committed asset without retaining the GFF.
   transcript-ID input, an isoform selector, and stacked all-isoform annotation
   tracks for gene queries; independent manual
   coordinates; live `Cs`, unchanged SNP density,
-  species-stack and accessibility/QC queries up to the 50,000-base browser
+  species-stack and accessibility/QC queries up to the 200,000-base browser
   query limit; interactive browser plots; exact TSV downloads; and explicit
   annotation provenance.
 - Not included: genes on unplaced/unknown scaffolds, IDs absent from the
-  VectorBase-68 annotation, live Ensembl lookup, intervals over 50,000 bases,
+  VectorBase-68 annotation, live Ensembl lookup, intervals over 200,000 bases,
   or server-side plotting.
 
 The example catalogue is accompanied by the Stage 7–9 browser client. It
 accepts a versioned AgamP4.14 gene or transcript accession, or an independent
-AgamP4 interval within the 50,000-base browser query limit. It reads only the
+AgamP4 interval within the 200,000-base browser query limit. It reads only the
 required `Cs`, unchanged `snp_density`, species
 `stack`, and separate accessibility chunks through HTTP range requests.
 Decoding runs in a persistent worker with a bounded in-memory chunk cache, so
 repeat and nearby queries can reuse data without freezing the interface. Exact
 values are previewed, plotted interactively, and downloadable as TSV.
+
+The 200,000-base inclusive limit is an engineering/browser ceiling, not a
+biological threshold. It supports 13,080 of the 13,097 indexed genes
+(99.8702%); 17 complete gene loci are longer and remain CLI-only. Plot display
+resolution stays fixed at 240 signal bins and 500 heatmap bins, while the TSV
+retains every queried base and all 21 exact stack values. The worker accepts
+only HTTP 206 range responses, continues to refuse HTTP 200 full-file
+responses, and preserves the archived raw SNP-density plus separate
+QC-failed/unknown semantics.
 
 The browser reads a generated manifest for chromosome bounds, array names,
 coordinate convention, source provenance, and the query limit. Accessibility

@@ -196,9 +196,14 @@ annotation rows beneath both plots; an exact ID such as `AGAP000040-RA` uses
 that isoform's transcript span, exons and CDS bounds. Gene, transcript and
 coordinate queries read only the required `Cs`, raw SNP-density, species-stack,
 and separate QC ranges from the Zenodo data and render live browser plots;
-featured examples remain as shortcuts in the same query form. The browser query
-limit is 50,000 bases, and failed accessibility/QC positions remain separate
-from the raw SNP-density values and are shown as unknown. Publishing and
+featured examples remain as shortcuts in the same query form. The inclusive
+browser query limit is 200,000 bases. This is an engineering/browser ceiling,
+not a biological threshold: it supports 13,080 of 13,097 indexed genes
+(99.8702%), while the 17 longer genes remain CLI-only. Failed accessibility/QC
+positions remain separate from the raw SNP-density values and are shown as
+unknown. Browser reads require HTTP 206 partial-content responses; the exact TSV
+retains every base and all 21 stack values while plots retain fixed 240-signal
+and 500-heatmap display bins. Publishing and
 implementation details are documented in
 [`docs/github-pages-prototype.md`](docs/github-pages-prototype.md).
 For larger intervals, custom highlight ranges, local-HDF5 use, and fully

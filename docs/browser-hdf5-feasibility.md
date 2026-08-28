@@ -147,3 +147,24 @@ Repeated synthetic queries can also trigger Zenodo HTTP 429 responses. The
 worker now limits concurrent range requests, retries only transient network and
 HTTP failures with bounded backoff, reports retries, and continues to refuse
 HTTP 200 responses that could represent a full-file download.
+
+## Phase 2 engineering ceiling (27 August 2026)
+
+The approved Pages ceiling is now 200,000 one-based inclusive bases. This is an
+engineering/browser boundary, not a biological threshold. It covers 13,080 of
+13,097 indexed genes (99.8702%); the remaining 17 complete loci are CLI-only.
+Measurements in this document are point-in-time observations, not service
+guarantees, and do not imply that the ceiling is biologically meaningful.
+
+The higher ceiling does not change the transport or scientific contracts. The
+worker still requires HTTP 206, refuses HTTP 200 full-file responses, uses four
+concurrent range slots and six bounded attempts, and caps decoded chunks at
+64 MiB. A query-scoped abort signal now stops active siblings and removes queued
+work after a terminal range, network, size, or decode failure. HTTP 429 extends
+one worker-wide bounded cooldown deadline which every new or retried range
+consults before fetching.
+
+Display plots remain fixed at 240 signal bins and 500 heatmap bins. Exact TSV
+downloads retain all queried bases and all 21 stack values. The archived raw
+SNP-density array remains unchanged, and failed accessibility/QC positions
+remain separately represented as unknown rather than zero.

@@ -297,9 +297,8 @@ test('standalone SVG download path remains present after plot-model extraction',
   assert.match(source, /type: 'image\/svg\+xml;charset=utf-8'/);
 });
 
-test('exact 50,000-base TSV retains every position and all 21 stack values', () => {
+for (const width of [50_000, 150_000, 200_000]) test(`exact ${width.toLocaleString()}-base TSV retains every position and all 21 stack values`, () => {
   const { buildTsv } = siteExportHelpers();
-  const width = 50_000;
   const stackRows = Array.from({ length: 21 }, (_value, row) => `row${row}`);
   const stack = new Float32Array(stackRows.length * width);
   stackRows.forEach((_code, row) => stack.fill(row, row * width, (row + 1) * width));
@@ -327,14 +326,23 @@ test('exact 50,000-base TSV retains every position and all 21 stack values', () 
   }
 });
 
-test('replacement validation failures preserve previous figures and downloads', () => {
+test('rejected and failed replacement queries preserve previous figures and downloads', () => {
   const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
-  const submitStart = source.indexOf("benchmarkForm.addEventListener('submit'");
+  const submitStart = source.indexOf('async function runLiveQuery');
   const submit = source.slice(submitStart);
   const arrayFailure = submit.indexOf('Local validation failed');
   const plotFailure = submit.indexOf('Plot validation failed');
   const replacementClear = submit.indexOf('clearFigureDownloads();');
+  const workerRequest = submit.indexOf('workerQuery(chromosome, start, end)');
   assert.ok(arrayFailure >= 0 && plotFailure > arrayFailure);
-  assert.ok(replacementClear > plotFailure);
+  assert.ok(replacementClear > plotFailure && replacementClear > workerRequest);
+  assert.doesNotMatch(submit.slice(0, replacementClear), /benchmarkDownloadUrl\) URL\.revokeObjectURL/);
   assert.doesNotMatch(submit.slice(submit.lastIndexOf('} catch (error) {')), /clearFigureDownloads|benchmarkDownload\.hidden|liveVisuals\.hidden|querySummary\.hidden/);
+  const modeStart = source.indexOf('function setLiveQueryMode');
+  const modeEnd = source.indexOf("document.querySelectorAll('input[name=\"live-query-mode\"]')");
+  const modeChange = source.slice(modeStart, modeEnd);
+  assert.doesNotMatch(
+    modeChange,
+    /clearFigureDownloads|benchmarkDownload\.hidden|liveVisuals\.hidden|querySummary\.hidden|resolvedAccession\.hidden/,
+  );
 });

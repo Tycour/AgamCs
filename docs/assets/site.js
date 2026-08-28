@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-27-gene-name-search3';
+const PAGES_RELEASE = '2026-08-28-query-limit-200k2';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -339,11 +339,10 @@ function updatePaddingHelp() {
       accessionIndexSnapshot, liveAccession.value,
     );
     const { chromosome, start, end } = resolution.annotation;
-    const span = end - start + 1;
-    const maximumLength = Number(queryManifestSnapshot.maximum_query_bases);
-    if (span > maximumLength) {
-      const kind = resolution.matchedAs === 'transcript' ? 'transcript' : 'gene';
-      paddingHelp.textContent = `${resolution.accession} spans ${span.toLocaleString()} bp, so the full ${kind} exceeds the ${maximumLength.toLocaleString()}-base browser query limit. Choose a shorter transcript if available, use manual coordinates for a smaller interval, or use the CLI.`;
+    const locusLength = end - start + 1;
+    const maximumQueryBases = Number(queryManifestSnapshot.maximum_query_bases);
+    if (locusLength > maximumQueryBases) {
+      paddingHelp.textContent = `The complete ${resolution.accession} locus spans ${locusLength.toLocaleString()} bases, exceeds the ${maximumQueryBases.toLocaleString()}-base browser limit, and remains available through the CLI.`;
       return;
     }
     const maximum = globalThis.AgamCsQueryContract.maximumSymmetricPadding(
@@ -351,7 +350,8 @@ function updatePaddingHelp() {
     );
     paddingHelp.textContent = `For ${resolution.accession}, use 0–${maximum.toLocaleString()} bp per side to remain within the ${Number(queryManifestSnapshot.maximum_query_bases).toLocaleString()}-base browser query limit. Padding is clipped at chromosome boundaries.`;
   } catch (_error) {
-    paddingHelp.textContent = 'Choose a supported gene or transcript to calculate its allowable padding. The padded interval must remain within the 50,000-base browser query limit.';
+    const maximum = Number(queryManifestSnapshot.maximum_query_bases).toLocaleString();
+    paddingHelp.textContent = `Choose a supported gene or transcript to calculate its allowable padding. The padded interval must remain within the ${maximum}-base browser query limit.`;
   }
 }
 
@@ -453,11 +453,6 @@ function setLiveQueryMode(mode) {
   const byAccession = mode === 'accession';
   accessionQueryPanel.hidden = !byAccession;
   coordinateQueryPanel.hidden = byAccession;
-  benchmarkDownload.hidden = true;
-  clearFigureDownloads();
-  querySummary.hidden = true;
-  liveVisuals.hidden = true;
-  resolvedAccession.hidden = true;
   closeAccessionSuggestions();
   setPortalState('Ready for a query', 'Ready');
   benchmarkStatus.textContent = byAccession
@@ -774,8 +769,7 @@ if (!localFilePreview) {
   });
 }
 
-benchmarkForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
+async function runLiveQuery() {
   if (localFilePreview) {
     setPortalState('Local web server required', 'Unavailable', 'error');
     benchmarkStatus.textContent = LOCAL_FILE_PREVIEW_MESSAGE;
@@ -793,7 +787,6 @@ benchmarkForm.addEventListener('submit', async (event) => {
   benchmarkStatus.textContent = mode === 'accession'
     ? 'Resolving the gene or transcript from the versioned AgamP4 indexes…'
     : 'Validating the requested coordinates…';
-  benchmarkSubmit.disabled = true;
 
   if (mode === 'accession') {
     try {
@@ -813,8 +806,7 @@ benchmarkForm.addEventListener('submit', async (event) => {
       updatePaddingHelp();
     } catch (error) {
       setPortalState('Query not run', 'Check input', 'error');
-      benchmarkStatus.textContent = `Gene lookup stopped: ${error.message}`;
-      benchmarkSubmit.disabled = false;
+      benchmarkStatus.textContent = `Accession lookup stopped: ${error.message}`;
       return;
     }
   } else {
@@ -829,11 +821,22 @@ benchmarkForm.addEventListener('submit', async (event) => {
   } catch (error) {
     setPortalState('Query unavailable', 'Unavailable', 'error');
     benchmarkStatus.textContent = `Query unavailable: ${error.message}`;
-    benchmarkSubmit.disabled = false;
     return;
   }
   try {
     if (resolution) {
+      try {
+        globalThis.AgamCsQueryContract.validateCoordinates(
+          manifest, chromosome, start, end,
+        );
+      } catch (error) {
+        if (error.code !== 'maximum-length') throw error;
+        const locusLength = end - start + 1;
+        const maximum = Number(manifest.maximum_query_bases);
+        const locusError = new Error(`The complete ${resolution.accession} locus spans ${locusLength.toLocaleString()} bases, exceeds the ${maximum.toLocaleString()}-base browser limit, and remains available through the CLI.`);
+        locusError.code = 'complete-locus-over-limit';
+        throw locusError;
+      }
       paddingDetails = globalThis.AgamCsQueryContract.padCoordinates(
         manifest, chromosome, start, end, form.get('accession-padding'),
       );
@@ -854,7 +857,8 @@ benchmarkForm.addEventListener('submit', async (event) => {
         ? `${resolution.accession} with the requested padding exceeds the browser query limit. `
         : `${resolution.accession} spans more than the browser query limit. `
       : '';
-    const maximumPadding = resolution && manifest && sourceFits
+    const maximumPadding = resolution && manifest
+      && error.code === 'maximum-length' && sourceFits
       ? globalThis.AgamCsQueryContract.maximumSymmetricPadding(
         manifest, resolution.annotation.chromosome,
         resolution.annotation.start, resolution.annotation.end,
@@ -866,8 +870,9 @@ benchmarkForm.addEventListener('submit', async (event) => {
         ? ' Choose a shorter transcript if available, use manual coordinates for a smaller interval, or use the CLI for the full span.'
       : '';
     setPortalState('Query not run', 'Check input', 'error');
-    benchmarkStatus.textContent = `${subject}${error.message}${guidance}`;
-    benchmarkSubmit.disabled = false;
+    benchmarkStatus.textContent = error.code === 'complete-locus-over-limit'
+      ? error.message
+      : `${subject}${error.message}${guidance}`;
     return;
   }
 
@@ -956,7 +961,15 @@ benchmarkForm.addEventListener('submit', async (event) => {
   } catch (error) {
     setPortalState(resolution?.accession || `${chromosome}:${start}-${end}`, 'Failed', 'error');
     benchmarkStatus.textContent = `Query failed: ${error.message}`;
-  } finally {
-    benchmarkSubmit.disabled = false;
   }
+}
+
+globalThis.AgamCsQueryInteraction.installQuerySubmissionGuard({
+  form: benchmarkForm,
+  button: benchmarkSubmit,
+  run: runLiveQuery,
+  onUnexpectedError(error) {
+    setPortalState('Query failed', 'Failed', 'error');
+    benchmarkStatus.textContent = `Query failed unexpectedly: ${error.message}`;
+  },
 });
