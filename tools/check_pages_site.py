@@ -169,6 +169,7 @@ def validate_page(page: Path) -> list[str]:
             'summary-exons-card', 'summary-cs-exons', 'summary-snp-exons',
             'summary-exon-count', 'summary-method-note',
             'live-signal-download', 'live-heatmap-download',
+            'signal-resolution', 'heatmap-resolution', 'plot-resolution-status',
             'analytics-settings', 'analytics-consent', 'analytics-consent-title',
             'analytics-consent-description', 'analytics-consent-status',
             'analytics-accept', 'analytics-reject',
@@ -581,10 +582,29 @@ def main() -> None:
         )
         if not default_case or plot_validation.get('region') != default_case.get('region'):
             errors.append('plot-validation fixture does not match the default release validation case')
-        if len(plot_validation.get('cs', ())) != 240:
+        contract = json.loads((ROOT / 'assets/data/plot-contract.json').read_text())
+        plotted_bases = default_case.get('bases', 0) if default_case else 0
+        signal_policy = contract.get('binning', {}).get('signal', {})
+        heatmap_policy = contract.get('binning', {}).get('heatmap', {})
+        expected_signal_bins = max(1, min(
+            plotted_bases,
+            signal_policy.get('adaptive_maximum_bins', 0),
+            plotted_bases // signal_policy.get('adaptive_bases_per_bin', 1),
+        ))
+        expected_heatmap_bins = max(1, min(
+            plotted_bases,
+            heatmap_policy.get('adaptive_maximum_bins', 0),
+            plotted_bases // heatmap_policy.get('adaptive_bases_per_bin', 1),
+        ))
+        if plot_validation.get('schema_version') != 2:
+            errors.append('plot-validation fixture has an unexpected schema version')
+        if plot_validation.get('signal_bins') != expected_signal_bins \
+                or len(plot_validation.get('cs', ())) != expected_signal_bins:
             errors.append('plot-validation fixture has unexpected Cs display bins')
         heatmap = plot_validation.get('heatmap', ())
-        if len(heatmap) != 21 or any(len(row) != 500 for row in heatmap):
+        if plot_validation.get('heatmap_bins') != expected_heatmap_bins \
+                or len(heatmap) != 21 \
+                or any(len(row) != expected_heatmap_bins for row in heatmap):
             errors.append('plot-validation fixture has unexpected heatmap dimensions')
     if errors:
         raise SystemExit('\n'.join(errors))

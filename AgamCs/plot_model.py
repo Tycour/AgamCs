@@ -17,23 +17,84 @@ import pandas as pd
 from .create_heatmap import SPECIES_GENOME_CODES, SPECIES_LABELS, _gene_coordinate_mapper
 
 
-CONTRACT_ID = 'agamcs-plot-contract-v1'
+CONTRACT_ID = 'agamcs-plot-contract-v2'
 
 
 def load_plot_contract(path=None):
     """Load and validate the canonical packaged plot contract."""
     contract_path = Path(path) if path else files('AgamCs').joinpath('data/plot-contract.json')
     contract = json.loads(contract_path.read_text(encoding='utf-8'))
-    if contract.get('schema_version') != 1 or contract.get('contract_id') != CONTRACT_ID:
+    if contract.get('schema_version') != 2 or contract.get('contract_id') != CONTRACT_ID:
         raise ValueError('The plot contract is missing or incompatible.')
-    if contract['binning'] != {
-        'assignment': 'min(bin_count - 1, floor((x - minimum) * bin_count / (maximum - minimum)))',
-        'empty_bins': 'omit',
-        'signal_maximum_bins': 240,
-        'heatmap_maximum_bins': 500,
-    }:
+    binning = contract.get('binning', {})
+    if (
+        binning.get('assignment')
+        != 'min(bin_count - 1, floor((x - minimum) * bin_count / (maximum - minimum)))'
+        or binning.get('empty_bins') != 'omit'
+        or binning.get('inclusive_length') != 'end - start + 1'
+        or binning.get('adaptive_keyword') != 'adaptive'
+        or binning.get('explicit_choices') != [60, 120, 240, 500, 1000]
+        or binning.get('safety_maximum_bins') != 1000
+        or binning.get('explicit_clamping') != 'min(requested_bins, inclusive_length)'
+        or binning.get('signal', {}).get('adaptive_bases_per_bin') != 20
+        or binning.get('signal', {}).get('adaptive_maximum_bins') != 240
+        or binning.get('heatmap', {}).get('adaptive_bases_per_bin') != 30
+        or binning.get('heatmap', {}).get('adaptive_maximum_bins') != 500
+    ):
         raise ValueError('The plot contract has unexpected binning semantics.')
     return contract
+
+
+def validate_plot_resolution(value, contract=None):
+    """Validate an adaptive or positive bounded display-bin request."""
+    contract = contract or load_plot_contract()
+    binning = contract['binning']
+    adaptive = binning['adaptive_keyword']
+    if isinstance(value, str) and value.strip().lower() == adaptive:
+        return adaptive
+    if isinstance(value, bool):
+        raise ValueError(
+            f"plot resolution must be '{adaptive}' or a positive integer through "
+            f"{binning['safety_maximum_bins']}"
+        )
+    try:
+        text = str(value).strip()
+        if not text or any(character not in '0123456789' for character in text):
+            raise ValueError
+        requested = int(text)
+    except (TypeError, ValueError):
+        raise ValueError(
+            f"plot resolution must be '{adaptive}' or a positive integer through "
+            f"{binning['safety_maximum_bins']}"
+        ) from None
+    if requested < 1 or requested > binning['safety_maximum_bins']:
+        raise ValueError(
+            f"plot resolution must be '{adaptive}' or a positive integer from 1 "
+            f"through {binning['safety_maximum_bins']}"
+        )
+    return requested
+
+
+def resolve_bin_count(inclusive_length, plot_kind, requested='adaptive', contract=None):
+    """Resolve adaptive or explicit display bins for one plotted interval."""
+    contract = contract or load_plot_contract()
+    try:
+        length = int(inclusive_length)
+    except (TypeError, ValueError):
+        raise ValueError('inclusive plotted length must be a positive integer') from None
+    if length < 1 or length != inclusive_length:
+        raise ValueError('inclusive plotted length must be a positive integer')
+    if plot_kind not in {'signal', 'heatmap'}:
+        raise ValueError("plot kind must be 'signal' or 'heatmap'")
+    resolution = validate_plot_resolution(requested, contract)
+    if resolution == contract['binning']['adaptive_keyword']:
+        policy = contract['binning'][plot_kind]
+        return max(1, min(
+            length,
+            policy['adaptive_maximum_bins'],
+            math.floor(length / policy['adaptive_bases_per_bin']),
+        ))
+    return min(length, resolution)
 
 
 def dataframe_to_result(data):
@@ -179,6 +240,7 @@ def _quantile(values, proportion):
 
 def build_plot_model(
     result, annotation=None, transcript_annotations=None, contract=None,
+    signal_bins='adaptive', heatmap_bins='adaptive',
 ):
     """Return the complete JSON-safe model compared with the browser model."""
     contract = contract or load_plot_contract()
@@ -186,11 +248,13 @@ def build_plot_model(
     annotation_models = transcript_annotations_for_display(
         applied_annotation, transcript_annotations,
     )
+    signal_count = resolve_bin_count(len(records), 'signal', signal_bins, contract)
+    heatmap_count = resolve_bin_count(len(records), 'heatmap', heatmap_bins, contract)
     signal_bins, signal_minimum, signal_maximum, signal_count = _assign_bins(
-        records, contract['binning']['signal_maximum_bins'],
+        records, signal_count,
     )
     heatmap_bins, heatmap_minimum, heatmap_maximum, heatmap_count = _assign_bins(
-        records, contract['binning']['heatmap_maximum_bins'],
+        records, heatmap_count,
     )
 
     cs_summary = []

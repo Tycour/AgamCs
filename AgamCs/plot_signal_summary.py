@@ -131,7 +131,7 @@ def plot_cs_snp_summary(
     output_image_path,
     highlight_ranges=None,
     gene_annotation=None,
-    bins=240,
+    bins='adaptive',
 ):
     """Plot a volatility-aware summary beside the existing raw signal plot.
 
@@ -149,7 +149,8 @@ def plot_cs_snp_summary(
             intervals to shade.
         gene_annotation (dict, optional): Gene and representative-transcript
             annotation used by the existing annotated plot.
-        bins (int): Maximum number of positional bins. Defaults to 240.
+        bins (str or int): ``adaptive`` (the default) or an explicit bounded
+            display-bin count.
     """
     data = pd.read_csv(input_file, sep='\t')
     positions = pd.to_numeric(data['pos'], errors='coerce')
@@ -173,6 +174,9 @@ def plot_cs_snp_summary(
         to_plot_position = lambda position: position - start_pos
 
     plot_positions = positions.map(to_plot_position)
+    from .plot_model import resolve_bin_count
+
+    bins = resolve_bin_count(len(plot_positions), 'signal', bins)
     x_limits = (plot_positions.min(), plot_positions.max())
     cs_summary = _bin_signal(plot_positions, cs_values, bins=bins)
     snp_summary = _bin_snp_signal(

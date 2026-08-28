@@ -4,18 +4,63 @@
   if (typeof module === 'object' && module.exports) module.exports = api;
 }(globalThis, () => {
   function validateContract(contract) {
-    if (contract?.schema_version !== 1 || contract.contract_id !== 'agamcs-plot-contract-v1') {
+    if (contract?.schema_version !== 2 || contract.contract_id !== 'agamcs-plot-contract-v2') {
       throw new Error('The plot contract is missing or incompatible.');
     }
-    if (contract.binning?.heatmap_maximum_bins !== 500
-        || contract.binning?.signal_maximum_bins !== 240) {
-      throw new Error('The plot contract has unexpected display-bin limits.');
+    const binning = contract.binning;
+    if (binning?.inclusive_length !== 'end - start + 1'
+        || binning?.adaptive_keyword !== 'adaptive'
+        || JSON.stringify(binning?.explicit_choices) !== JSON.stringify([60, 120, 240, 500, 1000])
+        || binning?.safety_maximum_bins !== 1000
+        || binning?.explicit_clamping !== 'min(requested_bins, inclusive_length)'
+        || binning?.signal?.adaptive_bases_per_bin !== 20
+        || binning?.signal?.adaptive_maximum_bins !== 240
+        || binning?.heatmap?.adaptive_bases_per_bin !== 30
+        || binning?.heatmap?.adaptive_maximum_bins !== 500) {
+      throw new Error('The plot contract has unexpected display-bin semantics.');
     }
     if (!Array.isArray(contract.palette?.viridis_anchors)
         || contract.palette.viridis_anchors.length < 2) {
       throw new Error('The plot contract has no usable identity palette.');
     }
     return contract;
+  }
+
+  function validatePlotResolution(value, contract) {
+    validateContract(contract);
+    const adaptive = contract.binning.adaptive_keyword;
+    if (typeof value === 'string' && value.trim().toLowerCase() === adaptive) return adaptive;
+    const text = String(value).trim();
+    if (!/^\d+$/.test(text)) {
+      throw new Error(`Plot resolution must be '${adaptive}' or a positive integer through ${contract.binning.safety_maximum_bins}.`);
+    }
+    const requested = Number(text);
+    if (!Number.isSafeInteger(requested) || requested < 1
+        || requested > contract.binning.safety_maximum_bins) {
+      throw new Error(`Plot resolution must be '${adaptive}' or a positive integer from 1 through ${contract.binning.safety_maximum_bins}.`);
+    }
+    return requested;
+  }
+
+  function resolveBinCount(inclusiveLength, plotKind, requested, contract) {
+    validateContract(contract);
+    const length = Number(inclusiveLength);
+    if (!Number.isSafeInteger(length) || length < 1) {
+      throw new Error('Inclusive plotted length must be a positive integer.');
+    }
+    if (!['signal', 'heatmap'].includes(plotKind)) {
+      throw new Error("Plot kind must be 'signal' or 'heatmap'.");
+    }
+    const resolution = validatePlotResolution(requested, contract);
+    if (resolution === contract.binning.adaptive_keyword) {
+      const policy = contract.binning[plotKind];
+      return Math.max(1, Math.min(
+        length,
+        policy.adaptive_maximum_bins,
+        Math.floor(length / policy.adaptive_bases_per_bin),
+      ));
+    }
+    return Math.min(length, resolution);
   }
 
   function mean(values) {
@@ -109,9 +154,12 @@
     return { bins: bins.filter((bin) => bin.length), minimum, maximum, span, binCount };
   }
 
-  function summarizeSignals(result, annotation, contract) {
+  function summarizeSignals(result, annotation, contract, resolution = 'adaptive') {
     const mapped = coordinateRecords(result, annotation);
-    const assigned = assignBins(mapped.records, contract.binning.signal_maximum_bins);
+    const assigned = assignBins(
+      mapped.records,
+      resolveBinCount(mapped.records.length, 'signal', resolution, contract),
+    );
     const cs = assigned.bins.map((bin) => {
       const values = bin.map((record) => record.Cs);
       return {
@@ -135,9 +183,12 @@
     return { ...mapped, ...assigned, cs, snp };
   }
 
-  function summarizeHeatmap(result, annotation, contract) {
+  function summarizeHeatmap(result, annotation, contract, resolution = 'adaptive') {
     const mapped = coordinateRecords(result, annotation);
-    const assigned = assignBins(mapped.records, contract.binning.heatmap_maximum_bins);
+    const assigned = assignBins(
+      mapped.records,
+      resolveBinCount(mapped.records.length, 'heatmap', resolution, contract),
+    );
     const rowCount = result.stackRows.length;
     const sourceWidth = result.values.Cs.length;
     const cells = Array.from({ length: rowCount }, () => []);
@@ -224,10 +275,13 @@
     return Number.isFinite(value) ? value : null;
   }
 
-  function buildPlotModel(result, annotation, transcriptAnnotations, contract) {
+  function buildPlotModel(
+    result, annotation, transcriptAnnotations, contract,
+    signalResolution = 'adaptive', heatmapResolution = 'adaptive',
+  ) {
     validateContract(contract);
-    const signal = summarizeSignals(result, annotation, contract);
-    const heatmap = summarizeHeatmap(result, annotation, contract);
+    const signal = summarizeSignals(result, annotation, contract, signalResolution);
+    const heatmap = summarizeHeatmap(result, annotation, contract, heatmapResolution);
     const annotationModels = transcriptAnnotationsForDisplay(
       signal.annotation, transcriptAnnotations,
     );
@@ -278,9 +332,11 @@
     heatmapGeometry,
     mean,
     quantile,
+    resolveBinCount,
     summarizeHeatmap,
     summarizeSignals,
     transcriptAnnotationsForDisplay,
     validateContract,
+    validatePlotResolution,
   };
 }));

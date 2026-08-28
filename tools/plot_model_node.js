@@ -22,5 +22,7 @@ const model = plotModel.buildPlotModel(
   payload.annotation || null,
   payload.transcriptAnnotations || null,
   contract,
+  payload.signalBins ?? 'adaptive',
+  payload.heatmapBins ?? 'adaptive',
 );
 process.stdout.write(`${JSON.stringify(model)}\n`);

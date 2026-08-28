@@ -164,7 +164,10 @@ work after a terminal range, network, size, or decode failure. HTTP 429 extends
 one worker-wide bounded cooldown deadline which every new or retried range
 consults before fetching.
 
-Display plots remain fixed at 240 signal bins and 500 heatmap bins. Exact TSV
-downloads retain all queried bases and all 21 stack values. The archived raw
+Display plots now default to deterministic adaptive resolution: signal uses
+`max(1, min(length, 240, floor(length / 20)))` bins and heatmap uses
+`max(1, min(length, 500, floor(length / 30)))` bins. Users may select 60, 120,
+240, 500, or 1,000 display bins, clamped to locus length. Exact TSV downloads
+retain all queried bases and all 21 stack values. The archived raw
 SNP-density array remains unchanged, and failed accessibility/QC positions
 remain separately represented as unknown rather than zero.

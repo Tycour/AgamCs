@@ -1,13 +1,26 @@
 {
-  "schema_version": 1,
-  "contract_id": "agamcs-plot-contract-v1",
+  "schema_version": 2,
+  "contract_id": "agamcs-plot-contract-v2",
   "generated_browser_copy": "docs/assets/data/plot-contract.json",
   "coordinate_convention": "AgamP4 1-based inclusive input; display coordinates increase left-to-right and accession plots run 5-prime to 3-prime",
   "binning": {
     "assignment": "min(bin_count - 1, floor((x - minimum) * bin_count / (maximum - minimum)))",
     "empty_bins": "omit",
-    "signal_maximum_bins": 240,
-    "heatmap_maximum_bins": 500
+    "inclusive_length": "end - start + 1",
+    "adaptive_keyword": "adaptive",
+    "explicit_choices": [60, 120, 240, 500, 1000],
+    "safety_maximum_bins": 1000,
+    "explicit_clamping": "min(requested_bins, inclusive_length)",
+    "signal": {
+      "adaptive_bases_per_bin": 20,
+      "adaptive_maximum_bins": 240,
+      "adaptive_rule": "max(1, min(inclusive_length, adaptive_maximum_bins, floor(inclusive_length / adaptive_bases_per_bin)))"
+    },
+    "heatmap": {
+      "adaptive_bases_per_bin": 30,
+      "adaptive_maximum_bins": 500,
+      "adaptive_rule": "max(1, min(inclusive_length, adaptive_maximum_bins, floor(inclusive_length / adaptive_bases_per_bin)))"
+    }
   },
   "aggregation": {
     "signal": {

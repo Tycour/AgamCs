@@ -14,6 +14,7 @@ import pandas as pd
 from kerchunk.hdf import SingleHdf5ToZarr
 
 from AgamCs.plot_signal_summary import _bin_signal, _bin_snp_signal
+from AgamCs.plot_model import load_plot_contract, resolve_bin_count
 from AgamCs.species_topology import SPECIES_TOPOLOGY
 
 
@@ -22,8 +23,6 @@ SCORE_ARRAYS = ('Cs', 'snp_density', 'stack')
 VALIDATION_ARRAYS = ('Cs', 'snp_density', 'stack', 'status')
 DEFAULT_REGION = ('2L', 28_585_064, 28_586_748)
 MAX_QUERY_BASES = 200_000
-SIGNAL_DISPLAY_BINS = 240
-HEATMAP_DISPLAY_BINS = 500
 SOURCE_DOI = 'https://doi.org/10.5281/zenodo.4304586'
 ACCESSIBILITY_SOURCE_URL = (
     'https://raw.githubusercontent.com/Tycour/AgamCs/'
@@ -218,21 +217,23 @@ def plot_validation_fixture(hdf5_path: Path, accessibility_path: Path) -> dict:
 
     positions = pd.Series(np.arange(end - start + 1, dtype=float))
     accessible = pd.Series((status & 1) == 1)
-    signal = _bin_signal(positions, pd.Series(cs_values), bins=SIGNAL_DISPLAY_BINS)
+    contract = load_plot_contract()
+    signal_bin_count = resolve_bin_count(len(positions), 'signal', contract=contract)
+    heatmap_bin_count = resolve_bin_count(len(positions), 'heatmap', contract=contract)
+    signal = _bin_signal(positions, pd.Series(cs_values), bins=signal_bin_count)
     snp = _bin_snp_signal(
-        positions, pd.Series(snp_values), accessible, bins=SIGNAL_DISPLAY_BINS
+        positions, pd.Series(snp_values), accessible, bins=signal_bin_count
     )
 
     span = len(positions) - 1
-    bin_count = min(HEATMAP_DISPLAY_BINS, len(positions))
     bin_indices = np.minimum(
-        bin_count - 1,
-        np.floor(positions.to_numpy() * bin_count / span).astype(int),
+        heatmap_bin_count - 1,
+        np.floor(positions.to_numpy() * heatmap_bin_count / span).astype(int),
     ) if span else np.zeros(len(positions), dtype=int)
     heatmap = []
     for row in stack:
         row_summary = []
-        for bin_index in range(bin_count):
+        for bin_index in range(heatmap_bin_count):
             values = row[bin_indices == bin_index]
             detected = values[np.isfinite(values) & (values != 0)]
             row_summary.append({
@@ -242,10 +243,11 @@ def plot_validation_fixture(hdf5_path: Path, accessibility_path: Path) -> dict:
         heatmap.append(row_summary)
 
     return {
-        'schema_version': 1,
+        'schema_version': 2,
         'region': f'{chromosome}:{start}-{end}',
-        'signal_bins': SIGNAL_DISPLAY_BINS,
-        'heatmap_bins': HEATMAP_DISPLAY_BINS,
+        'resolution': contract['binning']['adaptive_keyword'],
+        'signal_bins': signal_bin_count,
+        'heatmap_bins': heatmap_bin_count,
         'cs': _json_records(signal),
         'snp': _json_records(snp),
         'heatmap': heatmap,

@@ -77,12 +77,16 @@
     };
   }
 
-  function summarizeSignals(result, annotation = null) {
-    return plotModel.summarizeSignals(result, annotation, requirePlotContract());
+  function summarizeSignals(result, annotation = null, resolution = 'adaptive') {
+    return plotModel.summarizeSignals(
+      result, annotation, requirePlotContract(), resolution,
+    );
   }
 
-  function summarizeHeatmap(result, annotation = null) {
-    return plotModel.summarizeHeatmap(result, annotation, requirePlotContract());
+  function summarizeHeatmap(result, annotation = null, resolution = 'adaptive') {
+    return plotModel.summarizeHeatmap(
+      result, annotation, requirePlotContract(), resolution,
+    );
   }
 
   function svgElement(name, attributes = {}) {
@@ -444,8 +448,11 @@
     });
   }
 
-  function renderSignalPlot(container, result, annotation = null, transcriptAnnotations = null) {
-    const summary = summarizeSignals(result, annotation);
+  function renderSignalPlot(
+    container, result, annotation = null, transcriptAnnotations = null,
+    resolution = 'adaptive',
+  ) {
+    const summary = summarizeSignals(result, annotation, resolution);
     const hasAnnotation = Boolean(summary.annotation);
     const annotationModels = transcriptAnnotationsForDisplay(
       summary.annotation,
@@ -638,8 +645,11 @@
     svg.addEventListener('pointerleave', () => { tooltip.hidden = true; });
   }
 
-  function renderHeatmap(container, result, annotation = null, transcriptAnnotations = null) {
-    const summary = summarizeHeatmap(result, annotation);
+  function renderHeatmap(
+    container, result, annotation = null, transcriptAnnotations = null,
+    resolution = 'adaptive',
+  ) {
+    const summary = summarizeHeatmap(result, annotation, resolution);
     const speciesTree = validateSpeciesTopology(result.stackTopology, result.stackRows);
     const hasAnnotation = Boolean(summary.annotation);
     const annotationModels = transcriptAnnotationsForDisplay(
