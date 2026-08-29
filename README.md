@@ -211,7 +211,12 @@ not a biological threshold: it supports 13,080 of 13,097 indexed genes
 positions remain separate from the raw SNP-density values and are shown as
 unknown. Browser reads require HTTP 206 partial-content responses; the exact TSV
 retains every base and all 21 stack values while adaptive or explicitly selected
-display bins affect plots and SVG downloads only. Publishing and
+display bins affect plots and SVG downloads only. Range zoom can be chosen by
+dragging across either plot or entering inclusive genomic coordinates; nested
+zoom-out and full-query reset rerender the retained source arrays without a new
+Zenodo request. Plot selections expand to the touched display-bin boundaries,
+while the exact TSV and query summary remain scoped to the complete query.
+Publishing and
 implementation details are documented in
 [`docs/github-pages-prototype.md`](docs/github-pages-prototype.md).
 For larger intervals, custom highlight ranges, local-HDF5 use, and fully

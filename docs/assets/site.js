@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-28-adaptive-plot-binning';
+const PAGES_RELEASE = '2026-08-29-range-zoom';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -44,6 +44,14 @@ const liveAnnotationNote = document.querySelector('#live-annotation-note');
 const signalResolution = document.querySelector('#signal-resolution');
 const heatmapResolution = document.querySelector('#heatmap-resolution');
 const plotResolutionStatus = document.querySelector('#plot-resolution-status');
+const plotRangeCurrent = document.querySelector('#plot-range-current');
+const plotRangeSelect = document.querySelector('#plot-range-select');
+const plotRangeBack = document.querySelector('#plot-range-back');
+const plotRangeReset = document.querySelector('#plot-range-reset');
+const plotRangeStart = document.querySelector('#plot-range-start');
+const plotRangeEnd = document.querySelector('#plot-range-end');
+const plotRangeApply = document.querySelector('#plot-range-apply');
+const plotRangeStatus = document.querySelector('#plot-range-status');
 const accessionQueryPanel = document.querySelector('#accession-query-panel');
 const coordinateQueryPanel = document.querySelector('#coordinate-query-panel');
 const liveAccession = document.querySelector('#live-accession');
@@ -79,6 +87,8 @@ let geneSearchSnapshot;
 let queryManifestSnapshot;
 let plotContractSnapshot;
 let retainedPlotState;
+let plotZoomHistory = [];
+let plotRangeSelectionMode = false;
 let currentAccessionSuggestions = [];
 let activeAccessionSuggestion = -1;
 const figureDownloadUrls = new Map();
@@ -727,15 +737,150 @@ function renderVectorBaseGeneLink(element, accession, label) {
   element.replaceChildren(link);
 }
 
+function plotRangesEqual(left, right) {
+  return Number(left?.start) === Number(right?.start)
+    && Number(left?.end) === Number(right?.end);
+}
+
+function setPlotRangeSelectionMode(enabled) {
+  plotRangeSelectionMode = Boolean(enabled && retainedPlotState);
+  plotRangeSelect.setAttribute('aria-pressed', String(plotRangeSelectionMode));
+  plotRangeSelect.textContent = plotRangeSelectionMode ? 'Cancel selection' : 'Select range';
+  [liveSignalPlot, liveHeatmapPlot].forEach((container) => {
+    container.classList.toggle('range-selection-enabled', plotRangeSelectionMode);
+  });
+  if (plotRangeSelectionMode) {
+    plotRangeStatus.textContent = 'Drag horizontally across either plot. The selected view will expand outward to the touched display-bin boundaries.';
+  }
+}
+
+function updatePlotRangeControls(result, displayRange) {
+  const fullRange = { start: result.start, end: result.end };
+  const isFull = plotRangesEqual(displayRange, fullRange);
+  const span = displayRange.end - displayRange.start + 1;
+  plotRangeCurrent.textContent = (
+    `${result.chromosome}:${displayRange.start.toLocaleString()}–${displayRange.end.toLocaleString()} `
+    + `(${span.toLocaleString()} bp; ${isFull ? 'full query' : `zoom level ${plotZoomHistory.length}`}).`
+  );
+  [plotRangeStart, plotRangeEnd].forEach((input) => {
+    input.min = String(result.start);
+    input.max = String(result.end);
+    input.disabled = false;
+  });
+  plotRangeStart.value = String(displayRange.start);
+  plotRangeEnd.value = String(displayRange.end);
+  plotRangeSelect.disabled = span <= 1;
+  plotRangeBack.disabled = plotZoomHistory.length === 0;
+  plotRangeReset.disabled = isFull;
+  plotRangeApply.disabled = false;
+  if (span <= 1) setPlotRangeSelectionMode(false);
+}
+
+function validatePlotRangeInputs(result) {
+  const start = Number(plotRangeStart.value);
+  const end = Number(plotRangeEnd.value);
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end)) {
+    throw new Error('Zoom coordinates must be whole genomic positions.');
+  }
+  if (start > end) throw new Error('Zoom start must not exceed zoom end.');
+  if (start < result.start || end > result.end) {
+    throw new Error(
+      `Zoom coordinates must stay within ${result.chromosome}:${result.start}-${result.end}.`,
+    );
+  }
+  return { start, end };
+}
+
+function zoomToPlotRange(range, source = 'coordinates') {
+  if (!retainedPlotState) return;
+  const previous = retainedPlotState;
+  const next = globalThis.AgamCsPlotModel.normalizeDisplayRange(previous.result, range);
+  if (plotRangesEqual(next, previous.displayRange)) {
+    plotRangeStatus.textContent = 'The displayed range is unchanged.';
+    return;
+  }
+  plotZoomHistory.push({ ...previous.displayRange });
+  try {
+    renderLivePlots(
+      previous.result,
+      previous.providedAnnotation,
+      previous.providedAccession,
+      previous.providedTranscriptAnnotations,
+      previous.figureStem,
+      false,
+      next,
+    );
+    setPlotRangeSelectionMode(false);
+    plotRangeStatus.textContent = source === 'selection'
+      ? 'Range zoom applied at the touched display-bin boundaries; no genomic request was made.'
+      : 'Coordinate zoom applied from retained full-query data; no genomic request was made.';
+  } catch (error) {
+    plotZoomHistory.pop();
+    plotRangeStatus.textContent = `Range unchanged: ${error.message}`;
+  }
+}
+
+function zoomOutPlotRange() {
+  if (!retainedPlotState || !plotZoomHistory.length) return;
+  const previous = retainedPlotState;
+  const target = plotZoomHistory.pop();
+  try {
+    renderLivePlots(
+      previous.result,
+      previous.providedAnnotation,
+      previous.providedAccession,
+      previous.providedTranscriptAnnotations,
+      previous.figureStem,
+      false,
+      target,
+    );
+    setPlotRangeSelectionMode(false);
+    plotRangeStatus.textContent = 'Returned to the preceding displayed range.';
+  } catch (error) {
+    plotZoomHistory.push(target);
+    plotRangeStatus.textContent = `Range unchanged: ${error.message}`;
+  }
+}
+
+function resetPlotRange() {
+  if (!retainedPlotState) return;
+  const previous = retainedPlotState;
+  const oldHistory = plotZoomHistory;
+  plotZoomHistory = [];
+  try {
+    renderLivePlots(
+      previous.result,
+      previous.providedAnnotation,
+      previous.providedAccession,
+      previous.providedTranscriptAnnotations,
+      previous.figureStem,
+      false,
+      { start: previous.result.start, end: previous.result.end },
+    );
+    setPlotRangeSelectionMode(false);
+    plotRangeStatus.textContent = 'Reset to the complete queried interval.';
+  } catch (error) {
+    plotZoomHistory = oldHistory;
+    plotRangeStatus.textContent = `Range unchanged: ${error.message}`;
+  }
+}
+
 function renderLivePlots(
   result, providedAnnotation = null, providedAccession = null, providedTranscriptAnnotations = null,
-  figureStem = null, resetResolution = false,
+  figureStem = null, resetResolution = false, displayRange = null,
 ) {
   const adaptive = plotContractSnapshot.binning.adaptive_keyword;
   if (resetResolution) {
     signalResolution.value = adaptive;
     heatmapResolution.value = adaptive;
+    plotZoomHistory = [];
+    setPlotRangeSelectionMode(false);
+    plotRangeStatus.textContent = (
+      'Select range enables horizontal dragging on either plot. Plot selections expand '
+      + 'outward to the displayed bin boundaries; the exact TSV remains the full query.'
+    );
   }
+  const activeRange = globalThis.AgamCsPlotModel.normalizeDisplayRange(result, displayRange);
   const signalChoice = selectedPlotResolution(signalResolution);
   const heatmapChoice = selectedPlotResolution(heatmapResolution);
   globalThis.AgamCsPlotModel.validatePlotResolution(signalChoice, plotContractSnapshot);
@@ -745,13 +890,17 @@ function renderLivePlots(
   const accession = providedAccession || pinned?.accession || null;
   const transcriptAnnotations = providedTranscriptAnnotations
     || (annotation ? [annotation] : []);
+  const rangeSelection = {
+    isEnabled: () => plotRangeSelectionMode,
+    onSelect: (range) => zoomToPlotRange(range, 'selection'),
+  };
   const signalSummary = globalThis.AgamCsPlots.renderSignalPlot(
     liveSignalPlot, result, annotation, transcriptAnnotations,
-    signalChoice,
+    signalChoice, activeRange, rangeSelection,
   );
   const heatmapSummary = globalThis.AgamCsPlots.renderHeatmap(
     liveHeatmapPlot, result, annotation, transcriptAnnotations,
-    heatmapChoice,
+    heatmapChoice, activeRange, rangeSelection,
   );
   const annotationSubject = accession === annotation?.transcript_id
     ? `${annotation.id} isoform ${annotation.transcript_id}`
@@ -761,7 +910,7 @@ function renderLivePlots(
     : annotation
       ? `${annotationSubject} annotation applied; ${annotation.transcript_id} is shown 5′→3′.`
       : 'Genomic-coordinate view. Gene annotation is applied when querying by accession or a featured example.';
-  const baseCount = result.end - result.start + 1;
+  const baseCount = activeRange.end - activeRange.start + 1;
   plotResolutionStatus.textContent = (
     `Signal: ${signalSummary.binCount.toLocaleString()} bins `
     + `(~${formatBasesPerBin(baseCount, signalSummary.binCount)} bases/bin); `
@@ -774,16 +923,21 @@ function renderLivePlots(
     providedAccession,
     providedTranscriptAnnotations,
     figureStem,
+    displayRange: activeRange,
     signalChoice: String(signalChoice),
     heatmapChoice: String(heatmapChoice),
   };
+  updatePlotRangeControls(result, activeRange);
   if (figureStem) {
+    const rangeSuffix = plotRangesEqual(activeRange, { start: result.start, end: result.end })
+      ? ''
+      : `_view_${activeRange.start}-${activeRange.end}`;
     clearFigureDownloads();
     configureFigureDownload(
-      liveSignalDownload, liveSignalPlot, `${figureStem}_cs-snp-qc.svg`,
+      liveSignalDownload, liveSignalPlot, `${figureStem}${rangeSuffix}_cs-snp-qc.svg`,
     );
     configureFigureDownload(
-      liveHeatmapDownload, liveHeatmapPlot, `${figureStem}_species-heatmap.svg`,
+      liveHeatmapDownload, liveHeatmapPlot, `${figureStem}${rangeSuffix}_species-heatmap.svg`,
     );
   }
   liveVisuals.hidden = false;
@@ -799,6 +953,8 @@ function rerenderRetainedPlots() {
       previous.providedAccession,
       previous.providedTranscriptAnnotations,
       previous.figureStem,
+      false,
+      previous.displayRange,
     );
   } catch (error) {
     signalResolution.value = previous.signalChoice;
@@ -809,6 +965,28 @@ function rerenderRetainedPlots() {
 
 signalResolution.addEventListener('change', rerenderRetainedPlots);
 heatmapResolution.addEventListener('change', rerenderRetainedPlots);
+plotRangeSelect.addEventListener('click', () => {
+  const enable = !plotRangeSelectionMode;
+  setPlotRangeSelectionMode(enable);
+  if (!enable) plotRangeStatus.textContent = 'Range selection cancelled.';
+});
+plotRangeBack.addEventListener('click', zoomOutPlotRange);
+plotRangeReset.addEventListener('click', resetPlotRange);
+plotRangeApply.addEventListener('click', () => {
+  if (!retainedPlotState) return;
+  try {
+    zoomToPlotRange(validatePlotRangeInputs(retainedPlotState.result));
+  } catch (error) {
+    plotRangeStatus.textContent = `Range unchanged: ${error.message}`;
+  }
+});
+[plotRangeStart, plotRangeEnd].forEach((input) => {
+  input.addEventListener('keydown', (event) => {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    plotRangeApply.click();
+  });
+});
 
 function valuesMatch(actual, expected, tolerance = 1e-7) {
   if (expected == null) return !Number.isFinite(actual);

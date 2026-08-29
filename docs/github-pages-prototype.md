@@ -151,7 +151,13 @@ v2 uses one signal and heatmap display bin per base through 1,000 bases, then
 the bounded maximum of 1,000 bins. Separate selectors offer 240, 360, 500, 750,
 and 1,000 display bins, clamped to the inclusive locus length. These controls
 rerender retained data without a new query; SVGs follow the active resolution,
-while the TSV retains every queried base and all 21 exact stack values. The worker accepts
+while the TSV retains every queried base and all 21 exact stack values. A user
+can also drag horizontally on either plot or enter inclusive coordinates to
+focus both plots on one retained-data range. Plot selections expand to the
+touched display-bin boundaries; zoom-out follows nested range history and reset
+restores the complete query. This preserves original row-major stack indices,
+does not issue another genomic request, and leaves full-query TSV and summary
+scope unchanged. The worker accepts
 only HTTP 206 range responses, continues to refuse HTTP 200 full-file
 responses, and preserves the archived raw SNP-density plus separate
 QC-failed/unknown semantics.

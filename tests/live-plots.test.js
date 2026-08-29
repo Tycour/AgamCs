@@ -17,6 +17,7 @@ const {
   transcriptModelGeometry,
   transcriptAnnotationsForDisplay,
   abbreviatedSpeciesName,
+  rangeFromDisplayBins,
   renderHeatmap,
   topologyTipCodes,
   validateSpeciesTopology,
@@ -74,6 +75,18 @@ test('species labels use established genus abbreviations', () => {
   assert.equal(abbreviatedSpeciesName('Aedes aegypti '), 'Ae. aegypti');
   assert.equal(abbreviatedSpeciesName('Culex quinquefasciatus'), 'Cx. quinquefasciatus');
   assert.equal(abbreviatedSpeciesName('Drosophila melanogaster'), 'D. melanogaster');
+});
+
+test('plot range selection expands outward to every touched display bin', () => {
+  const summary = {
+    bins: [
+      [{ position: 100 }, { position: 101 }],
+      [{ position: 102 }, { position: 103 }],
+      [{ position: 104 }, { position: 105 }],
+    ],
+  };
+  assert.deepEqual(rangeFromDisplayBins(summary, 0.05, 0.50), { start: 100, end: 103 });
+  assert.deepEqual(rangeFromDisplayBins(summary, 0.90, 0.40), { start: 102, end: 105 });
 });
 
 test('browser topology contains every metadata genome code exactly once', () => {
@@ -311,7 +324,31 @@ test('resolution controls are contract-derived and rerender retained data withou
   assert.doesNotMatch(rerender, /workerQuery|fetch\(/);
   assert.match(source, /configureFigureDownload[\s\S]*figureStem/);
   assert.match(html, /<option value="adaptive">Adaptive<\/option>/);
-  assert.match(html, /exact TSV retains every base and species row/);
+  assert.match(html, /exact TSV retains every queried base and species row/);
+});
+
+test('range zoom keeps nested history and rerenders retained data without a query', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '../docs/index.html'), 'utf8');
+  for (const id of [
+    'plot-range-select', 'plot-range-back', 'plot-range-reset',
+    'plot-range-start', 'plot-range-end', 'plot-range-apply', 'plot-range-status',
+  ]) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(source, /let plotZoomHistory = \[\]/);
+  assert.match(source, /plotZoomHistory\.push\(\{ \.\.\.previous\.displayRange \}\)/);
+  assert.match(source, /const target = plotZoomHistory\.pop\(\)/);
+  assert.match(source, /function resetPlotRange/);
+  assert.match(source, /_view_\$\{activeRange\.start\}-\$\{activeRange\.end\}/);
+  const zoomStart = source.indexOf('function zoomToPlotRange');
+  const zoomEnd = source.indexOf('function zoomOutPlotRange', zoomStart);
+  const zoom = source.slice(zoomStart, zoomEnd);
+  assert.match(zoom, /renderLivePlots/);
+  assert.doesNotMatch(zoom, /workerQuery|fetch\(/);
+  assert.doesNotMatch(zoom, /benchmarkDownload|renderQuerySummary|buildTsv/);
+  assert.match(html, /expand outward to the displayed bin boundaries/i);
+  assert.match(html, /exact TSV remains the full query/i);
 });
 
 for (const width of [50_000, 150_000, 200_000]) test(`exact ${width.toLocaleString()}-base TSV retains every position and all 21 stack values`, () => {
