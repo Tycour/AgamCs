@@ -6,13 +6,32 @@ const model = require('../docs/assets/plot-model.js');
 
 test('versioned contract pins binning, aggregation semantics, and accessibility', () => {
   assert.equal(model.validateContract(contract), contract);
-  assert.equal(contract.contract_id, 'agamcs-plot-contract-v1');
+  assert.equal(contract.contract_id, 'agamcs-plot-contract-v2');
   assert.equal(contract.generated_browser_copy, 'docs/assets/data/plot-contract.json');
-  assert.equal(contract.binning.signal_maximum_bins, 240);
-  assert.equal(contract.binning.heatmap_maximum_bins, 500);
+  assert.equal(contract.binning.signal.adaptive_rule, 'min(inclusive_length, safety_maximum_bins)');
+  assert.equal(contract.binning.heatmap.adaptive_rule, 'min(inclusive_length, safety_maximum_bins)');
+  assert.deepEqual(contract.binning.explicit_choices, [240, 360, 500, 750, 1000]);
+  assert.equal(contract.binning.safety_maximum_bins, 1000);
   assert.match(contract.aggregation.heatmap.zero, /no detected CNEr interval/i);
   assert.match(contract.aggregation.signal.qc_failed, /unknown/i);
   assert.equal(contract.accessibility.svg_role, 'img');
+});
+
+test('adaptive and explicit bin counts use inclusive length and bounded clamping', () => {
+  assert.equal(model.resolveBinCount(1, 'signal', 'adaptive', contract), 1);
+  assert.equal(model.resolveBinCount(7, 'signal', 'adaptive', contract), 7);
+  assert.equal(model.resolveBinCount(23, 'signal', 'adaptive', contract), 23);
+  assert.equal(model.resolveBinCount(23, 'heatmap', 'adaptive', contract), 23);
+  assert.equal(model.resolveBinCount(131, 'signal', 'adaptive', contract), 131);
+  assert.equal(model.resolveBinCount(131, 'heatmap', 'adaptive', contract), 131);
+  assert.equal(model.resolveBinCount(1685, 'signal', 'adaptive', contract), 1000);
+  assert.equal(model.resolveBinCount(1685, 'heatmap', 'adaptive', contract), 1000);
+  assert.equal(model.resolveBinCount(17947, 'signal', 'adaptive', contract), 1000);
+  assert.equal(model.resolveBinCount(17947, 'heatmap', 'adaptive', contract), 1000);
+  assert.equal(model.resolveBinCount(25, 'heatmap', 1000, contract), 25);
+  for (const value of [0, -1, 1.5, '1.5', 'many', 1001, true]) {
+    assert.throws(() => model.validatePlotResolution(value, contract), /plot resolution/i);
+  }
 });
 test('contract palette has stable bounded RGB samples', () => {
   const expected = [

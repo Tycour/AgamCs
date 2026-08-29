@@ -71,7 +71,12 @@ The command writes a summary PNG, a base-level Cs/SNP-density PNG, canonical
 cross-species heatmap SVG and PNG files, and the exact intermediate
 `temp_scores.tsv` file. Use `--padding 500` to include flanking bases around
 accession-derived regions. Use `--heatmap-mode base-level` when the legacy
-per-base heatmap PNG is required.
+per-base heatmap PNG is required. The binned plots default to detail-first
+adaptive display resolution: both `--signal-bins adaptive` and
+`--heatmap-bins adaptive` retain one display bin per base for loci through
+1,000 bases, then use the bounded maximum of 1,000 bins. Either option also
+accepts a positive integer through 1,000; explicit counts are clamped to the
+plotted locus length.
 
 For development and tests, install the test extra:
 
@@ -108,8 +113,8 @@ downloads.
 ### How to read the plots
 
 Cs is calculated at each genomic base, while SNP density is a 20 bp sliding-
-window average assigned to each base. This summary then groups the displayed
-region into up to 240 bins: the dark-blue line is median Cs, the blue ribbons
+window average assigned to each base. The adaptive summary uses
+`min(length, 1000)` display bins: the dark-blue line is median Cs, the blue ribbons
 show the 25th–75th and 10th–90th percentiles, and green is mean SNP density over
 QC-passing bases in each bin. Grey marks bases that failed the Ag1000G
 accessibility mask; their SNP density is unknown, not zero. The compact
@@ -121,11 +126,14 @@ panels.
 highly conserved regions by scanning genome alignments for windows above chosen
 sequence-identity thresholds. Here it used 30 bp and 50 bp windows; detected
 interval identities were then mapped onto every covered AgamP4 base. The
-default heatmap groups those exact values into at most 500 display bins. Within
+default heatmap uses `min(length, 1000)` display bins. Within
 each bin it averages finite non-zero identities and blends the Viridis colour
 toward charcoal according to the fraction of positions where an interval was
 detected. Charcoal means no interval was detected, not measured 0% identity;
-the exact per-base values remain in the TSV. Thin dark-blue blocks and dashed
+the exact per-base values remain in the TSV. Pages and CLI users may explicitly
+request 240, 360, 500, 750, or 1,000 bins, but finer display subdivision does
+not increase the underlying per-base Cs, 20-bp SNP, or 30/50-bp CNEr evidence
+resolution. Thin dark-blue blocks and dashed
 guides mark CDS segments. Species-label colours
 progress from the *A. gambiae* complex through other *Anopheles* to the
 outgroups; these are broad visual groups, not numeric distance bins.
@@ -202,8 +210,8 @@ not a biological threshold: it supports 13,080 of 13,097 indexed genes
 (99.8702%), while the 17 longer genes remain CLI-only. Failed accessibility/QC
 positions remain separate from the raw SNP-density values and are shown as
 unknown. Browser reads require HTTP 206 partial-content responses; the exact TSV
-retains every base and all 21 stack values while plots retain fixed 240-signal
-and 500-heatmap display bins. Publishing and
+retains every base and all 21 stack values while adaptive or explicitly selected
+display bins affect plots and SVG downloads only. Publishing and
 implementation details are documented in
 [`docs/github-pages-prototype.md`](docs/github-pages-prototype.md).
 For larger intervals, custom highlight ranges, local-HDF5 use, and fully

@@ -1,5 +1,7 @@
 import sys
 
+import pytest
+
 from AgamCs import create_heatmap, fetch_score, heatmap_renderer, main, plot_signal_summary
 
 
@@ -45,6 +47,7 @@ def test_default_pipeline_writes_canonical_svg_and_compatible_png(tmp_path, monk
     assert kwargs == {
         'gene_annotation': representative,
         'transcript_annotations': transcripts,
+        'bins': 'adaptive',
     }
 
 
@@ -74,6 +77,8 @@ def test_cli_parser_defaults_to_binned_and_accepts_legacy_mode(monkeypatch):
     monkeypatch.setattr(sys, 'argv', ['agamcs', '--region', '2L:1-3'])
     main.main()
     assert calls[-1]['heatmap_mode'] == 'binned'
+    assert calls[-1]['signal_bins'] == 'adaptive'
+    assert calls[-1]['heatmap_bins'] == 'adaptive'
 
     monkeypatch.setattr(
         sys, 'argv',
@@ -81,3 +86,25 @@ def test_cli_parser_defaults_to_binned_and_accepts_legacy_mode(monkeypatch):
     )
     main.main()
     assert calls[-1]['heatmap_mode'] == 'base-level'
+
+
+def test_cli_parser_accepts_bounded_explicit_plot_resolutions(monkeypatch):
+    calls = []
+    monkeypatch.setattr(main, 'build_jobs', lambda _args: [('2L:1-3', 'manual', None, [])])
+    monkeypatch.setattr(main, 'process_region', lambda **kwargs: calls.append(kwargs))
+    monkeypatch.setattr(
+        sys, 'argv',
+        ['agamcs', '--region', '2L:1-3', '--signal-bins', '120', '--heatmap-bins', '1000'],
+    )
+
+    main.main()
+
+    assert calls[-1]['signal_bins'] == 120
+    assert calls[-1]['heatmap_bins'] == 1000
+
+
+@pytest.mark.parametrize('value', ['0', '-1', '1.5', 'many', '1001'])
+def test_cli_parser_rejects_invalid_plot_resolutions(monkeypatch, value):
+    monkeypatch.setattr(sys, 'argv', ['agamcs', '--region', '2L:1-3', '--signal-bins', value])
+    with pytest.raises(SystemExit, match='2'):
+        main.main()

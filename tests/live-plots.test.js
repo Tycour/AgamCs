@@ -297,6 +297,23 @@ test('standalone SVG download path remains present after plot-model extraction',
   assert.match(source, /type: 'image\/svg\+xml;charset=utf-8'/);
 });
 
+test('resolution controls are contract-derived and rerender retained data without a query', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '../docs/index.html'), 'utf8');
+  assert.match(source, /contract\.binning\.explicit_choices/);
+  assert.match(source, /retainedPlotState/);
+  assert.match(source, /signalResolution\.addEventListener\('change', rerenderRetainedPlots\)/);
+  assert.match(source, /heatmapResolution\.addEventListener\('change', rerenderRetainedPlots\)/);
+  const rerenderStart = source.indexOf('function rerenderRetainedPlots');
+  const rerenderEnd = source.indexOf("signalResolution.addEventListener('change'", rerenderStart);
+  const rerender = source.slice(rerenderStart, rerenderEnd);
+  assert.match(rerender, /renderLivePlots/);
+  assert.doesNotMatch(rerender, /workerQuery|fetch\(/);
+  assert.match(source, /configureFigureDownload[\s\S]*figureStem/);
+  assert.match(html, /<option value="adaptive">Adaptive<\/option>/);
+  assert.match(html, /exact TSV retains every base and species row/);
+});
+
 for (const width of [50_000, 150_000, 200_000]) test(`exact ${width.toLocaleString()}-base TSV retains every position and all 21 stack values`, () => {
   const { buildTsv } = siteExportHelpers();
   const stackRows = Array.from({ length: 21 }, (_value, row) => `row${row}`);

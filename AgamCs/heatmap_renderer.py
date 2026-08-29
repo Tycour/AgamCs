@@ -107,6 +107,7 @@ def render_heatmap(
     png_output_path,
     gene_annotation=None,
     transcript_annotations=None,
+    bins='adaptive',
 ):
     """Render the canonical binned heatmap to SVG and PNG offline."""
     contract = load_plot_contract()
@@ -114,6 +115,7 @@ def render_heatmap(
     result = dataframe_to_result(data)
     model = build_plot_model(
         result, gene_annotation, transcript_annotations, contract,
+        heatmap_bins=bins,
     )
     applied_annotation = gene_annotation if model['annotationApplied'] else None
     transcript_annotations = transcript_annotations_for_display(

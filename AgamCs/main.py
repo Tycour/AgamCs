@@ -14,6 +14,15 @@ from .gene_regions import (
 )
 
 
+def _plot_resolution(value):
+    from .plot_model import validate_plot_resolution
+
+    try:
+        return validate_plot_resolution(value)
+    except ValueError as error:
+        raise argparse.ArgumentTypeError(str(error)) from error
+
+
 def process_region(
     region,
     output_name,
@@ -27,6 +36,8 @@ def process_region(
     accessibility_file=None,
     transcript_annotations=None,
     heatmap_mode='binned',
+    signal_bins='adaptive',
+    heatmap_bins='adaptive',
 ):
     from .create_heatmap import create_heatmap, plot_cs_snp_density
     from .fetch_score import fetch_scores
@@ -56,6 +67,7 @@ def process_region(
             heatmap_png_path,
             gene_annotation=gene_annotation,
             transcript_annotations=transcript_annotations,
+            bins=heatmap_bins,
         )
     elif heatmap_mode == 'base-level':
         create_heatmap(
@@ -83,6 +95,7 @@ def process_region(
         cs_snp_summary_output_path,
         highlight_ranges,
         gene_annotation,
+        bins=signal_bins,
     )
 
     if not keep_tsv:
@@ -180,8 +193,30 @@ def main():
         choices=('binned', 'base-level'),
         default='binned',
         help=(
-            'Heatmap resolution: contract-driven, at most 500 display bins with SVG and PNG '
-            '(default), or the legacy per-base PNG.'
+            'Heatmap renderer: contract-driven adaptive/optional display bins with SVG and '
+            'PNG (default), or the legacy per-base PNG.'
+        ),
+    )
+    parser.add_argument(
+        '--signal-bins',
+        type=_plot_resolution,
+        default='adaptive',
+        metavar='adaptive|INTEGER',
+        help=(
+            'Cs/SNP display resolution: adaptive (one bin per base through 1,000 '
+            'bases, then capped at 1,000 bins) or a positive integer through 1,000.'
+        ),
+    )
+    parser.add_argument(
+        '--heatmap-bins',
+        type=_plot_resolution,
+        default='adaptive',
+        metavar='adaptive|INTEGER',
+        help=(
+            'Binned heatmap display resolution: adaptive (one bin per base through '
+            '1,000 bases, then capped at 1,000 bins) or a positive integer through '
+            '1,000. The legacy '
+            '--heatmap-mode base-level remains per-base.'
         ),
     )
 
@@ -201,6 +236,8 @@ def main():
             gene_annotation=gene_annotation,
             transcript_annotations=transcript_annotations,
             heatmap_mode=args.heatmap_mode,
+            signal_bins=args.signal_bins,
+            heatmap_bins=args.heatmap_bins,
             data_source=args.data_source,
             reference_file=args.reference_file,
             remote_url=args.remote_url,

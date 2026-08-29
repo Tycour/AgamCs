@@ -10,6 +10,60 @@
       "qc_mode": "pass"
     },
     {
+      "id": "shorter-than-evidence-scales",
+      "chromosome": "2L",
+      "start": 101,
+      "length": 7,
+      "stack_mode": "dense",
+      "qc_mode": "mixed"
+    },
+    {
+      "id": "uneven-23-bases",
+      "chromosome": "2L",
+      "start": 201,
+      "length": 23,
+      "stack_mode": "periodic",
+      "qc_mode": "mixed"
+    },
+    {
+      "id": "mir989-length",
+      "chromosome": "3L",
+      "start": 2905395,
+      "length": 131,
+      "stack_mode": "periodic",
+      "qc_mode": "mixed",
+      "annotation": {
+        "id": "AGAP013705",
+        "chromosome": "3L",
+        "start_offset": 0,
+        "end_offset": 130,
+        "strand": 1
+      }
+    },
+    {
+      "id": "agap006241-length",
+      "chromosome": "2L",
+      "start": 28585064,
+      "length": 1685,
+      "stack_mode": "periodic",
+      "qc_mode": "mixed"
+    },
+    {
+      "id": "agap008118-length",
+      "chromosome": "3R",
+      "start": 5886340,
+      "length": 17947,
+      "stack_mode": "sparse",
+      "qc_mode": "mixed",
+      "annotation": {
+        "id": "AGAP008118",
+        "chromosome": "3R",
+        "start_offset": 0,
+        "end_offset": 17946,
+        "strand": -1
+      }
+    },
+    {
       "id": "maximum-20000-bases",
       "chromosome": "X",
       "start": 1000000,
@@ -30,6 +84,14 @@
       "chromosome": "2R",
       "start": 3000000,
       "length": 150000,
+      "stack_mode": "periodic",
+      "qc_mode": "mixed"
+    },
+    {
+      "id": "phase2-100000-bases",
+      "chromosome": "X",
+      "start": 3500000,
+      "length": 100000,
       "stack_mode": "periodic",
       "qc_mode": "mixed"
     },

@@ -14,15 +14,22 @@ longer complete loci remain CLI-only. `AGAP001683` (201,156 bases) is the
 smallest over-limit regression and is rejected before padding guidance without
 changing a previous successful result.
 
-The change does not alter scientific data or the shared plot contract. HTTP
+The ceiling change did not alter scientific data. HTTP
 206-only range access, HTTP 200 refusal, four-request concurrency, six bounded
-attempts, the 64 MiB decoded cache, fixed 240/500 display bins, exact per-base
+attempts, the 64 MiB decoded cache, exact per-base
 TSV output with all 21 stack values, raw SNP density, and QC-failed-as-unknown
 semantics remain unchanged. The submit control is synchronously disabled and
 labelled busy for the complete query lifecycle. A query-scoped abort signal
 cancels sibling and queued range work after the first terminal failure, and a
 worker-wide deadline makes new and retried ranges respect any bounded HTTP 429
 cooldown.
+
+The subsequent plot-contract v2 update changes display aggregation only.
+Adaptive signal and heatmap views retain one bin per base through 1,000 bases,
+then use the bounded maximum of 1,000 bins. Contract-derived choices of 240,
+360, 500, 750, and 1,000 bins rerender retained in-memory results and SVG
+downloads,
+while exact TSV data and the 200,000-base transport ceiling remain unchanged.
 
 ## Scientific regression matrix
 

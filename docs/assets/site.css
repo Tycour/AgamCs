@@ -197,6 +197,21 @@ input { width: 100%; height: 44px; padding: 0 12px; color: var(--ink); border: 1
 .live-visual-heading { display: flex; justify-content: space-between; gap: 28px; align-items: end; margin-bottom: 22px; }
 .live-visual-heading h3 { margin-bottom: 0; font-family: Georgia, serif; font-size: 29px; font-weight: 500; }
 .live-visual-heading > p { max-width: 430px; margin: 0; color: var(--muted); font-size: 13px; text-align: right; }
+.plot-resolution-controls {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) repeat(2, minmax(150px, 220px));
+  gap: 14px 18px;
+  align-items: end;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+.plot-resolution-intro h4 { margin: 0 0 5px; font-size: 15px; }
+.plot-resolution-intro p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.plot-resolution-controls label { display: grid; gap: 6px; font-size: 12px; font-weight: 750; }
+.plot-resolution-controls select { width: 100%; }
+#plot-resolution-status { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 12px; }
 .live-tabs { margin-top: 8px; }
 .live-plot-panel { padding-top: 20px; }
 .live-plot { position: relative; overflow-x: auto; border: 1px solid #e3e8e2; background: #fff; }
@@ -267,6 +282,8 @@ input { width: 100%; height: 44px; padding: 0 12px; color: var(--ink); border: 1
   .workspace > .live-visuals { grid-column: 1; }
   .coordinate-query-panel { grid-template-columns: 1fr; }
   .summary-grid { grid-template-columns: 1fr; }
+  .plot-resolution-controls { grid-template-columns: 1fr; }
+  #plot-resolution-status { grid-column: 1; }
   .summary-metric-pair > div + div { border-left: 1px solid var(--line); }
   .query-panel { border-right: 0; border-bottom: 1px solid var(--line); }
   .explain-grid { grid-template-columns: 1fr; gap: 4px; }

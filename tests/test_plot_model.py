@@ -18,6 +18,8 @@ from AgamCs.plot_model import (
     dataframe_to_result,
     heatmap_geometry,
     load_plot_contract,
+    resolve_bin_count,
+    validate_plot_resolution,
 )
 
 
@@ -104,13 +106,18 @@ def _synthetic_result(specification):
     }
 
 
-def _javascript_model(result, annotation, transcript_annotations=None):
+def _javascript_model(
+    result, annotation, transcript_annotations=None,
+    signal_bins='adaptive', heatmap_bins='adaptive',
+):
     process = subprocess.run(
         [_node_executable(), str(NODE_RUNNER)],
         input=json.dumps({
             'result': result,
             'annotation': annotation,
             'transcriptAnnotations': transcript_annotations,
+            'signalBins': signal_bins,
+            'heatmapBins': heatmap_bins,
         }),
         text=True,
         capture_output=True,
@@ -171,17 +178,69 @@ def test_python_and_pages_models_match_for_complete_synthetic_cases(specificatio
         )
     if specification['id'] == 'all-qc-failed':
         assert all(record['mean'] is None for record in python_model['signal']['snp'])
+    if specification['id'] == 'mir989-length':
+        assert python_model['signal']['binCount'] == 131
+        assert python_model['heatmap']['binCount'] == 131
+    if specification['id'] == 'agap006241-length':
+        assert python_model['signal']['binCount'] == 1000
+        assert python_model['heatmap']['binCount'] == 1000
+    if specification['id'] == 'agap008118-length':
+        assert python_model['signal']['binCount'] == 1000
+        assert python_model['heatmap']['binCount'] == 1000
     if specification['id'] == 'maximum-20000-bases':
-        assert python_model['heatmap']['binCount'] == 500
+        assert python_model['heatmap']['binCount'] == 1000
         assert sum(map(len, python_model['heatmap']['bins'])) == 20_000
     if specification['id'] in {
         'prospective-maximum-50000-bases',
+        'phase2-100000-bases',
         'phase2-150000-bases',
         'phase2-maximum-200000-bases',
     }:
-        assert python_model['signal']['binCount'] == 240
-        assert python_model['heatmap']['binCount'] == 500
+        assert python_model['signal']['binCount'] == 1000
+        assert python_model['heatmap']['binCount'] == 1000
         assert sum(map(len, python_model['heatmap']['bins'])) == specification['length']
+
+
+def test_adaptive_and_explicit_resolution_rules_are_bounded_and_clamped():
+    contract = load_plot_contract()
+    assert resolve_bin_count(1, 'signal', contract=contract) == 1
+    assert resolve_bin_count(7, 'signal', contract=contract) == 7
+    assert resolve_bin_count(23, 'signal', contract=contract) == 23
+    assert resolve_bin_count(23, 'heatmap', contract=contract) == 23
+    assert resolve_bin_count(131, 'signal', contract=contract) == 131
+    assert resolve_bin_count(131, 'heatmap', contract=contract) == 131
+    assert resolve_bin_count(1685, 'signal', contract=contract) == 1000
+    assert resolve_bin_count(1685, 'heatmap', contract=contract) == 1000
+    assert resolve_bin_count(17_947, 'signal', contract=contract) == 1000
+    assert resolve_bin_count(17_947, 'heatmap', contract=contract) == 1000
+    assert resolve_bin_count(25, 'signal', 1000, contract) == 25
+    for choice in contract['binning']['explicit_choices']:
+        assert validate_plot_resolution(str(choice), contract) == choice
+    for invalid in (0, -1, 1.5, '1.5', 'many', 1001, True):
+        with pytest.raises(ValueError, match='plot resolution'):
+            validate_plot_resolution(invalid, contract)
+
+
+def test_all_explicit_resolutions_match_javascript_and_leave_source_values_unchanged():
+    specification = next(
+        item for item in json.loads(CASE_PATH.read_text())['cases']
+        if item['id'] == 'sparse-detection'
+    )
+    result = _synthetic_result(specification)
+    before = json.dumps(result, sort_keys=True)
+    contract = load_plot_contract()
+    for signal_bins in contract['binning']['explicit_choices']:
+        for heatmap_bins in contract['binning']['explicit_choices']:
+            python_model = build_plot_model(
+                result, signal_bins=signal_bins, heatmap_bins=heatmap_bins,
+            )
+            javascript_model = _javascript_model(
+                result, None, signal_bins=signal_bins, heatmap_bins=heatmap_bins,
+            )
+            _assert_close(python_model, javascript_model)
+            assert python_model['signal']['binCount'] == min(signal_bins, specification['length'])
+            assert python_model['heatmap']['binCount'] == min(heatmap_bins, specification['length'])
+    assert json.dumps(result, sort_keys=True) == before
 
 
 def _agap006241_result_and_annotation():
@@ -228,6 +287,8 @@ def test_agap006241_model_and_six_palette_samples_match_javascript_and_golden_fi
 
     fixture = json.loads((ROOT / 'docs/assets/data/plot-validation.json').read_text())
     assert fixture['region'] == f"{result['chromosome']}:{result['start']}-{result['end']}"
+    assert python_model['signal']['binCount'] == fixture['signal_bins'] == 1000
+    assert python_model['heatmap']['binCount'] == fixture['heatmap_bins'] == 1000
     for actual, expected in zip(python_model['signal']['cs'], fixture['cs']):
         for field in ('position', 'mean', 'q10', 'q25', 'median', 'q75', 'q90'):
             assert actual[field] == pytest.approx(expected[field], abs=1e-7)

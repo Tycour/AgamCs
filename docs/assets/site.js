@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-28-query-limit-200k2';
+const PAGES_RELEASE = '2026-08-28-adaptive-plot-binning';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -41,6 +41,9 @@ const liveHeatmapPlot = document.querySelector('#live-heatmap-plot');
 const liveSignalDownload = document.querySelector('#live-signal-download');
 const liveHeatmapDownload = document.querySelector('#live-heatmap-download');
 const liveAnnotationNote = document.querySelector('#live-annotation-note');
+const signalResolution = document.querySelector('#signal-resolution');
+const heatmapResolution = document.querySelector('#heatmap-resolution');
+const plotResolutionStatus = document.querySelector('#plot-resolution-status');
 const accessionQueryPanel = document.querySelector('#accession-query-panel');
 const coordinateQueryPanel = document.querySelector('#coordinate-query-panel');
 const liveAccession = document.querySelector('#live-accession');
@@ -74,6 +77,8 @@ let geneSearchPromise;
 let accessionIndexSnapshot;
 let geneSearchSnapshot;
 let queryManifestSnapshot;
+let plotContractSnapshot;
+let retainedPlotState;
 let currentAccessionSuggestions = [];
 let activeAccessionSuggestion = -1;
 const figureDownloadUrls = new Map();
@@ -140,11 +145,42 @@ async function loadPlotContract() {
         if (!response.ok) throw new Error(`Plot contract request failed (${response.status}).`);
         const contract = await response.json();
         globalThis.AgamCsPlots.configurePlotContract(contract);
+        plotContractSnapshot = contract;
+        configurePlotResolutionControls(contract);
         return contract;
       },
     );
   }
   return plotContractPromise;
+}
+
+function configurePlotResolutionControls(contract) {
+  const adaptive = contract.binning.adaptive_keyword;
+  const choices = [adaptive, ...contract.binning.explicit_choices];
+  [signalResolution, heatmapResolution].forEach((select) => {
+    const selected = select.value || adaptive;
+    select.replaceChildren(...choices.map((choice) => {
+      const option = document.createElement('option');
+      option.value = String(choice);
+      option.textContent = choice === adaptive
+        ? 'Adaptive'
+        : `${Number(choice).toLocaleString()} bins`;
+      return option;
+    }));
+    select.value = choices.map(String).includes(selected) ? selected : adaptive;
+  });
+}
+
+function selectedPlotResolution(select) {
+  const value = select.value;
+  return value === plotContractSnapshot.binning.adaptive_keyword ? value : Number(value);
+}
+
+function formatBasesPerBin(baseCount, binCount) {
+  return (baseCount / binCount).toLocaleString(undefined, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
 }
 
 async function loadAccessionIndex() {
@@ -693,17 +729,29 @@ function renderVectorBaseGeneLink(element, accession, label) {
 
 function renderLivePlots(
   result, providedAnnotation = null, providedAccession = null, providedTranscriptAnnotations = null,
+  figureStem = null, resetResolution = false,
 ) {
+  const adaptive = plotContractSnapshot.binning.adaptive_keyword;
+  if (resetResolution) {
+    signalResolution.value = adaptive;
+    heatmapResolution.value = adaptive;
+  }
+  const signalChoice = selectedPlotResolution(signalResolution);
+  const heatmapChoice = selectedPlotResolution(heatmapResolution);
+  globalThis.AgamCsPlotModel.validatePlotResolution(signalChoice, plotContractSnapshot);
+  globalThis.AgamCsPlotModel.validatePlotResolution(heatmapChoice, plotContractSnapshot);
   const pinned = providedAnnotation ? null : findPinnedAnnotation(result.chromosome, result.start, result.end);
   const annotation = providedAnnotation || pinned?.annotation || null;
   const accession = providedAccession || pinned?.accession || null;
   const transcriptAnnotations = providedTranscriptAnnotations
     || (annotation ? [annotation] : []);
-  globalThis.AgamCsPlots.renderSignalPlot(
+  const signalSummary = globalThis.AgamCsPlots.renderSignalPlot(
     liveSignalPlot, result, annotation, transcriptAnnotations,
+    signalChoice,
   );
-  globalThis.AgamCsPlots.renderHeatmap(
+  const heatmapSummary = globalThis.AgamCsPlots.renderHeatmap(
     liveHeatmapPlot, result, annotation, transcriptAnnotations,
+    heatmapChoice,
   );
   const annotationSubject = accession === annotation?.transcript_id
     ? `${annotation.id} isoform ${annotation.transcript_id}`
@@ -712,9 +760,55 @@ function renderLivePlots(
     ? `All ${transcriptAnnotations.length} transcript models for ${annotation.id} are shown 5′→3′; ${annotation.transcript_id} is bold and supplies the exon summary and CDS guides.`
     : annotation
       ? `${annotationSubject} annotation applied; ${annotation.transcript_id} is shown 5′→3′.`
-    : 'Genomic-coordinate view. Gene annotation is applied when querying by accession or a featured example.';
+      : 'Genomic-coordinate view. Gene annotation is applied when querying by accession or a featured example.';
+  const baseCount = result.end - result.start + 1;
+  plotResolutionStatus.textContent = (
+    `Signal: ${signalSummary.binCount.toLocaleString()} bins `
+    + `(~${formatBasesPerBin(baseCount, signalSummary.binCount)} bases/bin); `
+    + `heatmap: ${heatmapSummary.binCount.toLocaleString()} bins `
+    + `(~${formatBasesPerBin(baseCount, heatmapSummary.binCount)} bases/bin).`
+  );
+  retainedPlotState = {
+    result,
+    providedAnnotation,
+    providedAccession,
+    providedTranscriptAnnotations,
+    figureStem,
+    signalChoice: String(signalChoice),
+    heatmapChoice: String(heatmapChoice),
+  };
+  if (figureStem) {
+    clearFigureDownloads();
+    configureFigureDownload(
+      liveSignalDownload, liveSignalPlot, `${figureStem}_cs-snp-qc.svg`,
+    );
+    configureFigureDownload(
+      liveHeatmapDownload, liveHeatmapPlot, `${figureStem}_species-heatmap.svg`,
+    );
+  }
   liveVisuals.hidden = false;
 }
+
+function rerenderRetainedPlots() {
+  if (!retainedPlotState) return;
+  const previous = retainedPlotState;
+  try {
+    renderLivePlots(
+      previous.result,
+      previous.providedAnnotation,
+      previous.providedAccession,
+      previous.providedTranscriptAnnotations,
+      previous.figureStem,
+    );
+  } catch (error) {
+    signalResolution.value = previous.signalChoice;
+    heatmapResolution.value = previous.heatmapChoice;
+    plotResolutionStatus.textContent = `Resolution unchanged: ${error.message}`;
+  }
+}
+
+signalResolution.addEventListener('change', rerenderRetainedPlots);
+heatmapResolution.addEventListener('change', rerenderRetainedPlots);
 
 function valuesMatch(actual, expected, tolerance = 1e-7) {
   if (expected == null) return !Number.isFinite(actual);
@@ -933,16 +1027,12 @@ async function runLiveQuery() {
       paddingDetails,
     );
     if (resolution) renderResolvedAccession(resolution, accessionIndex, paddingDetails);
-    renderLivePlots(result, annotation, annotationAccession, transcriptAnnotations);
-
     const figureStem = resolution
       ? `AgamCs_${resolution.accession}_${chromosome}_${start}-${end}`
       : `AgamCs_${chromosome}_${start}-${end}`;
-    configureFigureDownload(
-      liveSignalDownload, liveSignalPlot, `${figureStem}_cs-snp-qc.svg`,
-    );
-    configureFigureDownload(
-      liveHeatmapDownload, liveHeatmapPlot, `${figureStem}_species-heatmap.svg`,
+    renderLivePlots(
+      result, annotation, annotationAccession, transcriptAnnotations,
+      figureStem, true,
     );
 
     if (benchmarkDownloadUrl) URL.revokeObjectURL(benchmarkDownloadUrl);
