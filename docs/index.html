@@ -187,7 +187,7 @@
         <div class="plot-resolution-controls" aria-labelledby="plot-resolution-heading">
           <div class="plot-resolution-intro">
             <h4 id="plot-resolution-heading">Plot resolution</h4>
-            <p>Adaptive respects the different evidence scales. Finer choices change display aggregation only, not biological resolution.</p>
+            <p>Adaptive preserves per-base detail for loci through 1,000 bases and otherwise uses the highest bounded display resolution.</p>
           </div>
           <label for="signal-resolution">Cs/SNP signal
             <select id="signal-resolution"><option value="adaptive">Adaptive</option></select>
@@ -209,7 +209,7 @@
           <div class="live-plot" id="live-heatmap-plot"></div>
           <a class="download-link figure-download" id="live-heatmap-download" hidden download>Download species heatmap (SVG)</a>
         </div>
-        <p class="plot-method-note" id="plot-method-note">Adaptive signal bins target about 20 bases because SNP density is already a centred 20-bp rolling statistic; adaptive heatmap bins target about 30 bases, matching the finest CNEr source-window scale. Cs itself is per-base. More display bins do not add biological resolution. Hover for query values; the exact TSV retains every base and species row, and SVG downloads use the active display resolution.</p>
+        <p class="plot-method-note" id="plot-method-note">Adaptive uses one display bin per base through 1,000 bases, then the bounded maximum of 1,000 bins, preserving the strongest available detail without unbounded SVG growth. Cs itself is per-base; SNP density remains the archived centred 20-bp rolling statistic, and CNEr evidence remains derived from 30/50-bp source windows. Finer display subdivision does not add biological resolution. Hover for query values; the exact TSV retains every base and species row, and SVG downloads use the active display resolution.</p>
       </div>
     </section>
 

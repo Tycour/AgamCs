@@ -147,8 +147,8 @@ values are previewed, plotted interactively, and downloadable as TSV.
 The 200,000-base inclusive limit is an engineering/browser ceiling, not a
 biological threshold. It supports 13,080 of the 13,097 indexed genes
 (99.8702%); 17 complete gene loci are longer and remain CLI-only. Plot-contract
-v2 selects signal bins at about 20 bases per bin (up to 240) and heatmap bins at
-about 30 bases per bin (up to 500). Separate selectors offer 60, 120, 240, 500,
+v2 uses one signal and heatmap display bin per base through 1,000 bases, then
+the bounded maximum of 1,000 bins. Separate selectors offer 240, 360, 500, 750,
 and 1,000 display bins, clamped to the inclusive locus length. These controls
 rerender retained data without a new query; SVGs follow the active resolution,
 while the TSV retains every queried base and all 21 exact stack values. The worker accepts

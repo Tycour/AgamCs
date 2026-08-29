@@ -584,18 +584,9 @@ def main() -> None:
             errors.append('plot-validation fixture does not match the default release validation case')
         contract = json.loads((ROOT / 'assets/data/plot-contract.json').read_text())
         plotted_bases = default_case.get('bases', 0) if default_case else 0
-        signal_policy = contract.get('binning', {}).get('signal', {})
-        heatmap_policy = contract.get('binning', {}).get('heatmap', {})
-        expected_signal_bins = max(1, min(
-            plotted_bases,
-            signal_policy.get('adaptive_maximum_bins', 0),
-            plotted_bases // signal_policy.get('adaptive_bases_per_bin', 1),
-        ))
-        expected_heatmap_bins = max(1, min(
-            plotted_bases,
-            heatmap_policy.get('adaptive_maximum_bins', 0),
-            plotted_bases // heatmap_policy.get('adaptive_bases_per_bin', 1),
-        ))
+        adaptive_maximum = contract.get('binning', {}).get('safety_maximum_bins', 0)
+        expected_signal_bins = min(plotted_bases, adaptive_maximum)
+        expected_heatmap_bins = min(plotted_bases, adaptive_maximum)
         if plot_validation.get('schema_version') != 2:
             errors.append('plot-validation fixture has an unexpected schema version')
         if plot_validation.get('signal_bins') != expected_signal_bins \

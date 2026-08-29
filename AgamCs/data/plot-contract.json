@@ -8,18 +8,16 @@
     "empty_bins": "omit",
     "inclusive_length": "end - start + 1",
     "adaptive_keyword": "adaptive",
-    "explicit_choices": [60, 120, 240, 500, 1000],
+    "explicit_choices": [240, 360, 500, 750, 1000],
     "safety_maximum_bins": 1000,
     "explicit_clamping": "min(requested_bins, inclusive_length)",
     "signal": {
-      "adaptive_bases_per_bin": 20,
-      "adaptive_maximum_bins": 240,
-      "adaptive_rule": "max(1, min(inclusive_length, adaptive_maximum_bins, floor(inclusive_length / adaptive_bases_per_bin)))"
+      "adaptive_rule": "min(inclusive_length, safety_maximum_bins)",
+      "rationale": "retain every per-base Cs value when the locus fits within the bounded display ceiling; otherwise use the maximum bounded detail"
     },
     "heatmap": {
-      "adaptive_bases_per_bin": 30,
-      "adaptive_maximum_bins": 500,
-      "adaptive_rule": "max(1, min(inclusive_length, adaptive_maximum_bins, floor(inclusive_length / adaptive_bases_per_bin)))"
+      "adaptive_rule": "min(inclusive_length, safety_maximum_bins)",
+      "rationale": "retain every mapped AgamP4 base when the locus fits within the bounded display ceiling; finer display does not increase the underlying CNEr window resolution"
     }
   },
   "aggregation": {

@@ -10,13 +10,11 @@
     const binning = contract.binning;
     if (binning?.inclusive_length !== 'end - start + 1'
         || binning?.adaptive_keyword !== 'adaptive'
-        || JSON.stringify(binning?.explicit_choices) !== JSON.stringify([60, 120, 240, 500, 1000])
+        || JSON.stringify(binning?.explicit_choices) !== JSON.stringify([240, 360, 500, 750, 1000])
         || binning?.safety_maximum_bins !== 1000
         || binning?.explicit_clamping !== 'min(requested_bins, inclusive_length)'
-        || binning?.signal?.adaptive_bases_per_bin !== 20
-        || binning?.signal?.adaptive_maximum_bins !== 240
-        || binning?.heatmap?.adaptive_bases_per_bin !== 30
-        || binning?.heatmap?.adaptive_maximum_bins !== 500) {
+        || binning?.signal?.adaptive_rule !== 'min(inclusive_length, safety_maximum_bins)'
+        || binning?.heatmap?.adaptive_rule !== 'min(inclusive_length, safety_maximum_bins)') {
       throw new Error('The plot contract has unexpected display-bin semantics.');
     }
     if (!Array.isArray(contract.palette?.viridis_anchors)
@@ -53,12 +51,7 @@
     }
     const resolution = validatePlotResolution(requested, contract);
     if (resolution === contract.binning.adaptive_keyword) {
-      const policy = contract.binning[plotKind];
-      return Math.max(1, Math.min(
-        length,
-        policy.adaptive_maximum_bins,
-        Math.floor(length / policy.adaptive_bases_per_bin),
-      ));
+      return Math.min(length, contract.binning.safety_maximum_bins);
     }
     return Math.min(length, resolution);
   }

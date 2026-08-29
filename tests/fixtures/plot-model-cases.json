@@ -26,6 +26,21 @@
       "qc_mode": "mixed"
     },
     {
+      "id": "mir989-length",
+      "chromosome": "3L",
+      "start": 2905395,
+      "length": 131,
+      "stack_mode": "periodic",
+      "qc_mode": "mixed",
+      "annotation": {
+        "id": "AGAP013705",
+        "chromosome": "3L",
+        "start_offset": 0,
+        "end_offset": 130,
+        "strand": 1
+      }
+    },
+    {
       "id": "agap006241-length",
       "chromosome": "2L",
       "start": 28585064,

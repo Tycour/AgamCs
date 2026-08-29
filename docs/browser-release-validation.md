@@ -25,9 +25,10 @@ worker-wide deadline makes new and retried ranges respect any bounded HTTP 429
 cooldown.
 
 The subsequent plot-contract v2 update changes display aggregation only.
-Adaptive signal bins target about 20 bases and cap at 240; adaptive heatmap
-bins target about 30 bases and cap at 500. Contract-derived choices of 60, 120,
-240, 500, and 1,000 bins rerender retained in-memory results and SVG downloads,
+Adaptive signal and heatmap views retain one bin per base through 1,000 bases,
+then use the bounded maximum of 1,000 bins. Contract-derived choices of 240,
+360, 500, 750, and 1,000 bins rerender retained in-memory results and SVG
+downloads,
 while exact TSV data and the 200,000-base transport ceiling remain unchanged.
 
 ## Scientific regression matrix

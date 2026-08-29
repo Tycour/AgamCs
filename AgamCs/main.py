@@ -203,8 +203,8 @@ def main():
         default='adaptive',
         metavar='adaptive|INTEGER',
         help=(
-            'Cs/SNP display resolution: adaptive (about 20 bases per bin, capped at '
-            '240) or a positive integer through 1,000.'
+            'Cs/SNP display resolution: adaptive (one bin per base through 1,000 '
+            'bases, then capped at 1,000 bins) or a positive integer through 1,000.'
         ),
     )
     parser.add_argument(
@@ -213,8 +213,9 @@ def main():
         default='adaptive',
         metavar='adaptive|INTEGER',
         help=(
-            'Binned heatmap display resolution: adaptive (about 30 bases per bin, '
-            'capped at 500) or a positive integer through 1,000. The legacy '
+            'Binned heatmap display resolution: adaptive (one bin per base through '
+            '1,000 bases, then capped at 1,000 bins) or a positive integer through '
+            '1,000. The legacy '
             '--heatmap-mode base-level remains per-base.'
         ),
     )

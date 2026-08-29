@@ -33,13 +33,13 @@ def load_plot_contract(path=None):
         or binning.get('empty_bins') != 'omit'
         or binning.get('inclusive_length') != 'end - start + 1'
         or binning.get('adaptive_keyword') != 'adaptive'
-        or binning.get('explicit_choices') != [60, 120, 240, 500, 1000]
+        or binning.get('explicit_choices') != [240, 360, 500, 750, 1000]
         or binning.get('safety_maximum_bins') != 1000
         or binning.get('explicit_clamping') != 'min(requested_bins, inclusive_length)'
-        or binning.get('signal', {}).get('adaptive_bases_per_bin') != 20
-        or binning.get('signal', {}).get('adaptive_maximum_bins') != 240
-        or binning.get('heatmap', {}).get('adaptive_bases_per_bin') != 30
-        or binning.get('heatmap', {}).get('adaptive_maximum_bins') != 500
+        or binning.get('signal', {}).get('adaptive_rule')
+        != 'min(inclusive_length, safety_maximum_bins)'
+        or binning.get('heatmap', {}).get('adaptive_rule')
+        != 'min(inclusive_length, safety_maximum_bins)'
     ):
         raise ValueError('The plot contract has unexpected binning semantics.')
     return contract
@@ -88,12 +88,7 @@ def resolve_bin_count(inclusive_length, plot_kind, requested='adaptive', contrac
         raise ValueError("plot kind must be 'signal' or 'heatmap'")
     resolution = validate_plot_resolution(requested, contract)
     if resolution == contract['binning']['adaptive_keyword']:
-        policy = contract['binning'][plot_kind]
-        return max(1, min(
-            length,
-            policy['adaptive_maximum_bins'],
-            math.floor(length / policy['adaptive_bases_per_bin']),
-        ))
+        return min(length, contract['binning']['safety_maximum_bins'])
     return min(length, resolution)
 
 

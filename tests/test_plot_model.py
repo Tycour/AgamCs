@@ -178,14 +178,17 @@ def test_python_and_pages_models_match_for_complete_synthetic_cases(specificatio
         )
     if specification['id'] == 'all-qc-failed':
         assert all(record['mean'] is None for record in python_model['signal']['snp'])
+    if specification['id'] == 'mir989-length':
+        assert python_model['signal']['binCount'] == 131
+        assert python_model['heatmap']['binCount'] == 131
     if specification['id'] == 'agap006241-length':
-        assert python_model['signal']['binCount'] == 84
-        assert python_model['heatmap']['binCount'] == 56
+        assert python_model['signal']['binCount'] == 1000
+        assert python_model['heatmap']['binCount'] == 1000
     if specification['id'] == 'agap008118-length':
-        assert python_model['signal']['binCount'] == 240
-        assert python_model['heatmap']['binCount'] == 500
+        assert python_model['signal']['binCount'] == 1000
+        assert python_model['heatmap']['binCount'] == 1000
     if specification['id'] == 'maximum-20000-bases':
-        assert python_model['heatmap']['binCount'] == 500
+        assert python_model['heatmap']['binCount'] == 1000
         assert sum(map(len, python_model['heatmap']['bins'])) == 20_000
     if specification['id'] in {
         'prospective-maximum-50000-bases',
@@ -193,21 +196,23 @@ def test_python_and_pages_models_match_for_complete_synthetic_cases(specificatio
         'phase2-150000-bases',
         'phase2-maximum-200000-bases',
     }:
-        assert python_model['signal']['binCount'] == 240
-        assert python_model['heatmap']['binCount'] == 500
+        assert python_model['signal']['binCount'] == 1000
+        assert python_model['heatmap']['binCount'] == 1000
         assert sum(map(len, python_model['heatmap']['bins'])) == specification['length']
 
 
 def test_adaptive_and_explicit_resolution_rules_are_bounded_and_clamped():
     contract = load_plot_contract()
     assert resolve_bin_count(1, 'signal', contract=contract) == 1
-    assert resolve_bin_count(7, 'signal', contract=contract) == 1
-    assert resolve_bin_count(23, 'signal', contract=contract) == 1
-    assert resolve_bin_count(23, 'heatmap', contract=contract) == 1
-    assert resolve_bin_count(1685, 'signal', contract=contract) == 84
-    assert resolve_bin_count(1685, 'heatmap', contract=contract) == 56
-    assert resolve_bin_count(17_947, 'signal', contract=contract) == 240
-    assert resolve_bin_count(17_947, 'heatmap', contract=contract) == 500
+    assert resolve_bin_count(7, 'signal', contract=contract) == 7
+    assert resolve_bin_count(23, 'signal', contract=contract) == 23
+    assert resolve_bin_count(23, 'heatmap', contract=contract) == 23
+    assert resolve_bin_count(131, 'signal', contract=contract) == 131
+    assert resolve_bin_count(131, 'heatmap', contract=contract) == 131
+    assert resolve_bin_count(1685, 'signal', contract=contract) == 1000
+    assert resolve_bin_count(1685, 'heatmap', contract=contract) == 1000
+    assert resolve_bin_count(17_947, 'signal', contract=contract) == 1000
+    assert resolve_bin_count(17_947, 'heatmap', contract=contract) == 1000
     assert resolve_bin_count(25, 'signal', 1000, contract) == 25
     for choice in contract['binning']['explicit_choices']:
         assert validate_plot_resolution(str(choice), contract) == choice
@@ -282,8 +287,8 @@ def test_agap006241_model_and_six_palette_samples_match_javascript_and_golden_fi
 
     fixture = json.loads((ROOT / 'docs/assets/data/plot-validation.json').read_text())
     assert fixture['region'] == f"{result['chromosome']}:{result['start']}-{result['end']}"
-    assert python_model['signal']['binCount'] == fixture['signal_bins'] == 84
-    assert python_model['heatmap']['binCount'] == fixture['heatmap_bins'] == 56
+    assert python_model['signal']['binCount'] == fixture['signal_bins'] == 1000
+    assert python_model['heatmap']['binCount'] == fixture['heatmap_bins'] == 1000
     for actual, expected in zip(python_model['signal']['cs'], fixture['cs']):
         for field in ('position', 'mean', 'q10', 'q25', 'median', 'q75', 'q90'):
             assert actual[field] == pytest.approx(expected[field], abs=1e-7)
