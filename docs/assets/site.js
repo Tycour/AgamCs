@@ -228,12 +228,19 @@ async function loadGeneSearch() {
 
 async function loadGeneRankings() {
   if (!geneRankingPromise) {
-    geneRankingPromise = fetch(versionedAsset('assets/data/gene-rankings.json')).then(
-      async (response) => {
+    const load = async (filename, rankingType) => {
+      try {
+        const response = await fetch(versionedAsset(`assets/data/${filename}`));
         if (!response.ok) throw new Error(`Gene-ranking request failed (${response.status}).`);
-        return globalThis.AgamCsGeneRankings.validate(await response.json());
-      },
-    );
+        return globalThis.AgamCsGeneRankings.validate(await response.json(), rankingType);
+      } catch (_error) {
+        return null;
+      }
+    };
+    geneRankingPromise = Promise.all([
+      load('gene-cs-rankings.json', 'mean_cs'),
+      load('gene-snp-rankings.json', 'accessible_mean_snp_density'),
+    ]).then(([cs, snpDensity]) => ({ cs, snpDensity }));
   }
   return geneRankingPromise;
 }
@@ -669,14 +676,18 @@ function rankingPosition(statistics) {
   return `rank ${position} of ${statistics.count.toLocaleString()}`;
 }
 
-function renderGeneRanking(rankingDocument, accession) {
-  const card = rankingDocument
-    ? globalThis.AgamCsGeneRankings.lookup(rankingDocument, accession)
+function renderGeneRanking(rankingDocuments, accession) {
+  const card = rankingDocuments
+    ? globalThis.AgamCsGeneRankings.lookup(
+      rankingDocuments.cs, rankingDocuments.snpDensity, accession,
+    )
     : null;
-  const element = document.querySelector('#summary-ranking-card');
-  element.hidden = !card;
+  const csElement = document.querySelector('#summary-cs-ranking-card');
+  const snpElement = document.querySelector('#summary-snp-ranking-card');
+  csElement.hidden = !card?.cs;
+  snpElement.hidden = !card?.snpDensity;
   if (!card) return;
-  const renderMetric = (metric, valueId, detailId) => {
+  const renderRankedMetric = (metric, valueId, detailId) => {
     document.querySelector(valueId).textContent =
       `${metric.global.percentile.toFixed(2)}th`;
     document.querySelector(detailId).textContent =
@@ -684,15 +695,40 @@ function renderGeneRanking(rankingDocument, accession) {
       + `${metric.chromosome.percentile.toFixed(2)}th percentile `
       + `(${rankingPosition(metric.chromosome)})`;
   };
-  renderMetric(card.metrics.gene_span, '#summary-rank-span', '#summary-rank-span-detail');
-  renderMetric(
-    card.metrics.representative_exons,
-    '#summary-rank-exons',
-    '#summary-rank-exons-detail',
-  );
-  document.querySelector('#summary-ranking-note').textContent =
-    `Static ${card.accession} ranking; padding and selected non-representative isoforms do not `
-    + `change it. Exon ranking uses ${card.representativeTranscript}. ${card.interpretation}`;
+  if (card.cs) {
+    renderRankedMetric(card.cs.metrics.gene_span, '#summary-cs-rank-span', '#summary-cs-rank-span-detail');
+    renderRankedMetric(
+      card.cs.metrics.representative_exons,
+      '#summary-cs-rank-exons', '#summary-cs-rank-exons-detail',
+    );
+    document.querySelector('#summary-cs-ranking-note').textContent =
+      `Static ${card.accession} ranking; padding and selected non-representative isoforms do not `
+      + `change it. Exon ranking uses ${card.representativeTranscript}. ${card.cs.interpretation}`;
+  }
+  if (card.snpDensity) {
+    const renderSnpMetric = (metric, valueId, detailId) => {
+      if (metric.eligible) {
+        renderRankedMetric(metric, valueId, detailId);
+      } else {
+        document.querySelector(valueId).textContent = 'Not ranked';
+        document.querySelector(detailId).textContent =
+          `${(100 * metric.accessibleFraction).toFixed(1)}% accessible `
+          + `(${metric.accessibleBases.toLocaleString()}/${metric.totalBases.toLocaleString()}); `
+          + '80% required';
+      }
+    };
+    renderSnpMetric(
+      card.snpDensity.metrics.gene_span,
+      '#summary-snp-rank-span', '#summary-snp-rank-span-detail',
+    );
+    renderSnpMetric(
+      card.snpDensity.metrics.representative_exons,
+      '#summary-snp-rank-exons', '#summary-snp-rank-exons-detail',
+    );
+    document.querySelector('#summary-snp-ranking-note').textContent =
+      `Only accessible focal bases contribute; QC-failed bases remain unknown. `
+      + `${card.snpDensity.interpretation}`;
+  }
 }
 
 function renderQuerySummary(

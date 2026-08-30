@@ -103,7 +103,7 @@ def process_region(
     if gene_ranking is not None:
         from .gene_ranking import format_gene_ranking
 
-        ranking_path = os.path.join(results_dir, 'gene_conservation_ranking.json')
+        ranking_path = os.path.join(results_dir, 'gene_rankings.json')
         Path(ranking_path).write_text(
             json.dumps(gene_ranking, indent=2) + '\n', encoding='utf-8',
         )

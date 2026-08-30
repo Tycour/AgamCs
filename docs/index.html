@@ -153,13 +153,21 @@
           <div><dt>Annotation</dt><dd id="resolved-annotation">—</dd></div>
           <div><dt>Index</dt><dd id="resolved-index-version">—</dd></div>
         </dl>
-        <section class="summary-scope-card summary-ranking-card" id="summary-ranking-card" aria-labelledby="summary-ranking-heading" hidden>
-          <header><h4 id="summary-ranking-heading">Gene conservation percentile</h4><small>Higher Cs = more conserved</small></header>
+        <section class="summary-scope-card summary-ranking-card" id="summary-cs-ranking-card" aria-labelledby="summary-cs-ranking-heading" hidden>
+          <header><h4 id="summary-cs-ranking-heading">Cs percentile</h4><small>Higher Cs = more conserved</small></header>
           <div class="summary-metric-pair">
-            <div><span>Whole gene span</span><strong id="summary-rank-span">—</strong><small id="summary-rank-span-detail">—</small></div>
-            <div><span>Representative exons</span><strong id="summary-rank-exons">—</strong><small id="summary-rank-exons-detail">—</small></div>
+            <div><span>Whole gene span</span><strong id="summary-cs-rank-span">—</strong><small id="summary-cs-rank-span-detail">—</small></div>
+            <div><span>Representative exons</span><strong id="summary-cs-rank-exons">—</strong><small id="summary-cs-rank-exons-detail">—</small></div>
           </div>
-          <p class="summary-ranking-note" id="summary-ranking-note"></p>
+          <p class="summary-ranking-note" id="summary-cs-ranking-note"></p>
+        </section>
+        <section class="summary-scope-card summary-ranking-card" id="summary-snp-ranking-card" aria-labelledby="summary-snp-ranking-heading" hidden>
+          <header><h4 id="summary-snp-ranking-heading">Low-variation percentile</h4><small>Higher = lower accessible-base SNP density</small></header>
+          <div class="summary-metric-pair">
+            <div><span>Whole gene span</span><strong id="summary-snp-rank-span">—</strong><small id="summary-snp-rank-span-detail">—</small></div>
+            <div><span>Representative exons</span><strong id="summary-snp-rank-exons">—</strong><small id="summary-snp-rank-exons-detail">—</small></div>
+          </div>
+          <p class="summary-ranking-note" id="summary-snp-ranking-note"></p>
         </section>
         <dl class="query-provenance" id="query-provenance">
           <div><dt>Assembly</dt><dd id="query-assembly">AgamP4</dd></div>
