@@ -34,6 +34,11 @@ from .plot_model import (
 )
 
 
+LOGICAL_DPI = 72
+PNG_DPI = 144
+SPECIES_LABEL_FONT_SIZE = 10
+
+
 def _figure_coordinates(geometry, x, y):
     return x / geometry['width'], 1 - y / geometry['height']
 
@@ -41,13 +46,37 @@ def _figure_coordinates(geometry, x, y):
 def _draw_transcript_rows(fig, geometry, annotation, transcript_annotations, y_top):
     mapper = _gene_coordinate_mapper(annotation)
     minimum, maximum = 0, int(annotation['end']) - int(annotation['start'])
-    axis_height = max(40, len(transcript_annotations) * 24 + 18)
+    row_height = 24
+    axis_top = y_top + 18
+    axis_height = max(72, len(transcript_annotations) * row_height + 48)
     left = geometry['plotLeft'] / geometry['width']
-    bottom = 1 - (y_top + axis_height) / geometry['height']
+    bottom = 1 - (axis_top + axis_height) / geometry['height']
     width = geometry['plotWidth'] / geometry['width']
     axis = fig.add_axes([left, bottom, width, axis_height / geometry['height']])
     axis.set_xlim(minimum, maximum)
-    axis.set_ylim(-0.5, len(transcript_annotations) - 0.5)
+    axis.set_ylim(-1, len(transcript_annotations) - 0.5)
+
+    title_x, title_y = _figure_coordinates(geometry, geometry['plotLeft'], y_top)
+    fig.text(
+        title_x, title_y,
+        f"Transcript models ({len(transcript_annotations)}; selected/representative in bold)",
+        ha='left', va='baseline', fontsize=12, fontweight='bold', color='#172925',
+    )
+    for x, label, facecolor, edgecolor in (
+        (700, 'UTR', UTR_FACE_COLOR, UTR_EDGE_COLOR),
+        (808, 'CDS', CDS_FACE_COLOR, CDS_EDGE_COLOR),
+    ):
+        box_x, box_y = _figure_coordinates(geometry, x, y_top + 8)
+        fig.add_artist(Rectangle(
+            (box_x, box_y), 16 / geometry['width'], 10 / geometry['height'],
+            transform=fig.transFigure, facecolor=facecolor, edgecolor=edgecolor,
+            linewidth=0.8,
+        ))
+        fig.text(
+            *_figure_coordinates(geometry, x + 22, y_top), label,
+            ha='left', va='baseline', fontsize=11, color='#5d6b67',
+        )
+
     for row, transcript in enumerate(reversed(transcript_annotations)):
         selected = transcript.get('transcript_id') == annotation.get('transcript_id')
         exons = []
@@ -76,8 +105,23 @@ def _draw_transcript_rows(fig, geometry, annotation, transcript_annotations, y_t
                     ))
         axis.text(-0.01, row, transcript.get('transcript_id', ''),
                   transform=axis.get_yaxis_transform(), ha='right', va='center',
-                  fontsize=7, fontweight='bold' if selected else 'normal')
-    axis.axis('off')
+                  fontsize=9, fontweight='bold' if selected else 'normal')
+
+    ticks = np.linspace(minimum, maximum, 7)
+    axis.set_xticks(ticks, [f'{round(value):,}' for value in ticks])
+    axis.set_xlabel(
+        f"Position relative to {annotation['id']} transcription start (bp)",
+        fontsize=12, color='#172925', labelpad=8,
+    )
+    axis.tick_params(
+        axis='x', which='both', bottom=True, top=False, labelbottom=True,
+        colors='#5d6b67', labelsize=10, length=4, width=0.8, pad=4,
+    )
+    axis.tick_params(axis='y', left=False, labelleft=False)
+    for name in ('top', 'left', 'right'):
+        axis.spines[name].set_visible(False)
+    axis.spines['bottom'].set_color('#5d6b67')
+    axis.spines['bottom'].set_linewidth(0.8)
 
 
 def _add_svg_accessibility(path, title, description):
@@ -125,8 +169,8 @@ def render_heatmap(
     layout = contract['heatmap_layout']
 
     fig = plt.figure(
-        figsize=(geometry['width'] / 72, geometry['height'] / 72),
-        dpi=72,
+        figsize=(geometry['width'] / LOGICAL_DPI, geometry['height'] / LOGICAL_DPI),
+        dpi=LOGICAL_DPI,
         facecolor='white',
     )
     plot_bottom = 1 - (geometry['rowTop'] + geometry['plotHeight']) / geometry['height']
@@ -179,7 +223,11 @@ def render_heatmap(
             geometry, geometry['plotLeft'] - 12,
             geometry['rowTop'] + (row_index + 0.68) * geometry['rowHeight'],
         )
-        fig.text(x, y, label, ha='right', va='center', fontsize=7.9,
+        # Matplotlib's default sans-serif face is wider than the browser's
+        # Inter/system stack. Ten points preserves the Pages visual scale while
+        # keeping the longest label clear of the cladogram's clade strip.
+        fig.text(x, y, label, ha='right', va='center',
+                 fontsize=SPECIES_LABEL_FONT_SIZE,
                  fontstyle='italic', fontweight='semibold', color='#172925')
         clade_index = next(
             index for index, (_name, codes, _foreground, _background)
@@ -198,12 +246,12 @@ def render_heatmap(
 
     title_x, title_y = _figure_coordinates(geometry, geometry['plotLeft'], 27)
     fig.text(title_x, title_y, layout['title'], ha='left', va='baseline',
-             fontsize=13, fontweight='bold', color='#172925')
+             fontsize=18, fontweight='bold', color='#172925')
     subtitle_x, subtitle_y = _figure_coordinates(geometry, geometry['plotLeft'], 49)
     fig.text(
         subtitle_x, subtitle_y,
-        f"{len(result['stackRows'])} metadata-ordered species · {bin_count} display bins",
-        ha='left', va='baseline', fontsize=8.5, color='#5d6b67',
+        f"{len(result['stackRows'])} comparison species · {bin_count} display bins",
+        ha='left', va='baseline', fontsize=12, color='#5d6b67',
     )
     legend_y = geometry['rowTop'] + geometry['plotHeight'] + 27
     legend_x, legend_fig_y = _figure_coordinates(geometry, geometry['plotLeft'], legend_y)
@@ -211,7 +259,7 @@ def render_heatmap(
         handles=[Patch(facecolor=np.asarray(contract['palette']['no_interval_rgb']) / 255,
                        label=layout['no_interval_label'])],
         loc='center left', bbox_to_anchor=(legend_x, legend_fig_y),
-        frameon=False, fontsize=8,
+        frameon=False, fontsize=11,
     )
     gradient_axis = fig.add_axes([
         700 / geometry['width'],
@@ -225,29 +273,22 @@ def render_heatmap(
     gradient_axis.imshow(gradient, aspect='auto', interpolation='nearest')
     gradient_axis.axis('off')
     fig.text(*_figure_coordinates(geometry, 696, legend_y + 16), '0',
-             ha='center', va='baseline', fontsize=7, color='#5d6b67')
+             ha='center', va='baseline', fontsize=10, color='#5d6b67')
     fig.text(*_figure_coordinates(geometry, 894, legend_y + 16), '100',
-             ha='center', va='baseline', fontsize=7, color='#5d6b67')
+             ha='center', va='baseline', fontsize=10, color='#5d6b67')
     fig.text(
         *_figure_coordinates(geometry, 795, legend_y + 32),
-        layout['identity_label'], ha='center', va='baseline', fontsize=8, color='#5d6b67',
+        layout['identity_label'], ha='center', va='baseline', fontsize=11, color='#5d6b67',
     )
     for index, (name, _codes, foreground, _background) in enumerate(CLADE_STYLES):
-        column, row = index % 2, index // 2
-        fig.text(*_figure_coordinates(geometry, 36 + column * 108, 43 + row * 18),
-                 name, ha='left', va='baseline', fontsize=6.5, color=foreground)
+        fig.text(*_figure_coordinates(geometry, 36, 40 + index * 13),
+                 name, ha='left', va='baseline', fontsize=9, color=foreground)
     fig.text(*_figure_coordinates(geometry, 22, 22), 'Evidence-bounded cladogram',
-             ha='left', va='baseline', fontsize=7, color='#5d6b67')
+             ha='left', va='baseline', fontsize=10, color='#5d6b67')
 
     if applied_annotation:
         _draw_transcript_rows(
             fig, geometry, applied_annotation, transcript_annotations, legend_y + 60,
-        )
-        fig.text(
-            *_figure_coordinates(geometry, (geometry['plotLeft'] + geometry['plotRight']) / 2,
-                                  geometry['height'] - 24),
-            f"Position relative to {applied_annotation['id']} transcription start (bp)",
-            ha='center', va='baseline', fontsize=8.5, color='#172925',
         )
 
     description = (
@@ -260,10 +301,10 @@ def render_heatmap(
     png_output_path = Path(png_output_path)
     svg_output_path.parent.mkdir(parents=True, exist_ok=True)
     png_output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(svg_output_path, format='svg', dpi=72, metadata={
+    fig.savefig(svg_output_path, format='svg', dpi=LOGICAL_DPI, metadata={
         'Description': description,
     })
-    fig.savefig(png_output_path, format='png', dpi=72, facecolor='white')
+    fig.savefig(png_output_path, format='png', dpi=PNG_DPI, facecolor='white')
     plt.close(fig)
     _add_svg_accessibility(svg_output_path, layout['title'], description)
     return model

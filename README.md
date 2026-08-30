@@ -2,13 +2,13 @@
 
 **Use AgamCs in your browser:** [open the AgamCs research portal](https://tycour.github.io/AgamCs/).
 
-The GitHub Pages portal is the easiest way to query a current AgamP4.14
-`AGAP...` gene or exact transcript isoform on 2L, 2R, 3L, 3R, or X, or to enter
-AgamP4 genomic coordinates, then inspect the figures and download exact values.
-Either query mode can optionally add representative transcript tracks for every
-indexed gene overlapping the displayed region.
-Every transcript-ID label in the browser figures links to its parent gene's
-VectorBase record in a new tab.
+The GitHub Pages portal is the easiest way to find a current AgamP4.14 gene by
+official symbol or `AGAP...` accession, query an exact transcript isoform on 2L,
+2R, 3L, 3R, or X, or enter AgamP4 genomic coordinates, then inspect the figures
+and download exact values.
+Either query mode can optionally show a representative transcript for each
+indexed gene overlapping the displayed region, with transcript labels linking
+to the parent gene's VectorBase record.
 The conservation arrays are from the published AgamP4 dataset; AgamP4.14 refers
 to the current VectorBase annotation index used for gene and transcript lookup.
 The portal is available without installation. The command-line tool below is
@@ -104,10 +104,12 @@ why the binned summary is usually the better presentation view.
 
 ![Base-level conservation and SNP-density plot for AGAP006241](results/AGAP006241/AGAP006241/AGAP006241_cs_snp_density.png)
 
-The heatmap shows cross-species identity for the same interval, with CDS guides
-aligned to the signal plots.
+The current species heatmap places an evidence-bounded cladogram beside 21
+comparison species. CDS guides sit above the heatmap, the charcoal
+and identity legends are separated below it, and the transcript model remains
+aligned to the same genomic axis used by the signal plots.
 
-![AGAP006241 cross-species identity heatmap](results/AGAP006241/AGAP006241/AGAP006241_heatmap.png)
+[![AGAP006241 cross-species identity heatmap with cladogram, species rows, identity legend, and aligned transcript model](results/AGAP006241/AGAP006241/AGAP006241_heatmap.png)](results/AGAP006241/AGAP006241/AGAP006241_heatmap.png)
 
 The CLI heatmap is canonical SVG with a retained PNG counterpart; the other CLI
 figures remain PNG. The Pages portal renders the same contract-defined heatmap
@@ -200,34 +202,19 @@ and the rebuild procedure are in
 
 Try the [no-install GitHub Pages portal](https://tycour.github.io/AgamCs/).
 Its versioned VectorBase-68 index resolves 13,097 AgamP4.14 genes and 15,317
-transcript isoforms on the five supported chromosomes; an autocomplete also
-matches 2,255 official AgamP4 gene symbols from a separately versioned naming
-index. It uses the published AgamP4 conservation arrays. A bare gene ID retains
-the representative-transcript default while showing every isoform as aligned
-annotation rows beneath both plots; an exact ID such as `AGAP000040-RA` uses
-that isoform's transcript span, exons and CDS bounds. Gene, transcript and
-coordinate queries read only the required `Cs`, raw SNP-density, species-stack,
-and separate QC ranges from the Zenodo data and render live browser plots;
-featured examples remain as shortcuts in the same query form. The inclusive
-browser query limit is 200,000 bases. This is an engineering/browser ceiling,
-not a biological threshold: it supports 13,080 of 13,097 indexed genes
-(99.8702%), while the 17 longer genes remain CLI-only. Failed accessibility/QC
-positions remain separate from the raw SNP-density values and are shown as
-unknown. Browser reads require HTTP 206 partial-content responses; the exact TSV
-retains every base and all 21 stack values while adaptive or explicitly selected
-display bins affect plots and SVG downloads only. Range zoom can be chosen by
-dragging across either plot or entering inclusive genomic coordinates; nested
-zoom-out and full-query reset rerender the retained source arrays without a new
-Zenodo request. Plot selections expand to the touched display-bin boundaries,
-while the exact TSV and query summary remain scoped to the complete query.
-An optional annotation control works for both accession and manual-coordinate
-queries. It adds one representative transcript for each other indexed gene
-overlapping the current displayed range and updates locally as the plots are
-zoomed; the queried gene keeps its selected transcript or complete isoform set.
-Each transcript label in either browser figure is a direct link to its parent
-gene's VectorBase record.
-Publishing and
-implementation details are documented in
+transcript isoforms on chromosomes 2L, 2R, 3L, 3R, and X. Its autocomplete
+matches 2,255 official AgamP4 gene symbols: for example, typing `ZPG` suggests
+`AGAP006241` (Innexin inx2). It uses the published AgamP4 conservation arrays.
+Failed accessibility/QC positions are shown as unknown rather than zero. You
+can add flanking sequence to accession queries, change the plot resolution
+without rerunning the genomic query, and download the figures and exact values.
+Drag across either plot, or enter inclusive coordinates, to focus on a range;
+use **Zoom out** to step back or **Reset full query** to restore the complete
+view. The optional overlapping-gene control adds one representative transcript
+per other gene in view, and transcript labels link to VectorBase.
+Query processing runs in the browser. Optional aggregate usage analytics are
+sent only after consent and never include accessions, coordinates, results,
+filenames, or errors. Publishing and implementation details are documented in
 [`docs/github-pages-prototype.md`](docs/github-pages-prototype.md).
 For larger intervals, custom highlight ranges, local-HDF5 use, and fully
 reproducible batch output, use the CLI.

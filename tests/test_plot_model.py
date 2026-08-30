@@ -359,6 +359,9 @@ def test_renderer_writes_contract_geometry_svg_and_png_without_node(tmp_path, mo
     assert '<desc id="agamcs-heatmap-description">' in svg_text
     assert 'Zero means no detected CNEr interval' in svg_text
     assert 'QC-failed SNP positions remain unknown' in svg_text
+    assert 'Transcript models (2; selected/representative in bold)' in svg_text
+    assert 'Position relative to AGAPPOC transcription start (bp)' in svg_text
+    assert '<g id="matplotlib.axis_1">' in svg_text
     first_cell = model['heatmap']['cells'][0][0]
     first_rgb = blended_identity_rgb(
         first_cell['identity'], first_cell['detectedFraction'], contract,
@@ -366,7 +369,7 @@ def test_renderer_writes_contract_geometry_svg_and_png_without_node(tmp_path, mo
     assert f"#{''.join(f'{channel:02x}' for channel in first_rgb)}" in svg_text.lower()
     assert png.stat().st_size > 0
     assert mpimg.imread(png).shape[:2] == (
-        expected_geometry['height'], expected_geometry['width'],
+        expected_geometry['height'] * 2, expected_geometry['width'] * 2,
     )
 
 

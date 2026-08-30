@@ -113,16 +113,16 @@ test('contract palette has stable bounded RGB samples', () => {
 test('heatmap geometry matches the Pages viewBox coordinate contract', () => {
   assert.deepEqual(model.heatmapGeometry(21, 500, contract), {
     width: 1000,
-    height: 653,
+    height: 667,
     plotLeft: 210,
     plotRight: 930,
     plotWidth: 720,
     plotHeight: 483,
-    rowTop: 78,
+    rowTop: 92,
     rowHeight: 23,
     cellWidth: 1.44,
   });
-  assert.equal(model.heatmapGeometry(21, 500, contract, 2).height, 851);
+  assert.equal(model.heatmapGeometry(21, 500, contract, 2).height, 824);
 });
 
 test('multi-isoform filtering is stable and matches the displayed gene frame', () => {

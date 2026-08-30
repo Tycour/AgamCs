@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-30-annotation-gene-links';
+const PAGES_RELEASE = '2026-08-30-heatmap-axis';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {

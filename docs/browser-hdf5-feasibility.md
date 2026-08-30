@@ -117,7 +117,7 @@ The live figures preserve the current plotting semantics:
 - median Cs with 25th–75th and 10th–90th percentile ribbons;
 - mean SNP density over accessible bases, with QC-failed bases shaded as
   unknown rather than converted to zero;
-- metadata-ordered species labels and an explicit categorical colour for no
+- comparison-species labels and an explicit categorical colour for no
   detected CNEr interval;
 - pinned plus- and minus-strand gene models shown 5′→3′ with aligned exon and
   CDS landmarks;

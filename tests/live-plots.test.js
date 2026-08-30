@@ -325,7 +325,7 @@ test('Pages heatmap retains accessible SVG metadata and browser-only tooltips', 
     assert.equal(tooltip.name, 'div');
     assert.ok(svg.listeners.has('pointermove'));
     assert.ok(svg.listeners.has('pointerleave'));
-    svg.listeners.get('pointermove')({ clientX: 500, clientY: 90 });
+    svg.listeners.get('pointermove')({ clientX: 500, clientY: 100 });
     assert.equal(tooltip.hidden, false);
     assert.match(tooltip.innerHTML, /mean identity|No detected CNEr interval/);
     svg.listeners.get('pointerleave')();

@@ -909,17 +909,15 @@
     addText(svg, requirePlotContract().heatmap_layout.title, plotLeft, 27, {
       fill: COLORS.ink, 'font-size': 18, 'font-weight': 700,
     });
-    addText(svg, `${result.chromosome}:${summary.displayStart.toLocaleString()}–${summary.displayEnd.toLocaleString()} · ${result.stackRows.length} metadata-ordered species · ${summary.bins.length} display bins`, plotLeft, 49, {
+    addText(svg, `${result.chromosome}:${summary.displayStart.toLocaleString()}–${summary.displayEnd.toLocaleString()} · ${result.stackRows.length} comparison species · ${summary.bins.length} display bins`, plotLeft, 49, {
       fill: COLORS.muted, 'font-size': 12,
     });
     addText(svg, 'Evidence-bounded cladogram', 22, 22, {
       fill: COLORS.muted, 'font-size': 10, 'font-weight': 650,
     });
     CLADE_NAMES.forEach((name, index) => {
-      const column = index % 2;
-      const row = Math.floor(index / 2);
-      const x = 22 + column * 108;
-      const y = 43 + row * 18;
+      const x = 22;
+      const y = 40 + index * 13;
       svg.append(svgElement('rect', { x, y: y - 9, width: 9, height: 9, fill: CLADE_COLORS[index] }));
       addText(svg, name, x + 14, y, { fill: COLORS.muted, 'font-size': 9 });
     });
