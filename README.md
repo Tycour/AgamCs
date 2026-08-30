@@ -5,6 +5,10 @@
 The GitHub Pages portal is the easiest way to query a current AgamP4.14
 `AGAP...` gene or exact transcript isoform on 2L, 2R, 3L, 3R, or X, or to enter
 AgamP4 genomic coordinates, then inspect the figures and download exact values.
+Either query mode can optionally add representative transcript tracks for every
+indexed gene overlapping the displayed region.
+Every transcript-ID label in the browser figures links to its parent gene's
+VectorBase record in a new tab.
 The conservation arrays are from the published AgamP4 dataset; AgamP4.14 refers
 to the current VectorBase annotation index used for gene and transcript lookup.
 The portal is available without installation. The command-line tool below is
@@ -211,7 +215,18 @@ not a biological threshold: it supports 13,080 of 13,097 indexed genes
 positions remain separate from the raw SNP-density values and are shown as
 unknown. Browser reads require HTTP 206 partial-content responses; the exact TSV
 retains every base and all 21 stack values while adaptive or explicitly selected
-display bins affect plots and SVG downloads only. Publishing and
+display bins affect plots and SVG downloads only. Range zoom can be chosen by
+dragging across either plot or entering inclusive genomic coordinates; nested
+zoom-out and full-query reset rerender the retained source arrays without a new
+Zenodo request. Plot selections expand to the touched display-bin boundaries,
+while the exact TSV and query summary remain scoped to the complete query.
+An optional annotation control works for both accession and manual-coordinate
+queries. It adds one representative transcript for each other indexed gene
+overlapping the current displayed range and updates locally as the plots are
+zoomed; the queried gene keeps its selected transcript or complete isoform set.
+Each transcript label in either browser figure is a direct link to its parent
+gene's VectorBase record.
+Publishing and
 implementation details are documented in
 [`docs/github-pages-prototype.md`](docs/github-pages-prototype.md).
 For larger intervals, custom highlight ranges, local-HDF5 use, and fully

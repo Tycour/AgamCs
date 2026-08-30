@@ -36,7 +36,14 @@ handling, decoded-cache invalidation, and the final partial HDF5 chunk.
 The published interface has one query portal. Versioned accessions, manual
 coordinates, and the labelled precomputed-example shortcuts all use the same
 browser reader and render into the same result area; there is no separate
-static demo form.
+static demo form. Accession and manual-coordinate queries may optionally add
+one representative transcript track for every indexed gene overlapping the
+current displayed range. Those tracks are selected from the already-loaded
+versioned index and update during retained-data zoom without another genomic
+request; the queried gene still retains its selected or complete isoform view.
+All transcript-ID labels rendered in either live SVG link to the corresponding
+VectorBase gene record and remain links in SVG downloads. VectorBase does not
+provide transcript-specific record pages for these AgamP4 transcript IDs.
 
 ## Rebuild the example catalogue
 
@@ -151,7 +158,13 @@ v2 uses one signal and heatmap display bin per base through 1,000 bases, then
 the bounded maximum of 1,000 bins. Separate selectors offer 240, 360, 500, 750,
 and 1,000 display bins, clamped to the inclusive locus length. These controls
 rerender retained data without a new query; SVGs follow the active resolution,
-while the TSV retains every queried base and all 21 exact stack values. The worker accepts
+while the TSV retains every queried base and all 21 exact stack values. A user
+can also drag horizontally on either plot or enter inclusive coordinates to
+focus both plots on one retained-data range. Plot selections expand to the
+touched display-bin boundaries; zoom-out follows nested range history and reset
+restores the complete query. This preserves original row-major stack indices,
+does not issue another genomic request, and leaves full-query TSV and summary
+scope unchanged. The worker accepts
 only HTTP 206 range responses, continues to refuse HTTP 200 full-file
 responses, and preserves the archived raw SNP-density plus separate
 QC-failed/unknown semantics.

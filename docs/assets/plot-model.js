@@ -87,36 +87,76 @@
     );
   }
 
+  function normalizeDisplayRange(result, displayRange = null) {
+    const sourceStart = Number(result?.start);
+    const sourceEnd = Number(result?.end);
+    if (!Number.isSafeInteger(sourceStart) || !Number.isSafeInteger(sourceEnd)
+        || sourceStart > sourceEnd) {
+      throw new Error('The plot result has an invalid genomic interval.');
+    }
+    if (displayRange == null) {
+      return { start: sourceStart, end: sourceEnd };
+    }
+    const requestedStart = Number(displayRange.start);
+    const requestedEnd = Number(displayRange.end);
+    if (!Number.isFinite(requestedStart) || !Number.isFinite(requestedEnd)) {
+      throw new Error('The display range requires finite start and end coordinates.');
+    }
+    const start = Math.max(sourceStart, Math.floor(Math.min(requestedStart, requestedEnd)));
+    const end = Math.min(sourceEnd, Math.ceil(Math.max(requestedStart, requestedEnd)));
+    if (start > end) {
+      throw new Error('The display range does not overlap the queried interval.');
+    }
+    return { start, end };
+  }
 
-  function transcriptAnnotationsForDisplay(displayAnnotation, annotations = null) {
+
+  function transcriptAnnotationsForDisplay(displayAnnotation, annotations = null, options = {}) {
     if (!displayAnnotation) return [];
     const candidates = annotations || [displayAnnotation];
+    const genomicRange = options.genomicRange || displayAnnotation;
+    const rangeStart = Number(genomicRange.start);
+    const rangeEnd = Number(genomicRange.end);
     const unique = new Map();
     candidates.forEach((annotation) => {
       if (!annotation?.transcript_id) return;
       if (String(annotation.chromosome) !== String(displayAnnotation.chromosome)) return;
-      if (Number(annotation.strand) !== Number(displayAnnotation.strand)) return;
-      if (Number(annotation.end) < Number(displayAnnotation.start)
-          || Number(annotation.start) > Number(displayAnnotation.end)) return;
+      if (!options.includeOppositeStrands
+          && Number(annotation.strand) !== Number(displayAnnotation.strand)) return;
+      if (Number(annotation.end) < rangeStart
+          || Number(annotation.start) > rangeEnd) return;
       if (!Array.isArray(annotation.exons) || !annotation.exons.length) return;
       unique.set(String(annotation.transcript_id), annotation);
     });
-    if (!unique.size && displayAnnotation.transcript_id) {
+    if (!unique.size && options.includeDisplayFallback !== false
+        && displayAnnotation.transcript_id) {
       unique.set(String(displayAnnotation.transcript_id), displayAnnotation);
     }
-    return [...unique.entries()]
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([_key, annotation]) => annotation);
+    const models = [...unique.values()];
+    if (options.sortByPosition) {
+      return models.sort((left, right) => (
+        Number(left.start) - Number(right.start)
+        || Number(left.end) - Number(right.end)
+        || String(left.transcript_id).localeCompare(String(right.transcript_id))
+      ));
+    }
+    return models.sort((left, right) => (
+      String(left.transcript_id).localeCompare(String(right.transcript_id))
+    ));
   }
 
-  function coordinateRecords(result, annotation = null) {
+  function coordinateRecords(result, annotation = null, displayRange = null) {
     const useAnnotation = annotationMatches(result, annotation);
+    const range = normalizeDisplayRange(result, displayRange);
     const mapper = useAnnotation
       ? (Number(annotation.strand) === -1
         ? (position) => Number(annotation.end) - position
         : (position) => position - Number(annotation.start))
       : (position) => position - result.start;
-    const records = Array.from({ length: result.values.Cs.length }, (_, index) => {
+    const firstIndex = range.start - result.start;
+    const recordCount = range.end - range.start + 1;
+    const records = Array.from({ length: recordCount }, (_, offset) => {
+      const index = firstIndex + offset;
       const position = result.start + index;
       return {
         index,
@@ -128,7 +168,12 @@
       };
     });
     records.sort((left, right) => left.x - right.x);
-    return { records, annotation: useAnnotation ? annotation : null };
+    return {
+      records,
+      annotation: useAnnotation ? annotation : null,
+      displayStart: range.start,
+      displayEnd: range.end,
+    };
   }
 
   function assignBins(records, maximumBins) {
@@ -147,8 +192,10 @@
     return { bins: bins.filter((bin) => bin.length), minimum, maximum, span, binCount };
   }
 
-  function summarizeSignals(result, annotation, contract, resolution = 'adaptive') {
-    const mapped = coordinateRecords(result, annotation);
+  function summarizeSignals(
+    result, annotation, contract, resolution = 'adaptive', displayRange = null,
+  ) {
+    const mapped = coordinateRecords(result, annotation, displayRange);
     const assigned = assignBins(
       mapped.records,
       resolveBinCount(mapped.records.length, 'signal', resolution, contract),
@@ -176,8 +223,10 @@
     return { ...mapped, ...assigned, cs, snp };
   }
 
-  function summarizeHeatmap(result, annotation, contract, resolution = 'adaptive') {
-    const mapped = coordinateRecords(result, annotation);
+  function summarizeHeatmap(
+    result, annotation, contract, resolution = 'adaptive', displayRange = null,
+  ) {
+    const mapped = coordinateRecords(result, annotation, displayRange);
     const assigned = assignBins(
       mapped.records,
       resolveBinCount(mapped.records.length, 'heatmap', resolution, contract),
@@ -324,6 +373,7 @@
     buildPlotModel,
     heatmapGeometry,
     mean,
+    normalizeDisplayRange,
     quantile,
     resolveBinCount,
     summarizeHeatmap,

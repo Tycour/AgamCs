@@ -170,6 +170,10 @@ def validate_page(page: Path) -> list[str]:
             'summary-exon-count', 'summary-method-note',
             'live-signal-download', 'live-heatmap-download',
             'signal-resolution', 'heatmap-resolution', 'plot-resolution-status',
+            'plot-range-current', 'plot-range-select', 'plot-range-back',
+            'plot-range-reset', 'plot-range-start', 'plot-range-end',
+            'plot-range-apply', 'plot-range-status',
+            'show-overlapping-annotations', 'overlap-annotation-help',
             'analytics-settings', 'analytics-consent', 'analytics-consent-title',
             'analytics-consent-description', 'analytics-consent-status',
             'analytics-accept', 'analytics-reject',
@@ -419,11 +423,21 @@ def validate_live_plot_renderer() -> list[str]:
         errors.append('live heatmap is missing its aligned CDS annotation strip')
     if 'transcript-model-row' not in text or 'transcriptAnnotationsForDisplay' not in text:
         errors.append('live plots are missing the shared multi-transcript annotation track')
+    if (
+        'function vectorBaseGeneUrl' not in text
+        or 'https://vectorbase.org/vectorbase/app/record/gene/' not in text
+        or "class: 'annotation-record-link'" not in text
+    ):
+        errors.append('live plot transcript labels are missing VectorBase gene-record links')
     site = (ROOT / 'assets/site.js').read_text(encoding='utf-8')
     if 'installHeatmapTooltip' not in text or 'installSignalTooltip' not in text:
         errors.append('live plots are missing browser-only tooltip enhancements')
+    if 'installPlotRangeSelector' not in text or 'rangeFromDisplayBins' not in text:
+        errors.append('live plots are missing outward-snapped range selection')
     if 'loadPlotContract' not in site or 'configurePlotContract' not in site:
         errors.append('live plots do not load the versioned plot contract')
+    if 'plotZoomHistory' not in site or 'resetPlotRange' not in site:
+        errors.append('live plots are missing retained-data zoom history and reset controls')
     packaged_contract = ROOT.parent / 'AgamCs/data/plot-contract.json'
     browser_contract = ROOT / 'assets/data/plot-contract.json'
     if not packaged_contract.exists() or packaged_contract.read_bytes() != browser_contract.read_bytes():

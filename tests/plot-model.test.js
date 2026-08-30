@@ -33,6 +33,62 @@ test('adaptive and explicit bin counts use inclusive length and bounded clamping
     assert.throws(() => model.validatePlotResolution(value, contract), /plot resolution/i);
   }
 });
+
+test('display ranges round outward and retain original row-major stack indices', () => {
+  const result = {
+    chromosome: '2L', start: 100, end: 105,
+    stackRows: ['row-a', 'row-b'],
+    values: {
+      Cs: Float32Array.from([0, 1, 2, 3, 4, 5]),
+      snp_density: Float32Array.from([0, 1, 2, 3, 4, 5]),
+      status: Uint8Array.from([1, 1, 1, 1, 1, 1]),
+      stack: Float32Array.from([
+        10, 11, 12, 13, 14, 15,
+        20, 21, 22, 23, 24, 25,
+      ]),
+    },
+  };
+  assert.deepEqual(
+    model.normalizeDisplayRange(result, { start: 101.2, end: 103.1 }),
+    { start: 101, end: 104 },
+  );
+  const summary = model.summarizeHeatmap(
+    result, null, contract, 'adaptive', { start: 101.2, end: 103.1 },
+  );
+  assert.deepEqual(summary.bins.map((bin) => bin.map((record) => record.index)), [
+    [1], [2], [3], [4],
+  ]);
+  assert.deepEqual(summary.cells[0].map((cell) => cell.identity), [11, 12, 13, 14]);
+  assert.deepEqual(summary.cells[1].map((cell) => cell.identity), [21, 22, 23, 24]);
+  assert.throws(
+    () => model.normalizeDisplayRange(result, { start: 1, end: 2 }),
+    /does not overlap/i,
+  );
+});
+
+test('minus-strand display ranges keep 5-prime orientation with original indices', () => {
+  const result = {
+    chromosome: '3R', start: 100, end: 105,
+    stackRows: ['row-a'],
+    values: {
+      Cs: Float32Array.from([0, 1, 2, 3, 4, 5]),
+      snp_density: Float32Array.from([0, 1, 2, 3, 4, 5]),
+      status: Uint8Array.from([1, 1, 1, 1, 1, 1]),
+      stack: Float32Array.from([10, 11, 12, 13, 14, 15]),
+    },
+  };
+  const annotation = {
+    chromosome: '3R', start: 100, end: 105, strand: -1,
+    transcript_id: 'AGAPTEST-RA', exons: [{ start: 100, end: 105 }],
+  };
+  const summary = model.summarizeHeatmap(
+    result, annotation, contract, 'adaptive', { start: 101, end: 104 },
+  );
+  assert.deepEqual(summary.records.map((record) => record.position), [104, 103, 102, 101]);
+  assert.deepEqual(summary.bins.map((bin) => bin[0].index), [4, 3, 2, 1]);
+  assert.deepEqual(summary.cells[0].map((cell) => cell.identity), [14, 13, 12, 11]);
+});
+
 test('contract palette has stable bounded RGB samples', () => {
   const expected = [
     [47, 47, 47],
@@ -84,5 +140,31 @@ test('multi-isoform filtering is stable and matches the displayed gene frame', (
     model.transcriptAnnotationsForDisplay(display, annotations)
       .map((annotation) => annotation.transcript_id),
     ['AGAPTEST-RA', 'AGAPTEST-RB'],
+  );
+});
+
+test('regional annotation filtering can retain opposite-strand overlapping genes', () => {
+  const display = {
+    chromosome: '3R', start: 100, end: 500, strand: -1,
+    transcript_id: 'AGAPTEST-RA', exons: [{ start: 100, end: 200 }],
+  };
+  const annotations = [
+    display,
+    {
+      id: 'AGAPOTHER', chromosome: '3R', start: 520, end: 580, strand: 1,
+      transcript_id: 'AGAPOTHER-RA', exons: [{ start: 520, end: 580 }],
+    },
+    {
+      id: 'AGAPOUTSIDE', chromosome: '3R', start: 601, end: 620, strand: 1,
+      transcript_id: 'AGAPOUTSIDE-RA', exons: [{ start: 601, end: 620 }],
+    },
+  ];
+  assert.deepEqual(
+    model.transcriptAnnotationsForDisplay(display, annotations, {
+      genomicRange: { start: 450, end: 600 },
+      includeOppositeStrands: true,
+      sortByPosition: true,
+    }).map((annotation) => annotation.transcript_id),
+    ['AGAPTEST-RA', 'AGAPOTHER-RA'],
   );
 });

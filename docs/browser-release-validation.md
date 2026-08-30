@@ -30,6 +30,24 @@ then use the bounded maximum of 1,000 bins. Contract-derived choices of 240,
 360, 500, 750, and 1,000 bins rerender retained in-memory results and SVG
 downloads,
 while exact TSV data and the 200,000-base transport ceiling remain unchanged.
+An explicit display-range layer now supports horizontal selection on either
+plot plus inclusive coordinate inputs, nested zoom-out, and full-query reset.
+Selections expand outward to every touched display bin and then reapply the
+same bounded resolution policy to original full-query record indices. The
+row-major 21-species stack is never naively sliced, no zoom action issues a new
+genomic request, SVG filenames include focused coordinates, and exact TSV and
+query-summary scope remain the full query.
+
+The overlapping-annotation update adds an optional, index-only display layer
+for both accession and manual-coordinate queries. It selects genes by inclusive
+overlap with the current displayed range, shows one representative transcript
+per additional gene on either strand, and recomputes that set when retained
+data are zoomed. The queried gene retains its selected transcript or all of its
+isoforms, remains the sole source of accession exon summaries and CDS guides,
+and is excluded from the additional-gene count. Toggling this layer does not
+issue a Zenodo request or change exact TSV data.
+Every transcript-ID label under both live plots opens its parent gene's
+VectorBase record in a new tab; downloaded SVGs retain the same links.
 
 ## Scientific regression matrix
 
@@ -115,9 +133,9 @@ and slices only the logical chromosome interval.
 
 The Phase 2 candidate passes:
 
-- 68 Python tests, including 150,000- and 200,000-base Python/JavaScript model
+- 82 Python tests, including 150,000- and 200,000-base Python/JavaScript model
   parity with zero semantic or numeric drift;
-- 67 JavaScript contract, interaction, worker, accession, search, plot, and
+- 73 JavaScript contract, interaction, worker, accession, search, plot, and
   exact-TSV tests;
 - regenerated query-asset verification against the local authoritative HDF5;
 - complete versioned accession-index verification;
