@@ -15,10 +15,6 @@ import math
 from collections import Counter, defaultdict
 from pathlib import Path
 
-import h5py
-import numpy as np
-
-
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ACCESSION_INDEX = ROOT / 'docs/assets/data/accession-index.json'
 DEFAULT_SCORE_FILE = ROOT / 'data/AgamP4_conservation.h5'
@@ -68,7 +64,9 @@ def _annotation_intervals(annotation: dict, accession: str) -> dict[str, list[tu
     return {'gene_span': [(start, end)], 'representative_exons': exons}
 
 
-def _parts(dataset, intervals: list[tuple[int, int]]) -> list[np.ndarray]:
+def _parts(dataset, intervals: list[tuple[int, int]]) -> list:
+    import numpy as np
+
     prefix = (0,) if dataset.ndim == 2 else ()
     return [
         np.asarray(dataset[prefix + (slice(start - 1, end),)])
@@ -77,6 +75,8 @@ def _parts(dataset, intervals: list[tuple[int, int]]) -> list[np.ndarray]:
 
 
 def _cs_summary(dataset, intervals: dict, accession: str) -> dict[str, dict]:
+    import numpy as np
+
     summaries = {}
     for metric, regions in intervals.items():
         values = np.concatenate(_parts(dataset, regions)).astype(np.float64, copy=False)
@@ -88,6 +88,8 @@ def _cs_summary(dataset, intervals: dict, accession: str) -> dict[str, dict]:
 
 
 def _snp_summary(snp_dataset, status_dataset, intervals: dict) -> dict[str, dict]:
+    import numpy as np
+
     summaries = {}
     for metric, regions in intervals.items():
         values = np.concatenate(_parts(snp_dataset, regions)).astype(np.float64, copy=False)
@@ -390,6 +392,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    import h5py
+
     args = parse_args()
     index = json.loads(args.accession_index.read_text(encoding='utf-8'))
     if args.verify:
