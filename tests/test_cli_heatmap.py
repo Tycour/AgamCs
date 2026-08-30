@@ -1,3 +1,4 @@
+import json
 import sys
 
 import pytest
@@ -64,6 +65,44 @@ def test_explicit_base_level_mode_preserves_legacy_renderer(tmp_path, monkeypatc
 
     assert 'binned' not in observed
     assert observed['base'][1].endswith('manual_heatmap.png')
+
+
+def test_accession_pipeline_writes_and_reports_gene_ranking(tmp_path, monkeypatch, capsys):
+    observed = {}
+    _stub_plot_pipeline(monkeypatch, observed)
+    ranking = {
+        'accession': 'AGAPTEST',
+        'chromosome': '2L',
+        'ranking_version': 'test-v1',
+        'coordinate_index_version': 'index-v1',
+        'score_source': {},
+        'percentile_method': 'test',
+        'metrics': {},
+        'cohorts': {'global_gene_count': 2, 'chromosome_gene_counts': {'2L': 2}},
+        'gene_span': {
+            'mean_cs': 0.25,
+            'global': {'rank': 2, 'ties': 1, 'percentile': 0.0},
+            'chromosome': {'rank': 2, 'ties': 1, 'percentile': 0.0},
+        },
+        'representative_exons': {
+            'mean_cs': 0.75,
+            'global': {'rank': 1, 'ties': 1, 'percentile': 100.0},
+            'chromosome': {'rank': 1, 'ties': 1, 'percentile': 100.0},
+        },
+    }
+
+    main.process_region(
+        '2L:1-3',
+        'AGAPTEST',
+        results_root=tmp_path,
+        gene_ranking=ranking,
+    )
+
+    path = tmp_path / 'AGAPTEST' / 'gene_conservation_ranking.json'
+    assert json.loads(path.read_text()) == ranking
+    output = capsys.readouterr().out
+    assert 'Gene conservation ranking for AGAPTEST' in output
+    assert 'global 2 of 2; 0.00th percentile' in output
 
 
 def test_cli_parser_defaults_to_binned_and_accepts_legacy_mode(monkeypatch):

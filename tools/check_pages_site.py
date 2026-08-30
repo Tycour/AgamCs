@@ -11,6 +11,7 @@ from urllib.parse import unquote, urlparse
 from build_pages_accession_index import validate_index
 from build_pages_examples import load_accession_list, load_catalogue, verify_assets
 from build_pages_gene_search import validate_gene_search
+from build_gene_rankings import validate_gene_rankings
 
 
 ROOT = Path(__file__).resolve().parents[1] / 'docs'
@@ -19,6 +20,8 @@ EXAMPLES_PATH = ROOT / 'examples.json'
 BATCH_ACCESSIONS_PATH = ROOT.parent / 'batch_accessions_example.txt'
 ACCESSION_INDEX_PATH = ROOT / 'assets/data/accession-index.json'
 GENE_SEARCH_PATH = ROOT / 'assets/data/gene-search.json'
+GENE_RANKINGS_PATH = ROOT / 'assets/data/gene-rankings.json'
+PACKAGED_GENE_RANKINGS_PATH = ROOT.parent / 'AgamCs/data/gene-rankings.json'
 QUERY_ASSETS = (
     ROOT / 'assets/data/score-reference.json',
     ROOT / 'assets/data/accessibility-reference.json',
@@ -32,8 +35,10 @@ QUERY_ASSETS = (
     ROOT / 'assets/query-interaction.js',
     ROOT / 'assets/accession-lookup.js',
     ROOT / 'assets/gene-search.js',
+    ROOT / 'assets/gene-ranking.js',
     ACCESSION_INDEX_PATH,
     GENE_SEARCH_PATH,
+    GENE_RANKINGS_PATH,
     ROOT / 'assets/data/plot-contract.json',
 )
 QUERY_ARRAYS = {'Cs', 'snp_density', 'stack'}
@@ -168,6 +173,8 @@ def validate_page(page: Path) -> list[str]:
             'resolved-gene-id',
             'summary-exons-card', 'summary-cs-exons', 'summary-snp-exons',
             'summary-exon-count', 'summary-method-note',
+            'summary-ranking-card', 'summary-rank-span', 'summary-rank-exons',
+            'summary-ranking-note',
             'live-signal-download', 'live-heatmap-download',
             'signal-resolution', 'heatmap-resolution', 'plot-resolution-status',
             'plot-range-current', 'plot-range-select', 'plot-range-back',
@@ -193,7 +200,7 @@ def validate_page(page: Path) -> list[str]:
         if 'First five returned positions' in page_text:
             errors.append('index.html: obsolete per-position preview remains')
         for required_summary_text in (
-            'Base pairs (bp)', 'Aggregated exons',
+            'Base pairs (bp)', 'Aggregated exons', 'Gene conservation percentile',
             'Gene accession, symbol, or transcript accession',
             'Transcript isoform', 'Thomas Courty', 'Windbichler Lab',
             'Imperial College London', 'Query processing runs in your browser',
@@ -347,6 +354,25 @@ def validate_gene_names() -> list[str]:
     return errors
 
 
+def validate_rankings() -> list[str]:
+    """Require exact full-index ranking coverage and package/browser parity."""
+    try:
+        index = json.loads(ACCESSION_INDEX_PATH.read_text(encoding='utf-8'))
+        rankings = json.loads(GENE_RANKINGS_PATH.read_text(encoding='utf-8'))
+        validate_gene_rankings(rankings, index)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return [f'could not validate gene rankings: {error}']
+
+    errors = []
+    if not PACKAGED_GENE_RANKINGS_PATH.exists():
+        errors.append('packaged gene-ranking asset is missing')
+    elif PACKAGED_GENE_RANKINGS_PATH.read_bytes() != GENE_RANKINGS_PATH.read_bytes():
+        errors.append('package and browser gene-ranking assets differ')
+    if rankings['cohorts']['global_gene_count'] != EXPECTED_ACCESSION_RECORDS:
+        errors.append('gene-ranking denominator does not cover every indexed gene')
+    return errors
+
+
 def validate_pages_payload() -> list[str]:
     """Ensure Pages contains only the small client and metadata assets."""
     errors = []
@@ -493,6 +519,7 @@ def main() -> None:
     errors.extend(validate_examples())
     errors.extend(validate_accessions())
     errors.extend(validate_gene_names())
+    errors.extend(validate_rankings())
     errors.extend(validate_pages_payload())
     errors.extend(validate_analytics())
     errors.extend(validate_release_versions())

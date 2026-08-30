@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-30-heatmap-axis';
+const PAGES_RELEASE = '2026-08-30-gene-rankings';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -84,6 +84,7 @@ let queryManifestPromise;
 let plotContractPromise;
 let accessionIndexPromise;
 let geneSearchPromise;
+let geneRankingPromise;
 let accessionIndexSnapshot;
 let geneSearchSnapshot;
 let queryManifestSnapshot;
@@ -223,6 +224,18 @@ async function loadGeneSearch() {
     });
   }
   return geneSearchPromise;
+}
+
+async function loadGeneRankings() {
+  if (!geneRankingPromise) {
+    geneRankingPromise = fetch(versionedAsset('assets/data/gene-rankings.json')).then(
+      async (response) => {
+        if (!response.ok) throw new Error(`Gene-ranking request failed (${response.status}).`);
+        return globalThis.AgamCsGeneRankings.validate(await response.json());
+      },
+    );
+  }
+  return geneRankingPromise;
 }
 
 function closeAccessionSuggestions() {
@@ -506,6 +519,7 @@ function setLiveQueryMode(mode) {
   accessionQueryPanel.hidden = !byAccession;
   coordinateQueryPanel.hidden = byAccession;
   closeAccessionSuggestions();
+  renderGeneRanking(null, null);
   setPortalState('Ready for a query', 'Ready');
   benchmarkStatus.textContent = byAccession
     ? 'Ready to resolve a gene accession or official symbol, or a transcript accession.'
@@ -646,6 +660,39 @@ function buildTsv(data) {
 
 function displayNumber(value) {
   return Number.isFinite(value) ? value.toPrecision(6) : 'NA';
+}
+
+function rankingPosition(statistics) {
+  const position = statistics.first === statistics.last
+    ? statistics.first.toLocaleString()
+    : `${statistics.first.toLocaleString()}–${statistics.last.toLocaleString()} (tie)`;
+  return `rank ${position} of ${statistics.count.toLocaleString()}`;
+}
+
+function renderGeneRanking(rankingDocument, accession) {
+  const card = rankingDocument
+    ? globalThis.AgamCsGeneRankings.lookup(rankingDocument, accession)
+    : null;
+  const element = document.querySelector('#summary-ranking-card');
+  element.hidden = !card;
+  if (!card) return;
+  const renderMetric = (metric, valueId, detailId) => {
+    document.querySelector(valueId).textContent =
+      `${metric.global.percentile.toFixed(2)}th`;
+    document.querySelector(detailId).textContent =
+      `Global ${rankingPosition(metric.global)} · ${card.chromosome} `
+      + `${metric.chromosome.percentile.toFixed(2)}th percentile `
+      + `(${rankingPosition(metric.chromosome)})`;
+  };
+  renderMetric(card.metrics.gene_span, '#summary-rank-span', '#summary-rank-span-detail');
+  renderMetric(
+    card.metrics.representative_exons,
+    '#summary-rank-exons',
+    '#summary-rank-exons-detail',
+  );
+  document.querySelector('#summary-ranking-note').textContent =
+    `Static ${card.accession} ranking; padding and selected non-representative isoforms do not `
+    + `change it. Exon ranking uses ${card.representativeTranscript}. ${card.interpretation}`;
 }
 
 function renderQuerySummary(
@@ -1099,6 +1146,7 @@ async function runLiveQuery() {
   let accessionIndex = null;
   let resolution = null;
   let paddingDetails = null;
+  renderGeneRanking(null, null);
   setPortalState('Preparing query', 'Loading', 'loading');
   benchmarkStatus.textContent = mode === 'accession'
     ? 'Resolving the gene or transcript from the versioned AgamP4 indexes…'
@@ -1120,6 +1168,8 @@ async function runLiveQuery() {
       closeAccessionSuggestions();
       configureIsoformControl(resolution.accession);
       updatePaddingHelp();
+      const rankingDocument = await loadGeneRankings().catch(() => null);
+      renderGeneRanking(rankingDocument, resolution.geneAccession);
     } catch (error) {
       setPortalState('Query not run', 'Check input', 'error');
       benchmarkStatus.textContent = `Accession lookup stopped: ${error.message}`;
