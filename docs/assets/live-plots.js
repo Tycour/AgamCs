@@ -13,6 +13,7 @@
     cdsEdge: '#084594',
     utr: '#deebf7',
     intron: '#4d4d4d',
+    link: '#0c675a',
   };
   const CLADE_COLORS = ['#3f007d', '#8c2981', '#cc4678', '#d95f0e'];
   const CLADE_NAMES = ['gambiae complex', 'Other Anopheles', 'New World', 'Outgroups'];
@@ -106,6 +107,36 @@
     return element;
   }
 
+  function vectorBaseGeneUrl(geneId) {
+    const normalized = String(geneId || '').trim();
+    return normalized
+      ? `https://vectorbase.org/vectorbase/app/record/gene/${encodeURIComponent(normalized)}`
+      : null;
+  }
+
+  function addTranscriptLink(parent, geneId, transcriptId, text, x, y, attributes = {}) {
+    const href = vectorBaseGeneUrl(geneId);
+    if (!href) return addText(parent, text, x, y, attributes);
+    const link = svgElement('a', {
+      href,
+      target: '_blank',
+      rel: 'noopener noreferrer',
+      class: 'annotation-record-link',
+      'aria-label': `View VectorBase gene ${geneId} for transcript ${transcriptId} (opens in a new tab)`,
+      style: 'cursor: pointer',
+    });
+    const title = svgElement('title');
+    title.textContent = `View VectorBase gene ${geneId} for transcript ${transcriptId}`;
+    link.append(title);
+    addText(link, text, x, y, {
+      ...attributes,
+      fill: COLORS.link,
+      'text-decoration': 'underline',
+    });
+    parent.append(link);
+    return link;
+  }
+
   function linearScale(domainMin, domainMax, rangeMin, rangeMax) {
     const span = domainMax - domainMin;
     return (value) => span === 0
@@ -183,16 +214,18 @@
     return transcriptModelGeometry(annotation, annotation).cds;
   }
 
-  function transcriptModelGeometry(annotation, displayAnnotation) {
+  function transcriptModelGeometry(annotation, displayAnnotation, genomicRange = null) {
     if (!annotation || !displayAnnotation) return { transcript: null, exons: [], cds: [] };
     const displayStart = Number(displayAnnotation.start);
     const displayEnd = Number(displayAnnotation.end);
+    const clipStart = Number(genomicRange?.start ?? displayStart);
+    const clipEnd = Number(genomicRange?.end ?? displayEnd);
     const mapper = Number(displayAnnotation.strand) === -1
       ? (position) => displayEnd - position
       : (position) => position - displayStart;
     const mappedInterval = (startValue, endValue) => {
-      const start = Math.max(Number(startValue), displayStart);
-      const end = Math.min(Number(endValue), displayEnd);
+      const start = Math.max(Number(startValue), clipStart);
+      const end = Math.min(Number(endValue), clipEnd);
       if (!Number.isFinite(start) || !Number.isFinite(end) || start > end) return null;
       return [Math.min(mapper(start), mapper(end)), Math.max(mapper(start), mapper(end))];
     };
@@ -275,9 +308,16 @@
     const labelLeft = layout.labelLeft || 86;
     const centre = layout.centre || 531;
     const legendLeft = layout.legendLeft || 730;
-    addText(svg, `${annotation.transcript_id || annotation.id} (${strand} strand; shown 5′→3′)`, labelLeft, y + 34, {
-      fill: COLORS.ink, 'font-size': 13, 'font-weight': 650,
-    });
+    const transcriptId = annotation.transcript_id;
+    addTranscriptLink(
+      svg,
+      annotation.id,
+      transcriptId,
+      `${transcriptId || annotation.id} (${strand} strand; shown 5′→3′)`,
+      labelLeft,
+      y + 34,
+      { 'font-size': 13, 'font-weight': 650 },
+    );
     addLegendItem(svg, legendLeft, y + 34, annotation.cds_start == null ? 'Exon' : 'UTR', {
       color: COLORS.utr, stroke: COLORS.cds,
     });
@@ -333,7 +373,11 @@
   function drawTranscriptModels(
     svg, displayAnnotation, annotations, xScale, y, xMinimum, xMaximum, layout = {},
   ) {
-    const models = transcriptAnnotationsForDisplay(displayAnnotation, annotations);
+    const models = transcriptAnnotationsForDisplay(displayAnnotation, annotations, {
+      genomicRange: layout.filterRange || layout.genomicRange,
+      includeOppositeStrands: Boolean(layout.includeOppositeStrands),
+      sortByPosition: Boolean(layout.sortByPosition),
+    });
     if (!models.length) return y;
     const rowHeight = layout.rowHeight || 24;
     const labelX = layout.labelX ?? xScale(xMinimum) - 8;
@@ -343,7 +387,7 @@
     const selectedTranscriptId = layout.selectedTranscriptId || displayAnnotation.transcript_id;
     const rowStart = y + 34;
 
-    addText(svg, `Transcript models (${models.length}; selected/representative in bold)`, titleX, y, {
+    addText(svg, layout.title || `Transcript models (${models.length}; selected/representative in bold)`, titleX, y, {
       fill: COLORS.ink, 'font-size': 12, 'font-weight': 700,
     });
     addLegendItem(svg, legendLeft, y, 'UTR', { color: COLORS.utr, stroke: COLORS.cds });
@@ -352,7 +396,9 @@
     models.forEach((annotation, index) => {
       const rowY = rowStart + index * rowHeight;
       const selected = annotation.transcript_id === selectedTranscriptId;
-      const geometry = transcriptModelGeometry(annotation, displayAnnotation);
+      const geometry = transcriptModelGeometry(
+        annotation, displayAnnotation, layout.genomicRange,
+      );
       const transcript = geometry.transcript
         ? clipMappedInterval(geometry.transcript, xMinimum, xMaximum)
         : null;
@@ -366,8 +412,9 @@
         class: `transcript-model-row${selected ? ' selected-transcript-model' : ''}`,
         'data-transcript-id': annotation.transcript_id,
       });
-      addText(group, annotation.transcript_id, labelX, rowY + 4, {
-        'text-anchor': 'end', fill: COLORS.ink, 'font-size': 9,
+      const strand = Number(annotation.strand) === -1 ? '−' : '+';
+      addTranscriptLink(group, annotation.id, annotation.transcript_id, `${annotation.transcript_id} ${strand}`, labelX, rowY + 4, {
+        'text-anchor': 'end', 'font-size': 9,
         'font-weight': selected ? 800 : 500,
       });
       if (transcript) {
@@ -410,7 +457,7 @@
       x1: xScale(xMinimum), x2: xScale(xMaximum), y1: axisY, y2: axisY,
       stroke: COLORS.muted, 'stroke-width': 1,
     }));
-    addText(svg, `Position relative to ${displayAnnotation.id} transcription start (bp)`, centre, axisY + 44, {
+    addText(svg, layout.axisLabel || `Position relative to ${displayAnnotation.id} transcription start (bp)`, centre, axisY + 44, {
       'text-anchor': 'middle', fill: COLORS.ink, 'font-size': 12,
     });
     return axisY + 58;
@@ -575,15 +622,29 @@
   ) {
     const summary = summarizeSignals(result, annotation, resolution, displayRange);
     const hasAnnotation = Boolean(summary.annotation);
+    const displayAnnotation = summary.annotation || {
+      id: `${result.chromosome}:${result.start}-${result.end}`,
+      chromosome: result.chromosome,
+      start: result.start,
+      end: result.end,
+      strand: 1,
+    };
     const annotationModels = transcriptAnnotationsForDisplay(
-      summary.annotation,
+      displayAnnotation,
       transcriptAnnotations || (summary.annotation ? [summary.annotation] : []),
+      {
+        genomicRange: { start: result.start, end: result.end },
+        includeOppositeStrands: true,
+        sortByPosition: !hasAnnotation,
+        includeDisplayFallback: false,
+      },
     );
+    const hasAnnotationTracks = annotationModels.length > 0;
     const width = 1000;
-    const height = hasAnnotation
+    const height = hasAnnotationTracks
       ? Math.max(700, 592 + annotationModels.length * 24)
       : 520;
-    const plotLeft = 86;
+    const plotLeft = hasAnnotationTracks ? 115 : 86;
     const plotRight = 976;
     const plotWidth = plotRight - plotLeft;
     const csTop = 76;
@@ -647,15 +708,41 @@
           }));
         }
         });
-      if (annotationModels.length > 1) {
+      const onlyQueriedModel = annotationModels.length === 1
+        && annotationModels[0].transcript_id === summary.annotation.transcript_id;
+      if (annotationModels.length && !onlyQueriedModel) {
         drawTranscriptModels(
           svg, summary.annotation, annotationModels, xScale, 478,
           summary.minimum, summary.maximum,
-          { selectedTranscriptId: summary.annotation.transcript_id },
+          {
+            selectedTranscriptId: summary.annotation.transcript_id,
+            genomicRange: { start: summary.displayStart, end: summary.displayEnd },
+            filterRange: { start: result.start, end: result.end },
+            includeOppositeStrands: true,
+            title: `Gene/transcript models (${annotationModels.length}; queried representative in bold)`,
+          },
         );
-      } else {
+      } else if (onlyQueriedModel) {
         drawGeneModel(svg, summary.annotation, xScale, 490, summary.minimum, summary.maximum);
+      } else {
+        drawXAxis(
+          svg, xScale, summary.minimum, summary.maximum, snpTop + snpHeight,
+          `Position relative to ${summary.annotation.id} transcription start (bp)`,
+        );
       }
+    } else if (hasAnnotationTracks) {
+      drawTranscriptModels(
+        svg, displayAnnotation, annotationModels, xScale, 478,
+        summary.minimum, summary.maximum,
+        {
+          genomicRange: { start: summary.displayStart, end: summary.displayEnd },
+          filterRange: { start: result.start, end: result.end },
+          includeOppositeStrands: true,
+          sortByPosition: true,
+          title: `Overlapping gene models (${annotationModels.length}; representative transcript per gene)`,
+          axisLabel: `Position in plotted region (bp; Chromosome ${result.chromosome}: ${summary.displayStart.toLocaleString()}–${summary.displayEnd.toLocaleString()})`,
+        },
+      );
     } else {
       drawXAxis(
         svg, xScale, summary.minimum, summary.maximum, snpTop + snpHeight,
@@ -778,15 +865,29 @@
     const summary = summarizeHeatmap(result, annotation, resolution, displayRange);
     const speciesTree = validateSpeciesTopology(result.stackTopology, result.stackRows);
     const hasAnnotation = Boolean(summary.annotation);
+    const displayAnnotation = summary.annotation || {
+      id: `${result.chromosome}:${result.start}-${result.end}`,
+      chromosome: result.chromosome,
+      start: result.start,
+      end: result.end,
+      strand: 1,
+    };
     const annotationModels = transcriptAnnotationsForDisplay(
-      summary.annotation,
+      displayAnnotation,
       transcriptAnnotations || (summary.annotation ? [summary.annotation] : []),
+      {
+        genomicRange: { start: result.start, end: result.end },
+        includeOppositeStrands: true,
+        sortByPosition: !hasAnnotation,
+        includeDisplayFallback: false,
+      },
     );
+    const hasAnnotationTracks = annotationModels.length > 0;
     const geometry = plotModel.heatmapGeometry(
       result.stackRows.length,
       summary.bins.length,
       requirePlotContract(),
-      hasAnnotation ? annotationModels.length : 0,
+      hasAnnotationTracks ? annotationModels.length : 0,
     );
     const {
       width, height, rowTop, rowHeight, plotLeft, plotRight, plotWidth, plotHeight,
@@ -879,7 +980,9 @@
           stroke: '#ffffff', 'stroke-width': 1, 'stroke-dasharray': '4 3', opacity: 0.72,
         }));
         });
-      if (annotationModels.length > 1) {
+      const onlyQueriedModel = annotationModels.length === 1
+        && annotationModels[0].transcript_id === summary.annotation.transcript_id;
+      if (annotationModels.length && !onlyQueriedModel) {
         drawTranscriptModels(
           svg, summary.annotation, annotationModels, xScale, legendY + 60,
           summary.minimum, summary.maximum,
@@ -889,14 +992,40 @@
             centre: (plotLeft + plotRight) / 2,
             legendLeft: 700,
             selectedTranscriptId: summary.annotation.transcript_id,
+            genomicRange: { start: summary.displayStart, end: summary.displayEnd },
+            filterRange: { start: result.start, end: result.end },
+            includeOppositeStrands: true,
+            title: `Gene/transcript models (${annotationModels.length}; queried representative in bold)`,
           },
         );
-      } else {
+      } else if (onlyQueriedModel) {
         drawGeneModel(
           svg, summary.annotation, xScale, legendY + 70, summary.minimum, summary.maximum,
           { labelLeft: plotLeft, centre: (plotLeft + plotRight) / 2, legendLeft: 700 },
         );
+      } else {
+        drawXAxis(
+          svg, xScale, summary.minimum, summary.maximum, rowTop + plotHeight,
+          `Position relative to ${summary.annotation.id} transcription start (bp)`,
+        );
       }
+    } else if (hasAnnotationTracks) {
+      drawTranscriptModels(
+        svg, displayAnnotation, annotationModels, xScale, legendY + 60,
+        summary.minimum, summary.maximum,
+        {
+          labelX: plotLeft - 10,
+          titleX: plotLeft,
+          centre: (plotLeft + plotRight) / 2,
+          legendLeft: 700,
+          genomicRange: { start: summary.displayStart, end: summary.displayEnd },
+          filterRange: { start: result.start, end: result.end },
+          includeOppositeStrands: true,
+          sortByPosition: true,
+          title: `Overlapping gene models (${annotationModels.length}; representative transcript per gene)`,
+          axisLabel: `Position in plotted region (bp; Chromosome ${result.chromosome}: ${summary.displayStart.toLocaleString()}–${summary.displayEnd.toLocaleString()})`,
+        },
+      );
     } else {
       drawXAxis(
         svg, xScale, summary.minimum, summary.maximum, rowTop + plotHeight,
@@ -925,6 +1054,7 @@
     summarizeQuery,
     summarizeSignals,
     summarizeHeatmap,
+    vectorBaseGeneUrl,
     abbreviatedSpeciesName,
     topologyTipCodes,
     validateSpeciesTopology,

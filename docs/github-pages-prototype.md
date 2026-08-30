@@ -36,7 +36,14 @@ handling, decoded-cache invalidation, and the final partial HDF5 chunk.
 The published interface has one query portal. Versioned accessions, manual
 coordinates, and the labelled precomputed-example shortcuts all use the same
 browser reader and render into the same result area; there is no separate
-static demo form.
+static demo form. Accession and manual-coordinate queries may optionally add
+one representative transcript track for every indexed gene overlapping the
+current displayed range. Those tracks are selected from the already-loaded
+versioned index and update during retained-data zoom without another genomic
+request; the queried gene still retains its selected or complete isoform view.
+All transcript-ID labels rendered in either live SVG link to the corresponding
+VectorBase gene record and remain links in SVG downloads. VectorBase does not
+provide transcript-specific record pages for these AgamP4 transcript IDs.
 
 ## Rebuild the example catalogue
 

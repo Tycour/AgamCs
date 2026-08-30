@@ -21,6 +21,7 @@ const {
   renderHeatmap,
   topologyTipCodes,
   validateSpeciesTopology,
+  vectorBaseGeneUrl,
 } = globalThis.AgamCsPlots;
 
 class FakeElement {
@@ -63,6 +64,10 @@ function siteExportHelpers() {
   return context.exports;
 }
 
+function descendants(element) {
+  return (element.children || []).flatMap((child) => [child, ...descendants(child)]);
+}
+
 test('annotations remain active when the query includes flanking padding', () => {
   const annotation = { chromosome: '2L', start: 100, end: 200 };
   assert.equal(annotationMatches({ chromosome: '2L', start: 75, end: 225 }, annotation), true);
@@ -75,6 +80,18 @@ test('species labels use established genus abbreviations', () => {
   assert.equal(abbreviatedSpeciesName('Aedes aegypti '), 'Ae. aegypti');
   assert.equal(abbreviatedSpeciesName('Culex quinquefasciatus'), 'Cx. quinquefasciatus');
   assert.equal(abbreviatedSpeciesName('Drosophila melanogaster'), 'D. melanogaster');
+});
+
+test('annotation labels use encoded VectorBase gene URLs', () => {
+  assert.equal(
+    vectorBaseGeneUrl('AGAP004050'),
+    'https://vectorbase.org/vectorbase/app/record/gene/AGAP004050',
+  );
+  assert.equal(
+    vectorBaseGeneUrl('AGAP004050/unsafe'),
+    'https://vectorbase.org/vectorbase/app/record/gene/AGAP004050%2Funsafe',
+  );
+  assert.equal(vectorBaseGeneUrl('  '), null);
 });
 
 test('plot range selection expands outward to every touched display bin', () => {
@@ -236,6 +253,23 @@ test('transcript models stay aligned in a shared minus-strand gene frame', () =>
   });
 });
 
+test('regional transcript geometry can extend beyond the queried gene frame', () => {
+  const display = { chromosome: '2L', start: 100, end: 200, strand: 1 };
+  const neighbouringGene = {
+    chromosome: '2L', start: 210, end: 230, strand: -1,
+    exons: [{ start: 210, end: 215 }, { start: 225, end: 230 }],
+    cds_start: 212, cds_end: 228,
+  };
+  assert.deepEqual(
+    transcriptModelGeometry(neighbouringGene, display, { start: 90, end: 240 }),
+    {
+      transcript: [110, 130],
+      exons: [[110, 115], [125, 130]],
+      cds: [[112, 115], [125, 128]],
+    },
+  );
+});
+
 test('multi-transcript tracks retain unique overlapping models on the same strand', () => {
   const display = {
     chromosome: '2L', start: 100, end: 500, strand: 1,
@@ -302,6 +336,101 @@ test('Pages heatmap retains accessible SVG metadata and browser-only tooltips', 
   }
 });
 
+test('manual-coordinate heatmaps can render indexed overlapping gene models', () => {
+  const previousDocument = globalThis.document;
+  globalThis.document = {
+    createElementNS: (_namespace, name) => new FakeElement(name),
+    createElement: (name) => new FakeElement(name),
+  };
+  try {
+    const container = new FakeElement('container');
+    const result = {
+      chromosome: '2L', start: 10, end: 12,
+      stackRows: manifest.stack.rows,
+      stackSpecies: manifest.stack.species,
+      stackTopology: manifest.stack.topology,
+      values: {
+        Cs: Float32Array.from([0.1, 0.2, 0.3]),
+        snp_density: Float32Array.from([0, 0.1, 0]),
+        status: Uint8Array.from([1, 1, 1]),
+        stack: Float32Array.from(
+          manifest.stack.rows.flatMap(() => [0, 50, 75]),
+        ),
+      },
+    };
+    const annotations = [{
+      id: 'AGAPREGION', chromosome: '2L', start: 9, end: 13, strand: -1,
+      transcript_id: 'AGAPREGION-RA', exons: [{ start: 9, end: 13 }],
+      cds_start: 10, cds_end: 12,
+    }];
+    renderHeatmap(container, result, null, annotations);
+    const svg = container.children[0];
+    assert.ok(Number(svg.getAttribute('viewBox').split(' ')[3]) > 653);
+    assert.equal(
+      svg.children.some((child) => (
+        child.getAttribute?.('class')?.includes('transcript-model-row')
+      )),
+      true,
+    );
+    const links = descendants(svg).filter((child) => child.name === 'a');
+    assert.equal(links.length, 1);
+    assert.equal(
+      links[0].getAttribute('href'),
+      'https://vectorbase.org/vectorbase/app/record/gene/AGAPREGION',
+    );
+    assert.equal(links[0].getAttribute('target'), '_blank');
+    assert.equal(links[0].getAttribute('rel'), 'noopener noreferrer');
+    assert.match(
+      links[0].getAttribute('aria-label'),
+      /gene AGAPREGION for transcript AGAPREGION-RA.*new tab/,
+    );
+    const linkedText = descendants(links[0]).find((child) => child.name === 'text');
+    assert.equal(linkedText.textContent, 'AGAPREGION-RA −');
+    assert.equal(linkedText.getAttribute('text-decoration'), 'underline');
+  } finally {
+    globalThis.document = previousDocument;
+  }
+});
+
+test('single-transcript figure annotation labels link to the VectorBase gene', () => {
+  const previousDocument = globalThis.document;
+  globalThis.document = {
+    createElementNS: (_namespace, name) => new FakeElement(name),
+    createElement: (name) => new FakeElement(name),
+  };
+  try {
+    const container = new FakeElement('container');
+    const result = {
+      chromosome: '2L', start: 10, end: 12,
+      stackRows: manifest.stack.rows,
+      stackSpecies: manifest.stack.species,
+      stackTopology: manifest.stack.topology,
+      values: {
+        Cs: Float32Array.from([0.1, 0.2, 0.3]),
+        snp_density: Float32Array.from([0, 0.1, 0]),
+        status: Uint8Array.from([1, 1, 1]),
+        stack: Float32Array.from(manifest.stack.rows.flatMap(() => [0, 50, 75])),
+      },
+    };
+    const annotation = {
+      id: 'AGAPQUERY', chromosome: '2L', start: 10, end: 12, strand: 1,
+      transcript_id: 'AGAPQUERY-RA', exons: [{ start: 10, end: 12 }],
+      cds_start: 10, cds_end: 12,
+    };
+    renderHeatmap(container, result, annotation, [annotation]);
+    const links = descendants(container.children[0]).filter((child) => child.name === 'a');
+    assert.equal(links.length, 1);
+    assert.equal(
+      links[0].getAttribute('href'),
+      'https://vectorbase.org/vectorbase/app/record/gene/AGAPQUERY',
+    );
+    const linkedText = descendants(links[0]).find((child) => child.name === 'text');
+    assert.equal(linkedText.textContent, 'AGAPQUERY-RA (+ strand; shown 5′→3′)');
+  } finally {
+    globalThis.document = previousDocument;
+  }
+});
+
 test('standalone SVG download path remains present after plot-model extraction', () => {
   const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
   assert.match(source, /function configureFigureDownload/);
@@ -349,6 +478,22 @@ test('range zoom keeps nested history and rerenders retained data without a quer
   assert.doesNotMatch(zoom, /benchmarkDownload|renderQuerySummary|buildTsv/);
   assert.match(html, /expand outward to the displayed bin boundaries/i);
   assert.match(html, /exact TSV remains the full query/i);
+});
+
+test('overlapping annotations are optional for both query modes and rerender locally', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '../docs/index.html'), 'utf8');
+  assert.match(html, /id="show-overlapping-annotations"/);
+  assert.match(html, /Show overlapping gene annotations/);
+  assert.match(source, /function annotationsForDisplayedRegion/);
+  assert.match(source, /AgamCsAccessions\.overlappingGenes/);
+  assert.match(
+    source,
+    /showOverlappingAnnotations\.addEventListener\('change', rerenderRetainedPlots\)/,
+  );
+  const helperStart = source.indexOf('function annotationsForDisplayedRegion');
+  const helperEnd = source.indexOf('function renderResolvedAccession', helperStart);
+  assert.doesNotMatch(source.slice(helperStart, helperEnd), /workerQuery|fetch\(/);
 });
 
 for (const width of [50_000, 150_000, 200_000]) test(`exact ${width.toLocaleString()}-base TSV retains every position and all 21 stack values`, () => {

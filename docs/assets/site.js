@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-29-range-zoom';
+const PAGES_RELEASE = '2026-08-30-annotation-gene-links';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -52,6 +52,8 @@ const plotRangeStart = document.querySelector('#plot-range-start');
 const plotRangeEnd = document.querySelector('#plot-range-end');
 const plotRangeApply = document.querySelector('#plot-range-apply');
 const plotRangeStatus = document.querySelector('#plot-range-status');
+const showOverlappingAnnotations = document.querySelector('#show-overlapping-annotations');
+const overlapAnnotationHelp = document.querySelector('#overlap-annotation-help');
 const accessionQueryPanel = document.querySelector('#accession-query-panel');
 const coordinateQueryPanel = document.querySelector('#coordinate-query-panel');
 const liveAccession = document.querySelector('#live-accession');
@@ -364,6 +366,8 @@ function configureAccessionIndex(index, namingIndex) {
   const namedGeneCount = Number(namingIndex.coverage.named_gene_records);
   accessionIndexHelp.textContent = `${geneCount.toLocaleString()} genes · ${transcriptCount.toLocaleString()} transcripts · ${namedGeneCount.toLocaleString()} official symbols · 2L, 2R, 3L, 3R, and X · ${index.annotation.gene_build}.`;
   accessionIndexHelp.title = `${index.index_version}; symbol names from ${namingIndex.source.release} (${namingIndex.search_version}).`;
+  showOverlappingAnnotations.disabled = false;
+  overlapAnnotationHelp.textContent = 'Optional for accession and manual-coordinate queries. One representative transcript is added for every other indexed gene that overlaps the displayed range.';
   configureIsoformControl(liveAccession.value);
   updatePaddingHelp();
 }
@@ -374,6 +378,8 @@ function configureAccessionOnly(index, error) {
   const geneCount = Object.keys(index.accessions).length;
   const transcriptCount = Object.keys(index.transcripts).length;
   accessionIndexHelp.textContent = `Gene-symbol search unavailable: ${error.message} Exact lookup still covers ${geneCount.toLocaleString()} genes and ${transcriptCount.toLocaleString()} transcripts.`;
+  showOverlappingAnnotations.disabled = false;
+  overlapAnnotationHelp.textContent = 'Optional for accession and manual-coordinate queries. One representative transcript is added for every other indexed gene that overlaps the displayed range.';
   configureIsoformControl(liveAccession.value);
   updatePaddingHelp();
 }
@@ -555,6 +561,7 @@ const cataloguePromise = localFilePreview ? Promise.resolve([]) : loadCatalogue(
 if (localFilePreview) {
   accessionIndexHelp.textContent = LOCAL_FILE_PREVIEW_MESSAGE;
   paddingHelp.textContent = 'Start the local web server before using accession padding.';
+  overlapAnnotationHelp.textContent = 'Start the local web server before using overlapping-gene annotations.';
   catalogueHelp.textContent = 'Start the local web server to load the featured examples.';
   benchmarkSubmit.disabled = true;
   setPortalState('Local web server required', 'Unavailable', 'error');
@@ -569,6 +576,7 @@ if (localFilePreview) {
     }
   }).catch((error) => {
     accessionIndexHelp.textContent = `Versioned accession lookup unavailable: ${error.message} Manual coordinates still work.`;
+    overlapAnnotationHelp.textContent = 'Overlapping-gene annotations are unavailable because the versioned gene index could not be loaded.';
   });
 }
 
@@ -699,6 +707,23 @@ function transcriptAnnotationsForResolution(index, resolution, annotation) {
   return transcriptIds.map((transcriptId) => (
     globalThis.AgamCsAccessions.resolve(index, transcriptId).annotation
   ));
+}
+
+function annotationsForDisplayedRegion(
+  index, result, annotation, transcriptAnnotations, displayRange, includeOverlaps,
+) {
+  const primaryModels = annotation ? transcriptAnnotations : [];
+  if (!includeOverlaps || !index) {
+    return { models: primaryModels, overlappingGeneCount: 0 };
+  }
+  const excluded = annotation?.id ? [annotation.id] : [];
+  const overlapping = globalThis.AgamCsAccessions.overlappingGenes(
+    index, result.chromosome, displayRange.start, displayRange.end, excluded,
+  );
+  return {
+    models: [...primaryModels, ...overlapping.map((item) => item.annotation)],
+    overlappingGeneCount: overlapping.length,
+  };
 }
 
 function renderResolvedAccession(resolution, index, paddingDetails) {
@@ -890,26 +915,44 @@ function renderLivePlots(
   const accession = providedAccession || pinned?.accession || null;
   const transcriptAnnotations = providedTranscriptAnnotations
     || (annotation ? [annotation] : []);
+  const displayedAnnotations = annotationsForDisplayedRegion(
+    accessionIndexSnapshot,
+    result,
+    annotation,
+    transcriptAnnotations,
+    activeRange,
+    showOverlappingAnnotations.checked,
+  );
   const rangeSelection = {
     isEnabled: () => plotRangeSelectionMode,
     onSelect: (range) => zoomToPlotRange(range, 'selection'),
   };
   const signalSummary = globalThis.AgamCsPlots.renderSignalPlot(
-    liveSignalPlot, result, annotation, transcriptAnnotations,
+    liveSignalPlot, result, annotation, displayedAnnotations.models,
     signalChoice, activeRange, rangeSelection,
   );
   const heatmapSummary = globalThis.AgamCsPlots.renderHeatmap(
-    liveHeatmapPlot, result, annotation, transcriptAnnotations,
+    liveHeatmapPlot, result, annotation, displayedAnnotations.models,
     heatmapChoice, activeRange, rangeSelection,
   );
   const annotationSubject = accession === annotation?.transcript_id
     ? `${annotation.id} isoform ${annotation.transcript_id}`
     : accession;
+  const overlapCount = displayedAnnotations.overlappingGeneCount;
+  const overlapNote = showOverlappingAnnotations.checked
+    ? overlapCount
+      ? ` ${overlapCount}${annotation ? ' additional' : ''} overlapping gene${overlapCount === 1 ? '' : 's'} ${overlapCount === 1 ? 'is' : 'are'} shown ${overlapCount === 1 ? 'using its representative transcript' : 'using one representative transcript each'}.`
+      : annotation
+        ? ' No other indexed genes overlap the displayed range.'
+        : ' No indexed genes overlap the displayed range.'
+    : '';
   liveAnnotationNote.textContent = transcriptAnnotations.length > 1
-    ? `All ${transcriptAnnotations.length} transcript models for ${annotation.id} are shown 5′→3′; ${annotation.transcript_id} is bold and supplies the exon summary and CDS guides.`
+    ? `All ${transcriptAnnotations.length} transcript models for ${annotation.id} are shown 5′→3′; ${annotation.transcript_id} is bold and supplies the exon summary and CDS guides.${overlapNote}`
     : annotation
-      ? `${annotationSubject} annotation applied; ${annotation.transcript_id} is shown 5′→3′.`
-      : 'Genomic-coordinate view. Gene annotation is applied when querying by accession or a featured example.';
+      ? `${annotationSubject} annotation applied; ${annotation.transcript_id} is shown 5′→3′.${overlapNote}`
+      : showOverlappingAnnotations.checked
+        ? `Genomic-coordinate view.${overlapNote}`
+        : 'Genomic-coordinate view. Enable overlapping gene annotations to add indexed genes within the displayed range.';
   const baseCount = activeRange.end - activeRange.start + 1;
   plotResolutionStatus.textContent = (
     `Signal: ${signalSummary.binCount.toLocaleString()} bins `
@@ -965,6 +1008,7 @@ function rerenderRetainedPlots() {
 
 signalResolution.addEventListener('change', rerenderRetainedPlots);
 heatmapResolution.addEventListener('change', rerenderRetainedPlots);
+showOverlappingAnnotations.addEventListener('change', rerenderRetainedPlots);
 plotRangeSelect.addEventListener('click', () => {
   const enable = !plotRangeSelectionMode;
   setPlotRangeSelectionMode(enable);
