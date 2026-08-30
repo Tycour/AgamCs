@@ -111,25 +111,38 @@
   }
 
 
-  function transcriptAnnotationsForDisplay(displayAnnotation, annotations = null) {
+  function transcriptAnnotationsForDisplay(displayAnnotation, annotations = null, options = {}) {
     if (!displayAnnotation) return [];
     const candidates = annotations || [displayAnnotation];
+    const genomicRange = options.genomicRange || displayAnnotation;
+    const rangeStart = Number(genomicRange.start);
+    const rangeEnd = Number(genomicRange.end);
     const unique = new Map();
     candidates.forEach((annotation) => {
       if (!annotation?.transcript_id) return;
       if (String(annotation.chromosome) !== String(displayAnnotation.chromosome)) return;
-      if (Number(annotation.strand) !== Number(displayAnnotation.strand)) return;
-      if (Number(annotation.end) < Number(displayAnnotation.start)
-          || Number(annotation.start) > Number(displayAnnotation.end)) return;
+      if (!options.includeOppositeStrands
+          && Number(annotation.strand) !== Number(displayAnnotation.strand)) return;
+      if (Number(annotation.end) < rangeStart
+          || Number(annotation.start) > rangeEnd) return;
       if (!Array.isArray(annotation.exons) || !annotation.exons.length) return;
       unique.set(String(annotation.transcript_id), annotation);
     });
-    if (!unique.size && displayAnnotation.transcript_id) {
+    if (!unique.size && options.includeDisplayFallback !== false
+        && displayAnnotation.transcript_id) {
       unique.set(String(displayAnnotation.transcript_id), displayAnnotation);
     }
-    return [...unique.entries()]
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([_key, annotation]) => annotation);
+    const models = [...unique.values()];
+    if (options.sortByPosition) {
+      return models.sort((left, right) => (
+        Number(left.start) - Number(right.start)
+        || Number(left.end) - Number(right.end)
+        || String(left.transcript_id).localeCompare(String(right.transcript_id))
+      ));
+    }
+    return models.sort((left, right) => (
+      String(left.transcript_id).localeCompare(String(right.transcript_id))
+    ));
   }
 
   function coordinateRecords(result, annotation = null, displayRange = null) {

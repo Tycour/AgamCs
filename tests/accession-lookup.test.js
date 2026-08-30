@@ -18,6 +18,11 @@ function index() {
         transcript_ids: ['AGAP000002-RA', 'AGAP000002-RB'],
         annotation: { id: 'AGAP000002', chromosome: '3R', start: 40, end: 60 },
       },
+      AGAP000003: {
+        status: 'current',
+        transcript_ids: ['AGAP000003-RA'],
+        annotation: { id: 'AGAP000003', chromosome: '3R', start: 55, end: 70 },
+      },
     },
     transcripts: {
       'AGAP000001-RA': {
@@ -82,5 +87,22 @@ test('missing accessions never fall through to live lookup', () => {
     (error) => error.code === 'missing'
       && /Use manual coordinates/.test(error.message)
       && /versioned AgamP4.14 index/.test(error.message),
+  );
+});
+
+test('overlapping genes use inclusive bounds, stable genomic order, and exclusions', () => {
+  assert.deepEqual(
+    lookup.overlappingGenes(index(), '3R', 55, 55).map((item) => item.accession),
+    ['AGAP000002', 'AGAP000003'],
+  );
+  assert.deepEqual(
+    lookup.overlappingGenes(index(), '3R', 55, 80, ['agap000002'])
+      .map((item) => item.accession),
+    ['AGAP000003'],
+  );
+  assert.deepEqual(lookup.overlappingGenes(index(), '2L', 31, 39), []);
+  assert.throws(
+    () => lookup.overlappingGenes(index(), '3R', 60, 50),
+    (error) => error.code === 'invalid-region',
   );
 });

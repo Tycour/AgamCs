@@ -117,5 +117,33 @@
     );
   }
 
-  return { AccessionLookupError, normalize, resolve };
+  function overlappingGenes(index, chromosome, start, end, excludedAccessions = []) {
+    const lower = Number(start);
+    const upper = Number(end);
+    if (!Number.isSafeInteger(lower) || !Number.isSafeInteger(upper) || lower > upper) {
+      throw new AccessionLookupError(
+        'invalid-region',
+        'Overlapping annotations require an inclusive region with whole-number coordinates.',
+      );
+    }
+    const excluded = new Set(targets(excludedAccessions));
+    return Object.entries(index?.accessions || {})
+      .filter(([accession, record]) => {
+        const annotation = record?.annotation;
+        return record?.status === 'current'
+          && annotation
+          && !excluded.has(accession)
+          && String(annotation.chromosome) === String(chromosome)
+          && Number(annotation.end) >= lower
+          && Number(annotation.start) <= upper;
+      })
+      .map(([accession, record]) => ({ accession, annotation: record.annotation }))
+      .sort((left, right) => (
+        Number(left.annotation.start) - Number(right.annotation.start)
+        || Number(left.annotation.end) - Number(right.annotation.end)
+        || left.accession.localeCompare(right.accession)
+      ));
+  }
+
+  return { AccessionLookupError, normalize, overlappingGenes, resolve };
 }));

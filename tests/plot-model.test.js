@@ -142,3 +142,29 @@ test('multi-isoform filtering is stable and matches the displayed gene frame', (
     ['AGAPTEST-RA', 'AGAPTEST-RB'],
   );
 });
+
+test('regional annotation filtering can retain opposite-strand overlapping genes', () => {
+  const display = {
+    chromosome: '3R', start: 100, end: 500, strand: -1,
+    transcript_id: 'AGAPTEST-RA', exons: [{ start: 100, end: 200 }],
+  };
+  const annotations = [
+    display,
+    {
+      id: 'AGAPOTHER', chromosome: '3R', start: 520, end: 580, strand: 1,
+      transcript_id: 'AGAPOTHER-RA', exons: [{ start: 520, end: 580 }],
+    },
+    {
+      id: 'AGAPOUTSIDE', chromosome: '3R', start: 601, end: 620, strand: 1,
+      transcript_id: 'AGAPOUTSIDE-RA', exons: [{ start: 601, end: 620 }],
+    },
+  ];
+  assert.deepEqual(
+    model.transcriptAnnotationsForDisplay(display, annotations, {
+      genomicRange: { start: 450, end: 600 },
+      includeOppositeStrands: true,
+      sortByPosition: true,
+    }).map((annotation) => annotation.transcript_id),
+    ['AGAPTEST-RA', 'AGAPOTHER-RA'],
+  );
+});
