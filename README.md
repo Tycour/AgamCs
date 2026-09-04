@@ -73,8 +73,9 @@ compatible transcript model with the representative transcript highlighted;
 the existing signal plots retain their representative-transcript annotation.
 The command writes a summary PNG, a base-level Cs/SNP-density PNG, canonical
 cross-species heatmap SVG and PNG files, and the exact intermediate
-`temp_scores.tsv` file. Use `--padding 500` to include flanking bases around
-accession-derived regions. Use `--heatmap-mode base-level` when the legacy
+`temp_scores.tsv` file. Accession queries also print Cs and low-variation
+rankings and write `gene_rankings.json`. Use `--padding 500` to include flanking
+bases around accession-derived regions. Use `--heatmap-mode base-level` when the legacy
 per-base heatmap PNG is required. The binned plots default to detail-first
 adaptive display resolution: both `--signal-bins adaptive` and
 `--heatmap-bins adaptive` retain one display bin per base for loci through
@@ -158,6 +159,36 @@ colours remain visual groups rather than clades or distance bins: dark purple =
 *gambiae* complex; purple = other *Anopheles*; pink = New World *Anopheles*;
 orange = outgroups.
 
+### Gene-level Cs and SNP-density rankings
+
+For every one of the 13,097 current genes in the pinned AgamP4.14 index,
+AgamCs precomputes two transparent summaries of the published per-base `Cs`
+array: the arithmetic mean over the complete annotated gene span, and the mean
+over the union of exons in its pinned representative transcript. Each is
+reported as an exact descending rank and a tie-aware percentile among all
+13,097 genes, alongside the corresponding rank within the gene's chromosome
+arm. The percentile is the percentage of other cohort genes with a lower mean,
+with half weight assigned to tied genes; higher values mean higher conservation.
+
+The two scopes answer different questions. Gene-span means include introns and
+can be affected by gene length and structure; representative-exon means focus
+on the annotated transcript but do not combine all isoforms. The published v1
+`Cs` values were MinMax-scaled separately on each chromosome arm, so the pooled
+genome-wide percentile is a descriptive rank, not a chromosome-independent
+biological calibration. The same-arm percentile is retained for that reason.
+AgamCs also reports a low-variation percentile from the archived `snp_density`
+array. Only focal bases passing status bit 0 in the companion Ag1000G Phase 2
+AR1 accessibility track contribute to a gene mean, and a scope is eligible only
+when at least 80% of its bases are accessible (inclusive). Higher percentiles
+mean lower mean SNP density among the other eligible genes. QC-failed bases are
+unknown, never zero; the archived centered 20-base-window density is pooled
+PASS-position density, not allele frequency, invariant-site evidence, or an
+independent conservation score.
+
+The browser shows both static ranks as soon as it resolves a gene, independently
+of padding or the browser's query-length ceiling. An ineligible scope instead
+shows its accessible numerator, denominator, percentage, and the 80% threshold.
+
 Method details are available in the
 [original paper](https://doi.org/10.3390/insects12020097) and the
 [source-pipeline documentation](https://github.com/nkran/AgamP4_conservation_score#storage).
@@ -235,6 +266,7 @@ AGAP008118	3R:5886340-5889928
 
 ```commandline
 python -m pytest -q
+python tools/build_gene_rankings.py --verify
 ```
 
 ## Beta feedback

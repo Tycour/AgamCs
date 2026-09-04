@@ -11,6 +11,7 @@ from urllib.parse import unquote, urlparse
 from build_pages_accession_index import validate_index
 from build_pages_examples import load_accession_list, load_catalogue, verify_assets
 from build_pages_gene_search import validate_gene_search
+from build_gene_rankings import validate_cs_rankings, validate_snp_rankings
 
 
 ROOT = Path(__file__).resolve().parents[1] / 'docs'
@@ -19,6 +20,10 @@ EXAMPLES_PATH = ROOT / 'examples.json'
 BATCH_ACCESSIONS_PATH = ROOT.parent / 'batch_accessions_example.txt'
 ACCESSION_INDEX_PATH = ROOT / 'assets/data/accession-index.json'
 GENE_SEARCH_PATH = ROOT / 'assets/data/gene-search.json'
+CS_RANKINGS_PATH = ROOT / 'assets/data/gene-cs-rankings.json'
+SNP_RANKINGS_PATH = ROOT / 'assets/data/gene-snp-rankings.json'
+PACKAGED_CS_RANKINGS_PATH = ROOT.parent / 'AgamCs/data/gene-cs-rankings.json'
+PACKAGED_SNP_RANKINGS_PATH = ROOT.parent / 'AgamCs/data/gene-snp-rankings.json'
 QUERY_ASSETS = (
     ROOT / 'assets/data/score-reference.json',
     ROOT / 'assets/data/accessibility-reference.json',
@@ -32,8 +37,11 @@ QUERY_ASSETS = (
     ROOT / 'assets/query-interaction.js',
     ROOT / 'assets/accession-lookup.js',
     ROOT / 'assets/gene-search.js',
+    ROOT / 'assets/gene-ranking.js',
     ACCESSION_INDEX_PATH,
     GENE_SEARCH_PATH,
+    CS_RANKINGS_PATH,
+    SNP_RANKINGS_PATH,
     ROOT / 'assets/data/plot-contract.json',
 )
 QUERY_ARRAYS = {'Cs', 'snp_density', 'stack'}
@@ -168,6 +176,10 @@ def validate_page(page: Path) -> list[str]:
             'resolved-gene-id',
             'summary-exons-card', 'summary-cs-exons', 'summary-snp-exons',
             'summary-exon-count', 'summary-method-note',
+            'summary-cs-ranking-card', 'summary-cs-rank-span',
+            'summary-cs-rank-exons', 'summary-cs-ranking-note',
+            'summary-snp-ranking-card', 'summary-snp-rank-span',
+            'summary-snp-rank-exons', 'summary-snp-ranking-note',
             'live-signal-download', 'live-heatmap-download',
             'signal-resolution', 'heatmap-resolution', 'plot-resolution-status',
             'plot-range-current', 'plot-range-select', 'plot-range-back',
@@ -193,7 +205,8 @@ def validate_page(page: Path) -> list[str]:
         if 'First five returned positions' in page_text:
             errors.append('index.html: obsolete per-position preview remains')
         for required_summary_text in (
-            'Base pairs (bp)', 'Aggregated exons',
+            'Base pairs (bp)', 'Aggregated exons', 'Cs percentile',
+            'Low-variation percentile',
             'Gene accession, symbol, or transcript accession',
             'Transcript isoform', 'Thomas Courty', 'Windbichler Lab',
             'Imperial College London', 'Query processing runs in your browser',
@@ -347,6 +360,34 @@ def validate_gene_names() -> list[str]:
     return errors
 
 
+def validate_rankings() -> list[str]:
+    """Require exact full-index ranking coverage and package/browser parity."""
+    try:
+        index = json.loads(ACCESSION_INDEX_PATH.read_text(encoding='utf-8'))
+        cs = json.loads(CS_RANKINGS_PATH.read_text(encoding='utf-8'))
+        snp = json.loads(SNP_RANKINGS_PATH.read_text(encoding='utf-8'))
+        validate_cs_rankings(cs, index)
+        validate_snp_rankings(snp, index)
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        return [f'could not validate gene rankings: {error}']
+
+    errors = []
+    for package, browser in (
+        (PACKAGED_CS_RANKINGS_PATH, CS_RANKINGS_PATH),
+        (PACKAGED_SNP_RANKINGS_PATH, SNP_RANKINGS_PATH),
+    ):
+        if not package.exists():
+            errors.append(f'packaged gene-ranking asset is missing: {package.name}')
+        elif package.read_bytes() != browser.read_bytes():
+            errors.append(f'package and browser gene-ranking assets differ: {package.name}')
+    if cs['cohorts']['global_gene_count'] != EXPECTED_ACCESSION_RECORDS:
+        errors.append('Cs ranking denominator does not cover every indexed gene')
+    expected_eligible = {'gene_span': 8305, 'representative_exons': 10165}
+    if snp['cohorts']['global_eligible_gene_counts'] != expected_eligible:
+        errors.append('SNP ranking denominators no longer match the reviewed 80% QC cohorts')
+    return errors
+
+
 def validate_pages_payload() -> list[str]:
     """Ensure Pages contains only the small client and metadata assets."""
     errors = []
@@ -493,6 +534,7 @@ def main() -> None:
     errors.extend(validate_examples())
     errors.extend(validate_accessions())
     errors.extend(validate_gene_names())
+    errors.extend(validate_rankings())
     errors.extend(validate_pages_payload())
     errors.extend(validate_analytics())
     errors.extend(validate_release_versions())

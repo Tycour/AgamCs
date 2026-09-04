@@ -194,6 +194,8 @@ input { width: 100%; height: 44px; padding: 0 12px; color: var(--ink); border: 1
 .summary-metric-pair > div + div { border-left: 1px solid var(--line); }
 .summary-metric-pair small { margin-top: 5px; }
 .summary-method { margin: 12px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.summary-ranking-card { margin: 20px 0; }
+.summary-ranking-note { margin: 0; padding: 0 13px 12px; color: var(--muted); font-size: 11px; line-height: 1.45; }
 .live-visuals { margin-top: 38px; padding-top: 30px; border-top: 1px solid var(--line); }
 .workspace > .live-visuals {
   grid-column: 1 / -1;

@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-30-heatmap-axis';
+const PAGES_RELEASE = '2026-08-30-gene-rankings';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -84,6 +84,7 @@ let queryManifestPromise;
 let plotContractPromise;
 let accessionIndexPromise;
 let geneSearchPromise;
+let geneRankingPromise;
 let accessionIndexSnapshot;
 let geneSearchSnapshot;
 let queryManifestSnapshot;
@@ -223,6 +224,25 @@ async function loadGeneSearch() {
     });
   }
   return geneSearchPromise;
+}
+
+async function loadGeneRankings() {
+  if (!geneRankingPromise) {
+    const load = async (filename, rankingType) => {
+      try {
+        const response = await fetch(versionedAsset(`assets/data/${filename}`));
+        if (!response.ok) throw new Error(`Gene-ranking request failed (${response.status}).`);
+        return globalThis.AgamCsGeneRankings.validate(await response.json(), rankingType);
+      } catch (_error) {
+        return null;
+      }
+    };
+    geneRankingPromise = Promise.all([
+      load('gene-cs-rankings.json', 'mean_cs'),
+      load('gene-snp-rankings.json', 'accessible_mean_snp_density'),
+    ]).then(([cs, snpDensity]) => ({ cs, snpDensity }));
+  }
+  return geneRankingPromise;
 }
 
 function closeAccessionSuggestions() {
@@ -506,6 +526,7 @@ function setLiveQueryMode(mode) {
   accessionQueryPanel.hidden = !byAccession;
   coordinateQueryPanel.hidden = byAccession;
   closeAccessionSuggestions();
+  renderGeneRanking(null, null);
   setPortalState('Ready for a query', 'Ready');
   benchmarkStatus.textContent = byAccession
     ? 'Ready to resolve a gene accession or official symbol, or a transcript accession.'
@@ -646,6 +667,68 @@ function buildTsv(data) {
 
 function displayNumber(value) {
   return Number.isFinite(value) ? value.toPrecision(6) : 'NA';
+}
+
+function rankingPosition(statistics) {
+  const position = statistics.first === statistics.last
+    ? statistics.first.toLocaleString()
+    : `${statistics.first.toLocaleString()}–${statistics.last.toLocaleString()} (tie)`;
+  return `rank ${position} of ${statistics.count.toLocaleString()}`;
+}
+
+function renderGeneRanking(rankingDocuments, accession) {
+  const card = rankingDocuments
+    ? globalThis.AgamCsGeneRankings.lookup(
+      rankingDocuments.cs, rankingDocuments.snpDensity, accession,
+    )
+    : null;
+  const csElement = document.querySelector('#summary-cs-ranking-card');
+  const snpElement = document.querySelector('#summary-snp-ranking-card');
+  csElement.hidden = !card?.cs;
+  snpElement.hidden = !card?.snpDensity;
+  if (!card) return;
+  const renderRankedMetric = (metric, valueId, detailId) => {
+    document.querySelector(valueId).textContent =
+      `${metric.global.percentile.toFixed(2)}th`;
+    document.querySelector(detailId).textContent =
+      `Global ${rankingPosition(metric.global)} · ${card.chromosome} `
+      + `${metric.chromosome.percentile.toFixed(2)}th percentile `
+      + `(${rankingPosition(metric.chromosome)})`;
+  };
+  if (card.cs) {
+    renderRankedMetric(card.cs.metrics.gene_span, '#summary-cs-rank-span', '#summary-cs-rank-span-detail');
+    renderRankedMetric(
+      card.cs.metrics.representative_exons,
+      '#summary-cs-rank-exons', '#summary-cs-rank-exons-detail',
+    );
+    document.querySelector('#summary-cs-ranking-note').textContent =
+      `Static ${card.accession} ranking; padding and selected non-representative isoforms do not `
+      + `change it. Exon ranking uses ${card.representativeTranscript}. ${card.cs.interpretation}`;
+  }
+  if (card.snpDensity) {
+    const renderSnpMetric = (metric, valueId, detailId) => {
+      if (metric.eligible) {
+        renderRankedMetric(metric, valueId, detailId);
+      } else {
+        document.querySelector(valueId).textContent = 'Not ranked';
+        document.querySelector(detailId).textContent =
+          `${(100 * metric.accessibleFraction).toFixed(1)}% accessible `
+          + `(${metric.accessibleBases.toLocaleString()}/${metric.totalBases.toLocaleString()}); `
+          + '80% required';
+      }
+    };
+    renderSnpMetric(
+      card.snpDensity.metrics.gene_span,
+      '#summary-snp-rank-span', '#summary-snp-rank-span-detail',
+    );
+    renderSnpMetric(
+      card.snpDensity.metrics.representative_exons,
+      '#summary-snp-rank-exons', '#summary-snp-rank-exons-detail',
+    );
+    document.querySelector('#summary-snp-ranking-note').textContent =
+      `Only accessible focal bases contribute; QC-failed bases remain unknown. `
+      + `${card.snpDensity.interpretation}`;
+  }
 }
 
 function renderQuerySummary(
@@ -1099,6 +1182,7 @@ async function runLiveQuery() {
   let accessionIndex = null;
   let resolution = null;
   let paddingDetails = null;
+  renderGeneRanking(null, null);
   setPortalState('Preparing query', 'Loading', 'loading');
   benchmarkStatus.textContent = mode === 'accession'
     ? 'Resolving the gene or transcript from the versioned AgamP4 indexes…'
@@ -1120,6 +1204,8 @@ async function runLiveQuery() {
       closeAccessionSuggestions();
       configureIsoformControl(resolution.accession);
       updatePaddingHelp();
+      const rankingDocument = await loadGeneRankings().catch(() => null);
+      renderGeneRanking(rankingDocument, resolution.geneAccession);
     } catch (error) {
       setPortalState('Query not run', 'Check input', 'error');
       benchmarkStatus.textContent = `Accession lookup stopped: ${error.message}`;

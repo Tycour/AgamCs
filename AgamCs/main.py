@@ -1,6 +1,7 @@
 # main.py
 
 import argparse
+import json
 import os
 from pathlib import Path
 from .gene_regions import (
@@ -38,6 +39,7 @@ def process_region(
     heatmap_mode='binned',
     signal_bins='adaptive',
     heatmap_bins='adaptive',
+    gene_ranking=None,
 ):
     from .create_heatmap import create_heatmap, plot_cs_snp_density
     from .fetch_score import fetch_scores
@@ -97,6 +99,16 @@ def process_region(
         gene_annotation,
         bins=signal_bins,
     )
+
+    if gene_ranking is not None:
+        from .gene_ranking import format_gene_ranking
+
+        ranking_path = os.path.join(results_dir, 'gene_rankings.json')
+        Path(ranking_path).write_text(
+            json.dumps(gene_ranking, indent=2) + '\n', encoding='utf-8',
+        )
+        print(format_gene_ranking(gene_ranking))
+        print(f'Gene ranking saved as {ranking_path}')
 
     if not keep_tsv:
         os.remove(tsv_filename)
@@ -225,7 +237,23 @@ def main():
     batch_mode = len(jobs) > 1 or args.regions_file or args.accessions or args.accessions_file
     results_root = os.path.join('results', Path(args.output).stem) if batch_mode else 'results'
 
+    ranking_document = None
+    ranking_load_attempted = False
+
     for region, output_name, gene_annotation, transcript_annotations in jobs:
+        gene_ranking = None
+        ranking_accession = gene_annotation.get('id') if gene_annotation else None
+        if ranking_accession:
+            try:
+                from .gene_ranking import load_gene_rankings, ranking_for_gene
+
+                if not ranking_load_attempted:
+                    ranking_document = load_gene_rankings()
+                    ranking_load_attempted = True
+                gene_ranking = ranking_for_gene(ranking_accession, ranking_document)
+            except (FileNotFoundError, ValueError) as error:
+                ranking_load_attempted = True
+                print(f'Warning: gene ranking unavailable: {error}')
         print(f'Processing {output_name}: {region}')
         process_region(
             region=region,
@@ -242,6 +270,7 @@ def main():
             reference_file=args.reference_file,
             remote_url=args.remote_url,
             accessibility_file=args.accessibility_file,
+            gene_ranking=gene_ranking,
         )
 
 
