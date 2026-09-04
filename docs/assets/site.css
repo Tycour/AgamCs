@@ -206,21 +206,23 @@ input { width: 100%; height: 44px; padding: 0 12px; color: var(--ink); border: 1
 .ranking-grid:has(> .summary-ranking-card:not([hidden])) { display: grid; }
 .summary-ranking-card { margin: 0; }
 .summary-ranking-note { margin: 0; padding: 0 13px 12px; color: var(--muted); font-size: 11px; line-height: 1.45; }
-.live-visuals { margin-top: 38px; padding-top: 30px; border-top: 1px solid var(--line); }
-.workspace > .live-visuals {
-  grid-column: 1 / -1;
-  min-width: 0;
-  margin-top: 0;
-  padding: 34px clamp(24px, 5vw, 72px) 42px;
-}
+.live-visuals { min-width: 0; margin: 26px 0 34px; }
 .live-visual-heading { display: flex; justify-content: space-between; gap: 28px; align-items: end; margin-bottom: 22px; }
 .live-visual-heading h3 { margin-bottom: 0; font-family: Georgia, serif; font-size: 29px; font-weight: 500; }
 .live-visual-heading > p { max-width: 430px; margin: 0; color: var(--muted); font-size: 13px; text-align: right; }
+.live-figure-section { padding: 18px; border: 1px solid var(--line); border-radius: 11px; background: #fbfcfa; }
+.live-figure-section + .live-figure-section { margin-top: 18px; }
+.live-figure-title { display: flex; justify-content: space-between; gap: 22px; align-items: end; margin-bottom: 14px; }
+.live-figure-title > div { display: flex; flex-wrap: wrap; gap: 5px 10px; align-items: baseline; }
+.live-figure-title span { color: var(--teal); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.live-figure-title h4 { margin: 0; font-family: Georgia, serif; font-size: 22px; font-weight: 500; }
+.live-figure-title p { max-width: 390px; margin: 0; color: var(--muted); font-size: 12px; text-align: right; }
 .plot-resolution-controls {
   display: grid;
   grid-template-columns: minmax(260px, 1fr) repeat(2, minmax(150px, 220px));
   gap: 14px 18px;
   align-items: end;
+  margin-top: 22px;
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -257,8 +259,6 @@ input { width: 100%; height: 44px; padding: 0 12px; color: var(--ink); border: 1
 .plot-range-coordinate-controls label { display: grid; gap: 6px; font-size: 12px; font-weight: 750; }
 #plot-range-status { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 12px; }
 #plot-range-select[aria-pressed="true"] { color: white; border-color: var(--teal); background: var(--teal); }
-.live-tabs { margin-top: 8px; }
-.live-plot-panel { padding-top: 20px; }
 .live-plot { position: relative; overflow-x: auto; border: 1px solid #e3e8e2; background: #fff; }
 .live-plot.range-selection-enabled svg { cursor: crosshair; user-select: none; }
 .plot-range-selection { fill: #dd9d3c; stroke: #9a6417; stroke-width: 1; }
@@ -332,10 +332,11 @@ input { width: 100%; height: 44px; padding: 0 12px; color: var(--ink); border: 1
   .query-submit { width: 100%; margin-top: 0; }
   .query-options-body, .accession-query-options { grid-template-columns: 1fr; }
   .overlap-annotation-control { padding: 18px 0 0; border-top: 1px solid #ccd5d0; border-left: 0; }
-  .workspace > .live-visuals { grid-column: 1; }
   .coordinate-query-panel { grid-template-columns: 1fr; }
   .summary-grid { grid-template-columns: 1fr; }
   .ranking-grid:has(> .summary-ranking-card:not([hidden])) { grid-template-columns: 1fr; }
+  .live-visual-heading, .live-figure-title { display: block; }
+  .live-visual-heading > p, .live-figure-title p { margin-top: 8px; text-align: left; }
   .plot-resolution-controls { grid-template-columns: 1fr; }
   #plot-resolution-status { grid-column: 1; }
   .plot-range-controls { grid-template-columns: 1fr; }

@@ -511,6 +511,21 @@ test('focus-first layout keeps the primary query visible and secondary controls 
   assert.match(source, /featuredExampleStrip\.hidden = !byAccession/);
 });
 
+test('figure-first results expose both plots before rankings and supporting details', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '../docs/index.html'), 'utf8');
+  const summaryIndex = html.indexOf('id="resolved-accession"');
+  const figuresIndex = html.indexOf('id="live-visuals"');
+  const rankingsIndex = html.indexOf('class="ranking-grid"');
+  assert.ok(summaryIndex >= 0 && figuresIndex > summaryIndex && rankingsIndex > figuresIndex);
+  assert.match(html, /<h4 id="live-signals-heading">Conservation and SNP density<\/h4>/);
+  assert.match(html, /<h4 id="live-heatmap-heading">Species identity heatmap<\/h4>/);
+  assert.doesNotMatch(html, /aria-label="Query figures"/);
+  assert.doesNotMatch(html, /id="live-heatmap-panel"[^>]*hidden/);
+  assert.match(source, /function formatResolutionLabel\(resolution\)/);
+  assert.match(source, /setPortalState\(resolution \? formatResolutionLabel\(resolution\)/);
+});
+
 for (const width of [50_000, 150_000, 200_000]) test(`exact ${width.toLocaleString()}-base TSV retains every position and all 21 stack values`, () => {
   const { buildTsv } = siteExportHelpers();
   const stackRows = Array.from({ length: 21 }, (_value, row) => `row${row}`);

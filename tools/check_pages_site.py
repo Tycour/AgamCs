@@ -182,6 +182,7 @@ def validate_page(page: Path) -> list[str]:
             'summary-cs-rank-exons', 'summary-cs-ranking-note',
             'summary-snp-ranking-card', 'summary-snp-rank-span',
             'summary-snp-rank-exons', 'summary-snp-ranking-note',
+            'live-visuals', 'live-signals-heading', 'live-heatmap-heading',
             'live-signal-download', 'live-heatmap-download',
             'signal-resolution', 'heatmap-resolution', 'plot-resolution-status',
             'plot-range-current', 'plot-range-select', 'plot-range-back',

@@ -16,16 +16,16 @@
   <title>AgamCs conservation explorer</title>
   <link rel="canonical" href="https://tycour.github.io/AgamCs/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/site.css?v=2026-09-04-focus-first">
-  <script src="assets/plot-model.js?v=2026-09-04-focus-first" defer></script>
-  <script src="assets/live-plots.js?v=2026-09-04-focus-first" defer></script>
-  <script src="assets/gene-search.js?v=2026-09-04-focus-first" defer></script>
-  <script src="assets/gene-ranking.js?v=2026-09-04-focus-first" defer></script>
-  <script src="assets/accession-lookup.js?v=2026-09-04-focus-first" defer></script>
-  <script src="assets/query-contract.js?v=2026-09-04-focus-first" defer></script>
-  <script src="assets/query-interaction.js?v=2026-09-04-focus-first" defer></script>
-  <script src="assets/analytics.js?v=2026-09-04-focus-first" data-measurement-id="G-25RC4QKPP9" defer></script>
-  <script src="assets/site.js?v=2026-09-04-focus-first" defer></script>
+  <link rel="stylesheet" href="assets/site.css?v=2026-09-04-figure-first">
+  <script src="assets/plot-model.js?v=2026-09-04-figure-first" defer></script>
+  <script src="assets/live-plots.js?v=2026-09-04-figure-first" defer></script>
+  <script src="assets/gene-search.js?v=2026-09-04-figure-first" defer></script>
+  <script src="assets/gene-ranking.js?v=2026-09-04-figure-first" defer></script>
+  <script src="assets/accession-lookup.js?v=2026-09-04-figure-first" defer></script>
+  <script src="assets/query-contract.js?v=2026-09-04-figure-first" defer></script>
+  <script src="assets/query-interaction.js?v=2026-09-04-figure-first" defer></script>
+  <script src="assets/analytics.js?v=2026-09-04-figure-first" data-measurement-id="G-25RC4QKPP9" defer></script>
+  <script src="assets/site.js?v=2026-09-04-figure-first" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -152,6 +152,66 @@
           <div><dt>Annotation</dt><dd id="resolved-annotation">—</dd></div>
           <div><dt>Index</dt><dd id="resolved-index-version">—</dd></div>
         </dl>
+        <div class="live-visuals" id="live-visuals" hidden>
+          <div class="live-visual-heading">
+            <div>
+              <p class="eyebrow">Query figures</p>
+              <h3>Conservation, variation and species identity</h3>
+            </div>
+            <p id="live-annotation-note">Genomic-coordinate view. Overlapping-gene annotations are optional.</p>
+          </div>
+          <section class="live-figure-section" id="live-signals-panel" aria-labelledby="live-signals-heading">
+            <header class="live-figure-title">
+              <div><span>Figure 1</span><h4 id="live-signals-heading">Conservation and SNP density</h4></div>
+              <p>Per-base conservation with accessible-base variation and QC context.</p>
+            </header>
+            <div class="live-plot" id="live-signal-plot"></div>
+            <a class="download-link figure-download" id="live-signal-download" hidden download>Download Cs + SNP/QC figure (SVG)</a>
+          </section>
+          <section class="live-figure-section" id="live-heatmap-panel" aria-labelledby="live-heatmap-heading">
+            <header class="live-figure-title">
+              <div><span>Figure 2</span><h4 id="live-heatmap-heading">Species identity heatmap</h4></div>
+              <p>Cross-species identity across the same genomic interval.</p>
+            </header>
+            <div class="live-plot" id="live-heatmap-plot"></div>
+            <a class="download-link figure-download" id="live-heatmap-download" hidden download>Download species heatmap (SVG)</a>
+          </section>
+          <div class="plot-resolution-controls" aria-labelledby="plot-resolution-heading">
+            <div class="plot-resolution-intro">
+              <h4 id="plot-resolution-heading">Plot resolution</h4>
+              <p>Adaptive preserves per-base detail for loci through 1,000 bases and otherwise uses the highest bounded display resolution.</p>
+            </div>
+            <label for="signal-resolution">Cs/SNP signal
+              <select id="signal-resolution"><option value="adaptive">Adaptive</option></select>
+            </label>
+            <label for="heatmap-resolution">Species heatmap
+              <select id="heatmap-resolution"><option value="adaptive">Adaptive</option></select>
+            </label>
+            <p id="plot-resolution-status" aria-live="polite">Effective resolution will appear after a query.</p>
+          </div>
+          <section class="plot-range-controls" aria-labelledby="plot-range-heading">
+            <div class="plot-range-intro">
+              <h4 id="plot-range-heading">Displayed range</h4>
+              <p id="plot-range-current">Run a query to enable range zoom.</p>
+            </div>
+            <div class="plot-range-actions">
+              <button class="button secondary" id="plot-range-select" type="button" aria-pressed="false" disabled>Select range</button>
+              <button class="button secondary" id="plot-range-back" type="button" disabled>Zoom out</button>
+              <button class="button secondary" id="plot-range-reset" type="button" disabled>Reset full query</button>
+            </div>
+            <div class="plot-range-coordinate-controls" aria-label="Zoom to genomic coordinates">
+              <label for="plot-range-start">Start
+                <input id="plot-range-start" type="number" step="1" inputmode="numeric" disabled>
+              </label>
+              <label for="plot-range-end">End
+                <input id="plot-range-end" type="number" step="1" inputmode="numeric" disabled>
+              </label>
+              <button class="button secondary" id="plot-range-apply" type="button" disabled>Zoom to coordinates</button>
+            </div>
+            <p id="plot-range-status" aria-live="polite">Select range enables horizontal dragging on either plot. Plot selections expand outward to the displayed bin boundaries; the exact TSV remains the full query.</p>
+          </section>
+          <p class="plot-method-note" id="plot-method-note">Adaptive uses one display bin per base through 1,000 bases, then the bounded maximum of 1,000 bins, preserving the strongest available detail without unbounded SVG growth. Cs itself is per-base; SNP density remains the archived centred 20-bp rolling statistic, and CNEr evidence remains derived from 30/50-bp source windows. Finer display subdivision does not add biological resolution. Hover for query values; range zoom and the optional overlapping-gene tracks re-render retained full-query data without another genomic request. Additional loci use one representative transcript per overlapping gene; the queried gene retains its selected or complete isoform display. Transcript labels link to the matching VectorBase gene record in a new tab. The exact TSV retains every queried base and species row, while SVG downloads use the active displayed range, annotation choice, and resolution.</p>
+        </div>
         <div class="ranking-grid">
           <section class="summary-scope-card summary-ranking-card" id="summary-cs-ranking-card" aria-labelledby="summary-cs-ranking-heading" hidden>
             <header><h4 id="summary-cs-ranking-heading">Cs percentile</h4><small>Higher Cs = more conserved</small></header>
@@ -203,62 +263,6 @@
           <p class="summary-method" id="summary-method-note"></p>
         </div>
         <a class="download-link" id="benchmark-download" hidden download="AgamCs-browser-query.tsv">Download exact TSV values</a>
-      </div>
-      <div class="live-visuals" id="live-visuals" hidden>
-        <div class="live-visual-heading">
-          <div>
-            <p class="eyebrow">Query-derived figures</p>
-            <h3>Interactive browser plots</h3>
-          </div>
-          <p id="live-annotation-note">Genomic-coordinate view. Overlapping-gene annotations are optional.</p>
-        </div>
-        <div class="plot-resolution-controls" aria-labelledby="plot-resolution-heading">
-          <div class="plot-resolution-intro">
-            <h4 id="plot-resolution-heading">Plot resolution</h4>
-            <p>Adaptive preserves per-base detail for loci through 1,000 bases and otherwise uses the highest bounded display resolution.</p>
-          </div>
-          <label for="signal-resolution">Cs/SNP signal
-            <select id="signal-resolution"><option value="adaptive">Adaptive</option></select>
-          </label>
-          <label for="heatmap-resolution">Species heatmap
-            <select id="heatmap-resolution"><option value="adaptive">Adaptive</option></select>
-          </label>
-          <p id="plot-resolution-status" aria-live="polite">Effective resolution will appear after a query.</p>
-        </div>
-        <section class="plot-range-controls" aria-labelledby="plot-range-heading">
-          <div class="plot-range-intro">
-            <h4 id="plot-range-heading">Displayed range</h4>
-            <p id="plot-range-current">Run a query to enable range zoom.</p>
-          </div>
-          <div class="plot-range-actions">
-            <button class="button secondary" id="plot-range-select" type="button" aria-pressed="false" disabled>Select range</button>
-            <button class="button secondary" id="plot-range-back" type="button" disabled>Zoom out</button>
-            <button class="button secondary" id="plot-range-reset" type="button" disabled>Reset full query</button>
-          </div>
-          <div class="plot-range-coordinate-controls" aria-label="Zoom to genomic coordinates">
-            <label for="plot-range-start">Start
-              <input id="plot-range-start" type="number" step="1" inputmode="numeric" disabled>
-            </label>
-            <label for="plot-range-end">End
-              <input id="plot-range-end" type="number" step="1" inputmode="numeric" disabled>
-            </label>
-            <button class="button secondary" id="plot-range-apply" type="button" disabled>Zoom to coordinates</button>
-          </div>
-          <p id="plot-range-status" aria-live="polite">Select range enables horizontal dragging on either plot. Plot selections expand outward to the displayed bin boundaries; the exact TSV remains the full query.</p>
-        </section>
-        <div class="tabs live-tabs" role="tablist" aria-label="Query figures">
-          <button role="tab" aria-selected="true" aria-controls="live-signals-panel" id="live-signals-tab">Conservation + SNP density</button>
-          <button role="tab" aria-selected="false" aria-controls="live-heatmap-panel" id="live-heatmap-tab">Species heatmap</button>
-        </div>
-        <div class="live-plot-panel" id="live-signals-panel" role="tabpanel" aria-labelledby="live-signals-tab">
-          <div class="live-plot" id="live-signal-plot"></div>
-          <a class="download-link figure-download" id="live-signal-download" hidden download>Download Cs + SNP/QC figure (SVG)</a>
-        </div>
-        <div class="live-plot-panel" id="live-heatmap-panel" role="tabpanel" aria-labelledby="live-heatmap-tab" hidden>
-          <div class="live-plot" id="live-heatmap-plot"></div>
-          <a class="download-link figure-download" id="live-heatmap-download" hidden download>Download species heatmap (SVG)</a>
-        </div>
-        <p class="plot-method-note" id="plot-method-note">Adaptive uses one display bin per base through 1,000 bases, then the bounded maximum of 1,000 bins, preserving the strongest available detail without unbounded SVG growth. Cs itself is per-base; SNP density remains the archived centred 20-bp rolling statistic, and CNEr evidence remains derived from 30/50-bp source windows. Finer display subdivision does not add biological resolution. Hover for query values; range zoom and the optional overlapping-gene tracks re-render retained full-query data without another genomic request. Additional loci use one representative transcript per overlapping gene; the queried gene retains its selected or complete isoform display. Transcript labels link to the matching VectorBase gene record in a new tab. The exact TSV retains every queried base and species row, while SVG downloads use the active displayed range, annotation choice, and resolution.</p>
       </div>
     </section>
 

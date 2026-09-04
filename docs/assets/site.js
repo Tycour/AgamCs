@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-09-04-focus-first';
+const PAGES_RELEASE = '2026-09-04-figure-first';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -841,10 +841,15 @@ function annotationsForDisplayedRegion(
   };
 }
 
+function formatResolutionLabel(resolution) {
+  const name = geneSearchSnapshot?.names?.[resolution?.geneAccession]?.name || null;
+  return name ? `${resolution.accession} (${name})` : resolution.accession;
+}
+
 function renderResolvedAccession(resolution, index, paddingDetails) {
   const annotation = resolution.annotation;
   const name = geneSearchSnapshot?.names?.[resolution.geneAccession]?.name || null;
-  const queryLabel = name ? `${resolution.accession} (${name})` : resolution.accession;
+  const queryLabel = formatResolutionLabel(resolution);
   const geneLabel = name
     ? `${resolution.geneAccession} (${name})`
     : resolution.geneAccession;
@@ -1316,7 +1321,7 @@ async function runLiveQuery() {
   const querySubject = resolution
     ? `${resolution.accession} (${chromosome}:${start}-${end}${paddingSubject})`
     : `${chromosome}:${start}-${end}`;
-  setPortalState(resolution?.accession || `${chromosome}:${start}-${end}`, 'Loading', 'loading');
+  setPortalState(resolution ? formatResolutionLabel(resolution) : `${chromosome}:${start}-${end}`, 'Loading', 'loading');
   benchmarkStatus.textContent = `Reading ${querySubject} from Zenodo and the QC companion…`;
   try {
     const [result, validation, plotValidation] = await Promise.all([
@@ -1351,7 +1356,7 @@ async function runLiveQuery() {
     }
 
     clearFigureDownloads();
-    setPortalState(resolution?.accession || `${chromosome}:${start}-${end}`, 'Complete');
+    setPortalState(resolution ? formatResolutionLabel(resolution) : `${chromosome}:${start}-${end}`, 'Complete');
     benchmarkStatus.textContent = hashesMatch && plotSummariesMatch
       ? 'Query complete; values and plot summaries passed validation.'
       : hashesMatch
@@ -1389,7 +1394,7 @@ async function runLiveQuery() {
         : 'coordinates',
     });
   } catch (error) {
-    setPortalState(resolution?.accession || `${chromosome}:${start}-${end}`, 'Failed', 'error');
+    setPortalState(resolution ? formatResolutionLabel(resolution) : `${chromosome}:${start}-${end}`, 'Failed', 'error');
     benchmarkStatus.textContent = `Query failed: ${error.message}`;
   }
 }
