@@ -21,7 +21,7 @@ from AgamCs.species_topology import SPECIES_TOPOLOGY
 CHROMOSOMES = ('2L', '2R', '3L', '3R', 'X')
 SCORE_ARRAYS = ('Cs', 'snp_density', 'stack')
 VALIDATION_ARRAYS = ('Cs', 'snp_density', 'stack', 'status')
-DEFAULT_REGION = ('2L', 28_585_064, 28_586_748)
+DEFAULT_REGION = ('3R', 6_928_858, 6_930_547)
 MAX_QUERY_BASES = 200_000
 SOURCE_DOI = 'https://doi.org/10.5281/zenodo.4304586'
 ACCESSIBILITY_SOURCE_URL = (
@@ -34,11 +34,11 @@ ACCESSIBILITY_SHA256 = (
 )
 RELEASE_VALIDATION_CASES = (
     {
-        'id': 'plus-gene-2l', 'chromosome': '2L',
-        'start': 28_585_064, 'end': 28_586_748,
-        'accession': 'AGAP006241', 'strand': 1,
-        'purpose': 'Plus-strand pinned gene and Python plot fixture.',
-        'expected_qc': 'partly_accessible',
+        'id': 'landing-gene-3r', 'chromosome': '3R',
+        'start': 6_928_858, 'end': 6_930_547,
+        'accession': 'AGAP008212', 'strand': 1,
+        'purpose': 'Fully accessible landing gene and Python plot fixture.',
+        'expected_qc': 'fully_accessible',
     },
     {
         'id': 'mixed-manual-2r', 'chromosome': '2R',
@@ -47,9 +47,9 @@ RELEASE_VALIDATION_CASES = (
         'expected_qc': 'partly_accessible',
     },
     {
-        'id': 'fully-accessible-gene-3l', 'chromosome': '3L',
-        'start': 2_905_395, 'end': 2_905_525,
-        'accession': 'AGAP013705', 'strand': 1,
+        'id': 'fully-accessible-noncoding-3r', 'chromosome': '3R',
+        'start': 38_377_342, 'end': 38_377_436,
+        'accession': 'AGAP009678', 'strand': 1,
         'purpose': 'Fully accessible non-coding pinned gene.',
         'expected_qc': 'fully_accessible',
     },

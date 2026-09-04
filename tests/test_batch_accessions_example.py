@@ -16,7 +16,10 @@ def test_batch_example_is_current_and_structurally_representative():
         (ROOT / 'docs/assets/data/query-manifest.json').read_text(encoding='utf-8')
     )
 
-    assert len(accessions) == 10
+    assert accessions == [
+        'AGAP008212', 'AGAP002560', 'AGAP008288', 'AGAP010815', 'AGAP004707',
+        'AGAP009678', 'AGAP006241', 'AGAP000040', 'AGAP010449',
+    ]
     assert len(accessions) == len(set(accessions))
 
     records = [index['accessions'][accession] for accession in accessions]
@@ -31,7 +34,7 @@ def test_batch_example_is_current_and_structurally_representative():
         False, True
     }
     assert min(len(record['transcript_ids']) for record in records) == 1
-    assert max(len(record['transcript_ids']) for record in records) >= 10
+    assert max(len(record['transcript_ids']) for record in records) >= 13
     assert all(
         annotation['end'] - annotation['start'] + 1
         <= query_manifest['maximum_query_bases']

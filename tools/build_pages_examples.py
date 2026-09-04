@@ -19,10 +19,12 @@ DEFAULT_MANIFEST = REPOSITORY_ROOT / 'docs' / 'examples.json'
 DEFAULT_OUTPUT_ROOT = REPOSITORY_ROOT / 'docs' / 'assets'
 CACHE_ROOT = Path(tempfile.gettempdir()) / 'agamcs-pages-matplotlib'
 REQUIRED_EXAMPLE_KEYS = {
-    'accession', 'region', 'transcript_id', 'strand', 'feature_summary',
-    'description', 'qc_note', 'annotation', 'assets',
+    'accession', 'symbol', 'topic', 'quick_rank', 'why_featured', 'teaches',
+    'limitations', 'labels', 'region', 'transcript_id', 'strand',
+    'feature_summary', 'description', 'qc_note', 'annotation', 'assets',
 }
 REQUIRED_ASSET_KEYS = {'summary', 'heatmap'}
+REQUIRED_LABEL_KEYS = {'complexity', 'qc'}
 
 
 def load_accession_list(path: Path) -> list[str]:
@@ -37,13 +39,14 @@ def load_accession_list(path: Path) -> list[str]:
 def load_catalogue(path: Path) -> dict:
     """Load and validate the small, pinned catalogue manifest."""
     catalogue = json.loads(path.read_text(encoding='utf-8'))
-    if catalogue.get('schema_version') != 1:
+    if catalogue.get('schema_version') != 2:
         raise ValueError('Unsupported or missing examples.json schema_version.')
     examples = catalogue.get('examples')
     if not isinstance(examples, list) or not examples:
         raise ValueError('examples.json must contain at least one example.')
 
     accessions = set()
+    quick_ranks = set()
     for example in examples:
         missing = REQUIRED_EXAMPLE_KEYS - example.keys()
         if missing:
@@ -52,6 +55,30 @@ def load_catalogue(path: Path) -> dict:
         if accession in accessions:
             raise ValueError(f'Duplicate accession in examples.json: {accession}')
         accessions.add(accession)
+        symbol = example['symbol']
+        if symbol is not None and (not isinstance(symbol, str) or not symbol.strip()):
+            raise ValueError(f'{accession} symbol must be a non-empty string or null.')
+        for field in ('topic', 'why_featured', 'feature_summary', 'description', 'qc_note'):
+            if not isinstance(example[field], str) or not example[field].strip():
+                raise ValueError(f'{accession} {field} must be a non-empty string.')
+        for field in ('teaches', 'limitations'):
+            values = example[field]
+            if not isinstance(values, list) or not values or not all(
+                isinstance(value, str) and value.strip() for value in values
+            ):
+                raise ValueError(f'{accession} {field} must be a non-empty string list.')
+        rank = example['quick_rank']
+        if rank is not None:
+            if not isinstance(rank, int) or isinstance(rank, bool) or rank < 1:
+                raise ValueError(f'{accession} quick_rank must be a positive integer or null.')
+            if rank in quick_ranks:
+                raise ValueError(f'Duplicate quick_rank in examples.json: {rank}')
+            quick_ranks.add(rank)
+        labels = example['labels']
+        if not isinstance(labels, dict) or set(labels) != REQUIRED_LABEL_KEYS:
+            raise ValueError(f'{accession} labels must be exactly {sorted(REQUIRED_LABEL_KEYS)}.')
+        if not all(isinstance(value, str) and value.strip() for value in labels.values()):
+            raise ValueError(f'{accession} labels must contain non-empty strings.')
         if not isinstance(example['annotation'].get('exons'), list):
             raise ValueError(f'{accession} annotation must contain an exon list.')
         asset_keys = set(example['assets'])
@@ -61,6 +88,9 @@ def load_catalogue(path: Path) -> dict:
             asset_path = Path(relative_path)
             if asset_path.is_absolute() or '..' in asset_path.parts or asset_path.suffix != '.png':
                 raise ValueError(f'{accession} has an unsafe PNG asset path: {relative_path!r}')
+    expected_quick_ranks = set(range(1, len(quick_ranks) + 1))
+    if quick_ranks != expected_quick_ranks:
+        raise ValueError('quick_rank values must form a consecutive sequence starting at 1.')
     return catalogue
 
 

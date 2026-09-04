@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import h5py
 import numpy as np
@@ -103,3 +104,20 @@ def test_validation_rejects_incomplete_accession_coverage():
              'records': {'AGAP000001': {}}},
             {'index_version': 'test', 'accessions': {'AGAP000002': {}}},
         )
+
+
+def test_checked_in_rankings_preserve_anonymous_source_cohort_context():
+    root = Path(__file__).resolve().parents[1]
+    index = json.loads((root / 'docs/assets/data/accession-index.json').read_text())
+    cs = json.loads((root / 'AgamCs/data/gene-cs-rankings.json').read_text())
+    snp = json.loads((root / 'AgamCs/data/gene-snp-rankings.json').read_text())
+
+    build_gene_rankings.validate_cs_rankings(cs, index)
+    build_gene_rankings.validate_snp_rankings(snp, index)
+    assert len(cs['records']) == len(snp['records']) == len(index['accessions']) == 13_096
+    assert len(cs['redacted_records']) == len(snp['redacted_records']) == 1
+    assert cs['cohorts']['global_gene_count'] == 13_097
+    assert snp['cohorts']['global_eligible_gene_counts'] == {
+        'gene_span': 8_305,
+        'representative_exons': 10_165,
+    }

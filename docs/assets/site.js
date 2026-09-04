@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-09-04-figure-first';
+const PAGES_RELEASE = '2026-09-04-public-examples1';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -553,28 +553,49 @@ async function loadCatalogue() {
     const response = await fetch(versionedAsset('examples.json'));
     if (!response.ok) throw new Error(`Catalogue request failed (${response.status})`);
     const catalogue = await response.json();
+    if (catalogue.schema_version !== 2 || !Array.isArray(catalogue.examples)) {
+      throw new Error('The featured-example catalogue is not compatible with this client.');
+    }
     examples = catalogue.examples;
+    const quickExamples = examples
+      .filter((example) => Number.isSafeInteger(example.quick_rank))
+      .sort((left, right) => left.quick_rank - right.quick_rank);
+    if (quickExamples.length !== 3
+        || quickExamples.some((example, index) => example.quick_rank !== index + 1)) {
+      throw new Error('The featured-example catalogue must define quick ranks 1, 2, and 3.');
+    }
     const placeholder = document.createElement('option');
     placeholder.value = '';
     placeholder.textContent = 'Choose a featured example...';
     exampleSelect.replaceChildren(placeholder, ...examples.map((example) => {
       const option = document.createElement('option');
       option.value = example.accession;
-      option.textContent = `${example.accession} — ${example.feature_summary}`;
+      option.textContent = example.symbol
+        ? `${example.symbol} · ${example.accession} — ${example.topic} · ${example.labels.qc}`
+        : `${example.accession} — ${example.topic} · ${example.labels.qc}`;
       return option;
     }));
-    featuredExampleActions.replaceChildren(...examples.slice(0, 3).map((example) => {
+    featuredExampleActions.replaceChildren(...quickExamples.map((example) => {
       const button = document.createElement('button');
       button.type = 'button';
-      button.textContent = example.accession;
-      button.title = example.feature_summary;
+      button.className = 'featured-example-button';
+      const name = document.createElement('strong');
+      name.textContent = example.symbol || example.accession;
+      const accession = document.createElement('span');
+      accession.className = 'featured-example-accession';
+      accession.textContent = example.symbol ? example.accession : 'Official symbol unavailable';
+      const topic = document.createElement('span');
+      topic.className = 'featured-example-topic';
+      topic.textContent = example.topic;
+      button.replaceChildren(name, accession, topic);
+      button.title = `${example.feature_summary}. ${example.labels.qc}.`;
       button.setAttribute(
-        'aria-label', `Use featured example ${example.accession}: ${example.feature_summary}`,
+        'aria-label', `Use featured example ${example.symbol || example.accession}, ${example.accession}: ${example.topic}`,
       );
       button.addEventListener('click', () => selectFeaturedExample(example.accession));
       return button;
     }));
-    catalogueHelp.textContent = `${examples.length} featured examples. Selecting one fills the accession query.`;
+    selectFeaturedExample(quickExamples[0].accession, { focusSubmit: false });
   } catch (error) {
     featuredExampleActions.textContent = 'Examples unavailable';
     catalogueHelp.textContent = 'Featured examples could not be loaded; accession and coordinate queries still work.';
@@ -582,9 +603,46 @@ async function loadCatalogue() {
   }
 }
 
-function selectFeaturedExample(accession) {
-  if (!accession) {
+function renderCatalogueHelp(example) {
+  if (!example) {
     catalogueHelp.textContent = `${examples.length} featured examples. Selecting one fills the accession query.`;
+    return;
+  }
+  const heading = document.createElement('span');
+  heading.className = 'catalogue-example-heading';
+  const name = document.createElement('strong');
+  name.textContent = example.symbol || example.accession;
+  const accession = document.createElement('span');
+  accession.className = 'catalogue-example-accession';
+  accession.textContent = example.symbol ? example.accession : 'Official symbol unavailable';
+  const topic = document.createElement('span');
+  topic.className = 'catalogue-example-topic';
+  topic.textContent = example.topic;
+  heading.replaceChildren(name, accession, topic);
+
+  const labels = document.createElement('span');
+  labels.className = 'catalogue-example-labels';
+  for (const [kind, label] of Object.entries(example.labels)) {
+    const chip = document.createElement('span');
+    chip.className = `catalogue-example-label catalogue-example-label-${kind}`;
+    chip.textContent = label;
+    labels.append(chip);
+  }
+  const reason = document.createElement('span');
+  reason.className = 'catalogue-example-reason';
+  reason.textContent = example.why_featured;
+  const teaches = document.createElement('span');
+  teaches.className = 'catalogue-example-teaches';
+  teaches.textContent = `Demonstrates: ${example.teaches.join(' ')}`;
+  const limitation = document.createElement('span');
+  limitation.className = 'catalogue-example-limitation';
+  limitation.textContent = `Interpretation limit: ${example.limitations.join(' ')}`;
+  catalogueHelp.replaceChildren(heading, labels, reason, teaches, limitation);
+}
+
+function selectFeaturedExample(accession, { focusSubmit = true } = {}) {
+  if (!accession) {
+    renderCatalogueHelp(null);
     return;
   }
   const example = examples.find((item) => item.accession === accession);
@@ -598,10 +656,11 @@ function selectFeaturedExample(accession) {
   configureIsoformControl(liveAccession.value);
   if (!isoformControl.hidden) queryOptions.open = true;
   updatePaddingHelp();
-  if (example) catalogueHelp.textContent = `${example.description} ${example.qc_note}`;
-  setPortalState(`Ready to query ${accession}`, 'Ready');
-  benchmarkStatus.textContent = `${accession} selected from the featured examples. Run the query to retrieve its values.`;
-  benchmarkSubmit.focus();
+  renderCatalogueHelp(example);
+  const subject = example.symbol ? `${example.symbol} (${accession})` : accession;
+  setPortalState(`Ready to query ${subject}`, 'Ready');
+  benchmarkStatus.textContent = `${subject} is selected but has not been run. Choose Run query to retrieve its values.`;
+  if (focusSubmit) benchmarkSubmit.focus();
 }
 
 exampleSelect.addEventListener('change', () => {
@@ -843,7 +902,7 @@ function annotationsForDisplayedRegion(
 
 function formatResolutionLabel(resolution) {
   const name = geneSearchSnapshot?.names?.[resolution?.geneAccession]?.name || null;
-  return name ? `${resolution.accession} (${name})` : resolution.accession;
+  return name ? `${name} (${resolution.accession})` : resolution.accession;
 }
 
 function renderResolvedAccession(resolution, index, paddingDetails) {
@@ -851,7 +910,7 @@ function renderResolvedAccession(resolution, index, paddingDetails) {
   const name = geneSearchSnapshot?.names?.[resolution.geneAccession]?.name || null;
   const queryLabel = formatResolutionLabel(resolution);
   const geneLabel = name
-    ? `${resolution.geneAccession} (${name})`
+    ? `${name} (${resolution.geneAccession})`
     : resolution.geneAccession;
   renderVectorBaseGeneLink(
     document.querySelector('#resolved-accession-id'), resolution.geneAccession, queryLabel,

@@ -25,7 +25,6 @@ results/AGAP006241/AGAP006241/*
 # Local analysis and reference files not consumed by the plotting package
 notebooks/
 MK_hist_AGAPs.txt.rtf
-miR989 MSA.txt
 tRNASec MSA.txt
 
 # Python build, package, and test artifacts

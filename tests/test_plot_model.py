@@ -178,9 +178,9 @@ def test_python_and_pages_models_match_for_complete_synthetic_cases(specificatio
         )
     if specification['id'] == 'all-qc-failed':
         assert all(record['mean'] is None for record in python_model['signal']['snp'])
-    if specification['id'] == 'mir989-length':
-        assert python_model['signal']['binCount'] == 131
-        assert python_model['heatmap']['binCount'] == 131
+    if specification['id'] == 'mir275-length':
+        assert python_model['signal']['binCount'] == 95
+        assert python_model['heatmap']['binCount'] == 95
     if specification['id'] == 'agap006241-length':
         assert python_model['signal']['binCount'] == 1000
         assert python_model['heatmap']['binCount'] == 1000
@@ -243,7 +243,7 @@ def test_all_explicit_resolutions_match_javascript_and_leave_source_values_uncha
     assert json.dumps(result, sort_keys=True) == before
 
 
-def _agap006241_result_and_annotation():
+def _landing_result_and_annotation():
     example = json.loads((ROOT / 'docs/examples.json').read_text())['examples'][0]
     chromosome, coordinates = example['region'].split(':')
     start, end = map(int, coordinates.split('-'))
@@ -268,8 +268,8 @@ def _agap006241_result_and_annotation():
     }, example['annotation']
 
 
-def test_agap006241_model_and_six_palette_samples_match_javascript_and_golden_fixture():
-    result, annotation = _agap006241_result_and_annotation()
+def test_landing_model_and_six_palette_samples_match_javascript_and_golden_fixture():
+    result, annotation = _landing_result_and_annotation()
     python_model = build_plot_model(result, annotation, [annotation])
     _assert_close(python_model, _javascript_model(result, annotation, [annotation]))
 

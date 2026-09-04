@@ -25,7 +25,7 @@ DEFAULT_ACCESSION_INDEX = (
 )
 DEFAULT_OUTPUT = REPOSITORY_ROOT / 'docs' / 'assets' / 'data' / 'gene-search.json'
 ASSEMBLY = 'AgamP4'
-SEARCH_VERSION = 'agamcs-agamp4-gene-names-v1'
+SEARCH_VERSION = 'agamcs-agamp4-gene-names-v2'
 SOURCE_RELEASE = 'Ensembl Metazoa 62'
 SOURCE_RELEASED = '2025-09'
 SOURCE_URL = (

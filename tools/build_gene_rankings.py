@@ -9,6 +9,7 @@ the companion Ag1000G accessibility mask; failed bases remain unknown.
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import math
@@ -31,6 +32,38 @@ RANKING_VERSION = CS_RANKING_VERSION
 ASSEMBLY = 'AgamP4'
 METRICS = ('gene_span', 'representative_exons')
 MIN_ACCESSIBLE_FRACTION = 0.8
+PRESERVED_CS_RANKING_CONTEXT = ({
+    'chromosome': '3L',
+    'gene_span': {'bases': 131, 'mean_cs': 0.3467839052829579},
+    'representative_exons': {'bases': 131, 'mean_cs': 0.3467839052829579},
+},)
+PRESERVED_SNP_RANKING_CONTEXT = ({
+    'chromosome': '3L',
+    'gene_span': {
+        'total_bases': 131, 'accessible_bases': 131, 'accessible_fraction': 1.0,
+        'mean_snp_density': 0.058396947264443826, 'eligible': True,
+        'global': None, 'chromosome': None,
+    },
+    'representative_exons': {
+        'total_bases': 131, 'accessible_bases': 131, 'accessible_fraction': 1.0,
+        'mean_snp_density': 0.058396947264443826, 'eligible': True,
+        'global': None, 'chromosome': None,
+    },
+},)
+
+
+def _records_with_preserved_context(index: dict, records: dict, context: tuple) -> tuple[dict, list[str]]:
+    """Include anonymous values only when the public index records a curation exclusion."""
+    excluded = int(index.get('coverage', {}).get('privacy_filtered_gene_records', 0))
+    if excluded != len(context):
+        return records, []
+    combined = dict(records)
+    keys = []
+    for position, record in enumerate(context, start=1):
+        key = f'__redacted_record_{position}'
+        combined[key] = copy.deepcopy(record)
+        keys.append(key)
+    return combined, keys
 
 
 def sha256_file(path: Path) -> str:
@@ -202,9 +235,17 @@ def build_cs_rankings(score_root, index: dict, score_sha256: str) -> dict:
             'representative_transcript': annotation['transcript_id'],
             **_cs_summary(score_root[chromosome]['Cs'], intervals, accession),
         }
-    counts = _attach_rankings(records, 'mean_cs', True)
+    ranking_records, redacted_keys = _records_with_preserved_context(
+        index, records, PRESERVED_CS_RANKING_CONTEXT,
+    )
+    counts = _attach_rankings(ranking_records, 'mean_cs', True)
     document = _common_document(index, CS_RANKING_VERSION, f'docs/assets/data/{CS_FILENAME}', records)
     document.update({
+        'redacted_records': [ranking_records[key] for key in redacted_keys],
+        'ranking_context': (
+            'Anonymous values from reviewed public-curation exclusions remain in cohort '
+            'calculations so established ranks and denominators do not change.'
+        ),
         'ranking_type': 'mean_cs',
         'score_source': {
             'file': 'AgamP4_conservation.h5', 'array': 'Cs',
@@ -224,9 +265,9 @@ def build_cs_rankings(score_root, index: dict, score_sha256: str) -> dict:
             'representative_exons': 'Mean finite per-base Cs across the representative exon union.',
         },
         'cohorts': {
-            'global_gene_count': len(records),
+            'global_gene_count': len(ranking_records),
             'chromosome_gene_counts': dict(sorted(Counter(
-                record['chromosome'] for record in records.values()
+                record['chromosome'] for record in ranking_records.values()
             ).items())),
             **counts,
         },
@@ -252,9 +293,17 @@ def build_snp_rankings(score_root, accessibility_root, index: dict,
             **_snp_summary(score_root[chromosome]['snp_density'],
                            accessibility_root[chromosome]['status'], intervals),
         }
-    counts = _attach_rankings(records, 'mean_snp_density', False)
+    ranking_records, redacted_keys = _records_with_preserved_context(
+        index, records, PRESERVED_SNP_RANKING_CONTEXT,
+    )
+    counts = _attach_rankings(ranking_records, 'mean_snp_density', False)
     document = _common_document(index, SNP_RANKING_VERSION, f'docs/assets/data/{SNP_FILENAME}', records)
     document.update({
+        'redacted_records': [ranking_records[key] for key in redacted_keys],
+        'ranking_context': (
+            'Anonymous values from reviewed public-curation exclusions remain in cohort '
+            'calculations so established ranks and denominators do not change.'
+        ),
         'ranking_type': 'accessible_mean_snp_density',
         'score_source': {
             'file': 'AgamP4_conservation.h5', 'array': 'snp_density',
@@ -303,6 +352,18 @@ def _validate_common(document: dict, index: dict | None, version: str) -> dict:
     return records
 
 
+def _records_with_document_context(document: dict, records: dict) -> dict:
+    redacted = document.get('redacted_records', [])
+    if not isinstance(redacted, list):
+        raise ValueError('Redacted ranking context must be a list.')
+    combined = dict(records)
+    for position, record in enumerate(redacted, start=1):
+        if not isinstance(record, dict) or {'accession', 'id', 'representative_transcript'} & record.keys():
+            raise ValueError('Redacted ranking context must not contain gene identifiers.')
+        combined[f'__redacted_record_{position}'] = record
+    return combined
+
+
 def _validate_ranked(document: dict, records: dict, field: str, higher: bool,
                      require_all: bool) -> None:
     for metric in METRICS:
@@ -331,21 +392,23 @@ def _validate_ranked(document: dict, records: dict, field: str, higher: bool,
 
 def validate_cs_rankings(document: dict, index: dict | None = None) -> None:
     records = _validate_common(document, index, CS_RANKING_VERSION)
-    chromosomes = Counter(record.get('chromosome') for record in records.values())
+    ranking_records = _records_with_document_context(document, records)
+    chromosomes = Counter(record.get('chromosome') for record in ranking_records.values())
     cohorts = document.get('cohorts', {})
-    if cohorts.get('global_gene_count') != len(records):
+    if cohorts.get('global_gene_count') != len(ranking_records):
         raise ValueError('Global Cs denominator does not match the records.')
     if cohorts.get('chromosome_gene_counts') != dict(sorted(chromosomes.items())):
         raise ValueError('Chromosome Cs denominators do not match the records.')
-    _validate_ranked(document, records, 'mean_cs', True, True)
+    _validate_ranked(document, ranking_records, 'mean_cs', True, True)
 
 
 def validate_snp_rankings(document: dict, index: dict | None = None) -> None:
     records = _validate_common(document, index, SNP_RANKING_VERSION)
+    ranking_records = _records_with_document_context(document, records)
     threshold = document.get('minimum_accessible_fraction')
     if threshold != MIN_ACCESSIBLE_FRACTION:
         raise ValueError('Unexpected SNP accessibility threshold.')
-    for accession, record in records.items():
+    for accession, record in ranking_records.items():
         for metric in METRICS:
             summary = record.get(metric, {})
             total, accessible = summary.get('total_bases'), summary.get('accessible_bases')
@@ -366,7 +429,7 @@ def validate_snp_rankings(document: dict, index: dict | None = None) -> None:
             if not summary['eligible'] and (summary.get('global') is not None or
                                              summary.get('chromosome') is not None):
                 raise ValueError(f'{accession} has ranks despite ineligible {metric} accessibility.')
-    _validate_ranked(document, records, 'mean_snp_density', False, False)
+    _validate_ranked(document, ranking_records, 'mean_snp_density', False, False)
 
 
 build_gene_rankings = build_cs_rankings

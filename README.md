@@ -198,14 +198,14 @@ Method details are available in the
 Process several genes at once:
 
 ```commandline
-agamcs --accessions AGAP006241 AGAP013705 --output accession_batch
+agamcs --accessions AGAP008212 AGAP009678 --output accession_batch
 agamcs --accessions-file batch_accessions_example.txt --output accession_batch
 ```
 
 The accession file should contain one `AGAP...` ID per line. Each gene gets its
 own subdirectory, and lines beginning with `#` can document the list. The
 checked-in example spans all five supported chromosomes and deliberately mixes
-plus/minus strands, coding/non-coding genes, short/long models, one to eleven
+plus/minus strands, coding/non-coding genes, short/long models, one to thirteen
 transcript isoforms, and different QC outcomes. `--highlight` accepts absolute
 genomic `start-end` ranges.
 

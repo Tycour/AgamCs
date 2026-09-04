@@ -1,20 +1,18 @@
-# Compact plus-strand coding model (one transcript, three exons)
+# CYP6M2 — compact insecticide-metabolism example with complete accessibility
+AGAP008212
+# Orco — olfactory co-receptor on the minus strand
+AGAP002560
+# TIM — circadian gene with two transcript isoforms
+AGAP008288
+# TEP1 — immunity example with deliberately limited accessibility QC
+AGAP010815
+# para — long, 13-isoform target-site resistance locus with partial QC
+AGAP004707
+# aga-mir-275 — short, single-exon non-coding RNA with complete accessibility
+AGAP009678
+# ZPG — compact legacy regression locus
 AGAP006241
-# Single-exon non-coding model
-AGAP013705
-# Three transcript isoforms on chromosome X
+# Officially unnamed three-isoform gene on chromosome X
 AGAP000040
-# Eleven transcript isoforms in a compact gene span
-AGAP004559
-# Eleven isoforms and a ten-exon representative transcript
-AGAP005079
-# Nine isoforms on the minus strand
-AGAP004592
-# Long minus-strand, seven-exon model
-AGAP008118
-# Compact gene with four transcript isoforms
-AGAP008727
-# Minus-strand gene with four isoforms and twelve representative exons
-AGAP010139
-# Coding model whose SNP-density positions fail the companion QC mask
+# Officially unnamed all-QC-failed coding-gene tutorial
 AGAP010449
