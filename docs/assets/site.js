@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-08-30-gene-rankings';
+const PAGES_RELEASE = '2026-09-04-focus-first';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -55,7 +55,10 @@ const plotRangeStatus = document.querySelector('#plot-range-status');
 const showOverlappingAnnotations = document.querySelector('#show-overlapping-annotations');
 const overlapAnnotationHelp = document.querySelector('#overlap-annotation-help');
 const accessionQueryPanel = document.querySelector('#accession-query-panel');
+const accessionQueryOptions = document.querySelector('#accession-query-options');
 const coordinateQueryPanel = document.querySelector('#coordinate-query-panel');
+const queryOptions = document.querySelector('#query-options');
+const queryOptionsSummary = queryOptions.querySelector('summary');
 const liveAccession = document.querySelector('#live-accession');
 const accessionCombobox = document.querySelector('#accession-combobox');
 const accessionSuggestionsPanel = document.querySelector('#accession-suggestions-panel');
@@ -70,6 +73,8 @@ const isoformHelp = document.querySelector('#isoform-help');
 const resolvedAccession = document.querySelector('#resolved-accession');
 const exampleSelect = document.querySelector('#example-select');
 const catalogueHelp = document.querySelector('#catalogue-help');
+const featuredExampleStrip = document.querySelector('#featured-example-strip');
+const featuredExampleActions = document.querySelector('#featured-example-actions');
 const resultTitle = document.querySelector('#result-title');
 const resultStatus = document.querySelector('#result-status');
 const localFilePreview = window.location.protocol === 'file:';
@@ -362,6 +367,7 @@ function selectAccessionSuggestion(match) {
   liveAccession.value = match.value;
   closeAccessionSuggestions();
   configureIsoformControl(match.value);
+  if (!isoformControl.hidden) queryOptions.open = true;
   updatePaddingHelp();
   const subject = match.kind === 'transcript'
     ? match.accession
@@ -524,7 +530,12 @@ function setPortalState(title, status, tone = 'ready') {
 function setLiveQueryMode(mode) {
   const byAccession = mode === 'accession';
   accessionQueryPanel.hidden = !byAccession;
+  accessionQueryOptions.hidden = !byAccession;
+  featuredExampleStrip.hidden = !byAccession;
   coordinateQueryPanel.hidden = byAccession;
+  queryOptionsSummary.textContent = byAccession
+    ? 'Options and featured examples'
+    : 'Annotation options';
   closeAccessionSuggestions();
   renderGeneRanking(null, null);
   setPortalState('Ready for a query', 'Ready');
@@ -552,29 +563,49 @@ async function loadCatalogue() {
       option.textContent = `${example.accession} — ${example.feature_summary}`;
       return option;
     }));
+    featuredExampleActions.replaceChildren(...examples.slice(0, 3).map((example) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = example.accession;
+      button.title = example.feature_summary;
+      button.setAttribute(
+        'aria-label', `Use featured example ${example.accession}: ${example.feature_summary}`,
+      );
+      button.addEventListener('click', () => selectFeaturedExample(example.accession));
+      return button;
+    }));
     catalogueHelp.textContent = `${examples.length} featured examples. Selecting one fills the accession query.`;
   } catch (error) {
+    featuredExampleActions.textContent = 'Examples unavailable';
     catalogueHelp.textContent = 'Featured examples could not be loaded; accession and coordinate queries still work.';
     console.error(error);
   }
 }
 
-exampleSelect.addEventListener('change', () => {
-  if (!exampleSelect.value) {
+function selectFeaturedExample(accession) {
+  if (!accession) {
     catalogueHelp.textContent = `${examples.length} featured examples. Selecting one fills the accession query.`;
     return;
   }
-  const example = examples.find((item) => item.accession === exampleSelect.value);
+  const example = examples.find((item) => item.accession === accession);
+  if (!example) return;
   const accessionMode = document.querySelector('input[name="live-query-mode"][value="accession"]');
   accessionMode.checked = true;
   setLiveQueryMode('accession');
-  liveAccession.value = exampleSelect.value;
+  exampleSelect.value = accession;
+  liveAccession.value = accession;
   closeAccessionSuggestions();
   configureIsoformControl(liveAccession.value);
+  if (!isoformControl.hidden) queryOptions.open = true;
   updatePaddingHelp();
   if (example) catalogueHelp.textContent = `${example.description} ${example.qc_note}`;
-  setPortalState(`Ready to query ${exampleSelect.value}`, 'Ready');
-  benchmarkStatus.textContent = `${exampleSelect.value} selected from the featured examples. Run the query to retrieve its values.`;
+  setPortalState(`Ready to query ${accession}`, 'Ready');
+  benchmarkStatus.textContent = `${accession} selected from the featured examples. Run the query to retrieve its values.`;
+  benchmarkSubmit.focus();
+}
+
+exampleSelect.addEventListener('change', () => {
+  selectFeaturedExample(exampleSelect.value);
 });
 
 const cataloguePromise = localFilePreview ? Promise.resolve([]) : loadCatalogue();
@@ -584,6 +615,7 @@ if (localFilePreview) {
   paddingHelp.textContent = 'Start the local web server before using accession padding.';
   overlapAnnotationHelp.textContent = 'Start the local web server before using overlapping-gene annotations.';
   catalogueHelp.textContent = 'Start the local web server to load the featured examples.';
+  featuredExampleActions.textContent = 'Start the local web server to load examples';
   benchmarkSubmit.disabled = true;
   setPortalState('Local web server required', 'Unavailable', 'error');
   benchmarkStatus.textContent = LOCAL_FILE_PREVIEW_MESSAGE;

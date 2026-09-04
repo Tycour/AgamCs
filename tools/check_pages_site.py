@@ -164,6 +164,8 @@ def validate_page(page: Path) -> list[str]:
                 )
         required_ids = {
             'explorer', 'benchmark-form', 'live-accession', 'example-select',
+            'query-options', 'accession-query-options',
+            'featured-example-strip', 'featured-example-actions',
             'about', 'about-title',
             'accession-padding',
             'padding-help',
@@ -207,6 +209,9 @@ def validate_page(page: Path) -> list[str]:
         for required_summary_text in (
             'Base pairs (bp)', 'Aggregated exons', 'Cs percentile',
             'Low-variation percentile',
+            'Find a gene or genomic region.',
+            'Options and featured examples',
+            'Data source, QC and query limits',
             'Gene accession, symbol, or transcript accession',
             'Transcript isoform', 'Thomas Courty', 'Windbichler Lab',
             'Imperial College London', 'Query processing runs in your browser',
