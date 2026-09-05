@@ -16,16 +16,17 @@
   <title>AgamCs conservation explorer</title>
   <link rel="canonical" href="https://tycour.github.io/AgamCs/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/site.css?v=2026-09-04-public-examples1">
-  <script src="assets/plot-model.js?v=2026-09-04-public-examples1" defer></script>
-  <script src="assets/live-plots.js?v=2026-09-04-public-examples1" defer></script>
-  <script src="assets/gene-search.js?v=2026-09-04-public-examples1" defer></script>
-  <script src="assets/gene-ranking.js?v=2026-09-04-public-examples1" defer></script>
-  <script src="assets/accession-lookup.js?v=2026-09-04-public-examples1" defer></script>
-  <script src="assets/query-contract.js?v=2026-09-04-public-examples1" defer></script>
-  <script src="assets/query-interaction.js?v=2026-09-04-public-examples1" defer></script>
-  <script src="assets/analytics.js?v=2026-09-04-public-examples1" data-measurement-id="G-25RC4QKPP9" defer></script>
-  <script src="assets/site.js?v=2026-09-04-public-examples1" defer></script>
+  <link rel="stylesheet" href="assets/site.css?v=2026-09-05-query-summary-v1">
+  <script src="assets/plot-model.js?v=2026-09-05-query-summary-v1" defer></script>
+  <script src="assets/query-summary.js?v=2026-09-05-query-summary-v1" defer></script>
+  <script src="assets/live-plots.js?v=2026-09-05-query-summary-v1" defer></script>
+  <script src="assets/gene-search.js?v=2026-09-05-query-summary-v1" defer></script>
+  <script src="assets/gene-ranking.js?v=2026-09-05-query-summary-v1" defer></script>
+  <script src="assets/accession-lookup.js?v=2026-09-05-query-summary-v1" defer></script>
+  <script src="assets/query-contract.js?v=2026-09-05-query-summary-v1" defer></script>
+  <script src="assets/query-interaction.js?v=2026-09-05-query-summary-v1" defer></script>
+  <script src="assets/analytics.js?v=2026-09-05-query-summary-v1" data-measurement-id="G-25RC4QKPP9" defer></script>
+  <script src="assets/site.js?v=2026-09-05-query-summary-v1" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -212,24 +213,28 @@
           </section>
           <p class="plot-method-note" id="plot-method-note">Adaptive uses one display bin per base through 1,000 bases, then the bounded maximum of 1,000 bins, preserving the strongest available detail without unbounded SVG growth. Cs itself is per-base; SNP density remains the archived centred 20-bp rolling statistic, and CNEr evidence remains derived from 30/50-bp source windows. Finer display subdivision does not add biological resolution. Hover for query values; range zoom and the optional overlapping-gene tracks re-render retained full-query data without another genomic request. Additional loci use one representative transcript per overlapping gene; the queried gene retains its selected or complete isoform display. Transcript labels link to the matching VectorBase gene record in a new tab. The exact TSV retains every queried base and species row, while SVG downloads use the active displayed range, annotation choice, and resolution.</p>
         </div>
-        <div class="ranking-grid">
-          <section class="summary-scope-card summary-ranking-card" id="summary-cs-ranking-card" aria-labelledby="summary-cs-ranking-heading" hidden>
-            <header><h4 id="summary-cs-ranking-heading">Cs percentile</h4><small>Higher Cs = more conserved</small></header>
-            <div class="summary-metric-pair">
-              <div><span>Whole gene span</span><strong id="summary-cs-rank-span">—</strong><small id="summary-cs-rank-span-detail">—</small></div>
-              <div><span>Representative exons</span><strong id="summary-cs-rank-exons">—</strong><small id="summary-cs-rank-exons-detail">—</small></div>
-            </div>
-            <p class="summary-ranking-note" id="summary-cs-ranking-note"></p>
-          </section>
-          <section class="summary-scope-card summary-ranking-card" id="summary-snp-ranking-card" aria-labelledby="summary-snp-ranking-heading" hidden>
-            <header><h4 id="summary-snp-ranking-heading">Low-variation percentile</h4><small>Higher = lower accessible-base SNP density</small></header>
-            <div class="summary-metric-pair">
-              <div><span>Whole gene span</span><strong id="summary-snp-rank-span">—</strong><small id="summary-snp-rank-span-detail">—</small></div>
-              <div><span>Representative exons</span><strong id="summary-snp-rank-exons">—</strong><small id="summary-snp-rank-exons-detail">—</small></div>
-            </div>
-            <p class="summary-ranking-note" id="summary-snp-ranking-note"></p>
-          </section>
-        </div>
+        <section class="ranking-section" id="ranking-section" aria-labelledby="ranking-section-heading" hidden>
+          <h3 id="ranking-section-heading">Representative-transcript gene rankings</h3>
+          <p>These static rankings retain the representative transcript and whole-gene cohorts. Selecting another isoform changes the query summaries, not these rankings.</p>
+          <div class="ranking-grid">
+            <section class="summary-scope-card summary-ranking-card" id="summary-cs-ranking-card" aria-labelledby="summary-cs-ranking-heading" hidden>
+              <header><h4 id="summary-cs-ranking-heading">Cs percentile</h4><small>Higher Cs = more conserved</small></header>
+              <div class="summary-metric-pair">
+                <div><span>Whole gene span</span><strong id="summary-cs-rank-span">—</strong><small id="summary-cs-rank-span-detail">—</small></div>
+                <div><span>Representative exons</span><strong id="summary-cs-rank-exons">—</strong><small id="summary-cs-rank-exons-detail">—</small></div>
+              </div>
+              <p class="summary-ranking-note" id="summary-cs-ranking-note"></p>
+            </section>
+            <section class="summary-scope-card summary-ranking-card" id="summary-snp-ranking-card" aria-labelledby="summary-snp-ranking-heading" hidden>
+              <header><h4 id="summary-snp-ranking-heading">Low-variation percentile</h4><small>Higher = lower accessible-base SNP density</small></header>
+              <div class="summary-metric-pair">
+                <div><span>Whole gene span</span><strong id="summary-snp-rank-span">—</strong><small id="summary-snp-rank-span-detail">—</small></div>
+                <div><span>Representative exons</span><strong id="summary-snp-rank-exons">—</strong><small id="summary-snp-rank-exons-detail">—</small></div>
+              </div>
+              <p class="summary-ranking-note" id="summary-snp-ranking-note"></p>
+            </section>
+          </div>
+        </section>
         <details class="query-details">
           <summary>Data source, QC and query limits</summary>
           <dl class="query-provenance" id="query-provenance">
@@ -242,23 +247,25 @@
           <p class="field-help">Browser query limit: 200,000 bases. This engineering ceiling is not a biological threshold: it supports 13,080 of 13,097 indexed genes (99.8702%); the 17 longer genes remain available through the CLI. The versioned index covers AGAP genes and transcript isoforms on 2L, 2R, 3L, 3R, and X; official gene symbols come from a separately versioned AgamP4 naming index. Failed accessibility/QC positions are shown separately as unknown.</p>
         </details>
         <div class="query-summary" id="query-summary" hidden>
-          <h3>Exact query result</h3>
-          <div class="summary-grid">
-            <div class="summary-count-card"><span>Base pairs (bp)</span><strong id="summary-count">—</strong><small>Queried span</small></div>
-            <section class="summary-scope-card" aria-labelledby="summary-query-scope">
-              <header><h4 id="summary-query-scope">Queried interval</h4></header>
-              <div class="summary-metric-pair">
-                <div><span>Mean Cs</span><strong id="summary-cs">—</strong></div>
-                <div><span>Mean SNP</span><strong id="summary-snp">—</strong><small>Accessible bases only</small></div>
-              </div>
-            </section>
-            <section class="summary-scope-card" id="summary-exons-card" aria-labelledby="summary-exons-heading" hidden>
-              <header><h4 id="summary-exons-heading">Aggregated exons</h4><small><span id="summary-exon-count">—</span> bp</small></header>
-              <div class="summary-metric-pair">
-                <div><span>Mean Cs</span><strong id="summary-cs-exons">—</strong></div>
-                <div><span>Mean SNP</span><strong id="summary-snp-exons">—</strong><small>Accessible bases only</small></div>
-              </div>
-            </section>
+          <div class="query-summary-heading">
+            <div><h3>Exact query and selected-transcript summaries</h3><p id="query-summary-subject"></p></div>
+            <code id="query-summary-version">agamcs-query-summary-v1</code>
+          </div>
+          <div class="query-summary-table-scroll">
+            <table class="query-summary-table">
+              <thead>
+                <tr>
+                  <th scope="col">Scope</th>
+                  <th scope="col">Bases</th>
+                  <th scope="col">Mean Cs</th>
+                  <th scope="col">Accessibility</th>
+                  <th scope="col">Accessible-base SNP mean</th>
+                  <th scope="col">Longest inaccessible run</th>
+                  <th scope="col">80% coverage audit</th>
+                </tr>
+              </thead>
+              <tbody id="query-summary-body"></tbody>
+            </table>
           </div>
           <p class="summary-method" id="summary-method-note"></p>
         </div>

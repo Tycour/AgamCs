@@ -159,6 +159,30 @@ colours remain visual groups rather than clades or distance bins: dark purple =
 *gambiae* complex; purple = other *Anopheles*; pink = New World *Anopheles*;
 orange = outgroups.
 
+### Versioned query summaries
+
+The browser reports `agamcs-query-summary-v1` values for the complete query and,
+when an exact selected transcript is available, its exonic CDS union, exonic UTR
+union, intron union, each exon in 5′→3′ order, and strand-aware 5′ and 3′ flanks.
+The matching Python implementation is in `AgamCs.query_summary`; both languages
+are checked against the same parity fixtures. Manual coordinate queries remain
+query-only unless an exact transcript annotation is supplied.
+
+Every scope states total bases, the finite-Cs denominator and mean, accessible
+bases over total bases, accessible fraction, the finite accessible-base
+SNP-density denominator and mean, and the longest consecutive inaccessible run.
+Feature unions do not double-count overlapping exon bounds, and inaccessible
+runs reset between disconnected segments. Non-coding transcripts therefore have
+an absent (zero-base) CDS and UTR rather than treating all exonic sequence as UTR.
+QC-failed bases remain unknown and never contribute zero to a SNP-density mean.
+
+The summary also shows whether each non-empty scope reaches 80% accessibility.
+This is a coverage audit, not a new rank: 80% remains the existing eligibility
+threshold for the static representative-transcript gene SNP-density rankings
+described below. Selecting an alternative isoform changes these query summaries,
+while the existing rankings continue to use their pinned representative
+transcript and whole-gene cohorts.
+
 ### Gene-level Cs and SNP-density rankings
 
 For every one of the 13,097 current genes in the pinned AgamP4.14 index,

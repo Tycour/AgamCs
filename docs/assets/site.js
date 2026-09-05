@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-09-04-public-examples1';
+const PAGES_RELEASE = '2026-09-05-query-summary-v1';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -35,6 +35,9 @@ const benchmarkStatus = document.querySelector('#benchmark-status');
 const benchmarkDownload = document.querySelector('#benchmark-download');
 const benchmarkSubmit = document.querySelector('#benchmark-submit');
 const querySummary = document.querySelector('#query-summary');
+const querySummaryBody = document.querySelector('#query-summary-body');
+const querySummarySubject = document.querySelector('#query-summary-subject');
+const querySummaryVersion = document.querySelector('#query-summary-version');
 const liveVisuals = document.querySelector('#live-visuals');
 const liveSignalPlot = document.querySelector('#live-signal-plot');
 const liveHeatmapPlot = document.querySelector('#live-heatmap-plot');
@@ -775,8 +778,10 @@ function renderGeneRanking(rankingDocuments, accession) {
     : null;
   const csElement = document.querySelector('#summary-cs-ranking-card');
   const snpElement = document.querySelector('#summary-snp-ranking-card');
+  const rankingSection = document.querySelector('#ranking-section');
   csElement.hidden = !card?.cs;
   snpElement.hidden = !card?.snpDensity;
+  rankingSection.hidden = !card;
   if (!card) return;
   const renderRankedMetric = (metric, valueId, detailId) => {
     document.querySelector(valueId).textContent =
@@ -822,50 +827,69 @@ function renderGeneRanking(rankingDocuments, accession) {
   }
 }
 
-function renderQuerySummary(
-  result, annotation = null, annotationScope = 'gene', transcriptAnnotations = [],
-  paddingDetails = null,
-) {
-  const summary = globalThis.AgamCsPlots.summarizeQuery(result, annotation);
-  const hasExonSummary = summary.exonBasePairs != null;
-  const transcriptScope = hasExonSummary && annotationScope === 'transcript';
-  const multiTranscriptGene = hasExonSummary
-    && annotationScope === 'gene'
-    && transcriptAnnotations.length > 1;
-  const hasPadding = Number(paddingDetails?.requestedPadding) > 0;
-  const queryScope = hasExonSummary
-    ? (hasPadding
-      ? `Padded ${transcriptScope ? 'transcript' : 'gene'} interval`
-      : (transcriptScope ? 'Entire transcript span' : 'Entire gene span'))
-    : 'Queried interval';
-  document.querySelector('#summary-count').textContent = summary.queryBasePairs.toLocaleString();
-  document.querySelector('#summary-cs').textContent = displayNumber(summary.queryMeanCs);
-  document.querySelector('#summary-snp').textContent = displayNumber(summary.queryMeanSnp);
-  document.querySelector('#summary-query-scope').textContent = queryScope;
-  document.querySelector('#summary-exons-card').hidden = !hasExonSummary;
-  if (hasExonSummary) {
-    document.querySelector('#summary-exons-heading').textContent = transcriptScope
-      ? 'Selected transcript exons'
-      : multiTranscriptGene
-        ? 'Representative transcript exons'
-        : 'Aggregated exons';
-    document.querySelector('#summary-exon-count').textContent = summary.exonBasePairs.toLocaleString();
-    document.querySelector('#summary-cs-exons').textContent = displayNumber(summary.exonMeanCs);
-    document.querySelector('#summary-snp-exons').textContent = displayNumber(summary.exonMeanSnp);
-    const spanLabel = hasPadding
-      ? `Padded ${transcriptScope ? 'transcript' : 'gene'}-interval`
-      : (transcriptScope ? 'Transcript-span' : 'Gene-span');
-    const spanContents = hasPadding ? 'flanks, exons, and introns' : 'exons and introns';
-    const paddingNote = hasPadding
-      ? ` Requested padding was ${paddingDetails.requestedPadding.toLocaleString()} bp per side; chromosome-boundary clipping applied ${paddingDetails.leftPadding.toLocaleString()} bp on the lower-coordinate side and ${paddingDetails.rightPadding.toLocaleString()} bp on the higher-coordinate side.`
+function renderQuerySummary(result, annotation = null, transcriptAnnotations = []) {
+  const selectedAnnotation = globalThis.AgamCsQuerySummary.selectTranscriptAnnotation(
+    annotation, transcriptAnnotations,
+  );
+  const summary = globalThis.AgamCsQuerySummary.summarizeQuery(result, selectedAnnotation);
+  querySummaryVersion.textContent = summary.summary_version;
+  querySummarySubject.textContent = summary.selected_transcript
+    ? `Feature scopes use selected transcript ${summary.selected_transcript.transcript_id} on the ${summary.selected_transcript.strand === -1 ? 'minus' : 'plus'} strand.`
+    : 'No exact selected-transcript annotation was supplied, so only the query span is summarized.';
+  const rowForScope = (scope) => {
+    const row = document.createElement('tr');
+    const scopeCell = document.createElement('th');
+    scopeCell.scope = 'row';
+    const scopeLabel = document.createElement('span');
+    scopeLabel.textContent = scope.label;
+    const scopeCoordinates = document.createElement('small');
+    scopeCoordinates.textContent = scope.segments.length
+      ? scope.segments.map((segment) => `${segment.start.toLocaleString()}–${segment.end.toLocaleString()}`).join(', ')
+      : 'Absent in this query/annotation';
+    scopeCell.append(scopeLabel, scopeCoordinates);
+
+    const cell = (primary, secondary = '') => {
+      const element = document.createElement('td');
+      const strong = document.createElement('strong');
+      strong.textContent = primary;
+      const small = document.createElement('small');
+      small.textContent = secondary;
+      element.append(strong, small);
+      return element;
+    };
+    const accessibility = scope.total_bases
+      ? `${(100 * scope.accessible_fraction).toFixed(1)}%`
+      : 'NA';
+    const inaccessible = scope.longest_inaccessible_run;
+    const longest = inaccessible.bases
+      ? `${inaccessible.bases.toLocaleString()} bp`
+      : scope.total_bases ? '0 bp' : 'NA';
+    const longestWhere = inaccessible.bases
+      ? `${inaccessible.start.toLocaleString()}–${inaccessible.end.toLocaleString()}`
       : '';
-    const exonDefinition = multiTranscriptGene
-      ? `Exon means use the ${summary.exonBasePairs.toLocaleString()} unique bp in the union of ${annotation.transcript_id} exons; other isoforms shown in the plots are not combined into this metric.`
-      : `Exon means use the ${summary.exonBasePairs.toLocaleString()} unique bp in the union of annotated exons.`;
-    document.querySelector('#summary-method-note').textContent = `${spanLabel} means use all ${summary.queryBasePairs.toLocaleString()} queried bp (${spanContents}).${paddingNote} ${exonDefinition} SNP means include only QC-accessible bases within each scope; QC-failed bases remain unknown. Exon SNP averages the archived density values assigned to exonic bases; it does not recalculate their 20 bp windows.`;
-  } else {
-    document.querySelector('#summary-method-note').textContent = `Means use all ${summary.queryBasePairs.toLocaleString()} queried bp. The SNP mean includes only QC-accessible bases; QC-failed bases remain unknown. Exon means require a gene annotation from the versioned index.`;
-  }
+    const threshold = scope.meets_ranking_accessibility_threshold == null
+      ? 'NA'
+      : scope.meets_ranking_accessibility_threshold ? 'Meets 80%' : 'Below 80%';
+    row.append(
+      scopeCell,
+      cell(scope.total_bases.toLocaleString(), 'total bases'),
+      cell(displayNumber(scope.mean_cs), `${scope.finite_cs_bases.toLocaleString()}/${scope.total_bases.toLocaleString()} finite bases`),
+      cell(accessibility, `${scope.accessible_bases.toLocaleString()}/${scope.total_bases.toLocaleString()} accessible bases`),
+      cell(displayNumber(scope.mean_accessible_snp_density), `${scope.finite_accessible_snp_bases.toLocaleString()} finite accessible bases`),
+      cell(longest, longestWhere),
+      cell(threshold, scope.total_bases ? 'ranking reference; not a rank' : 'no bases'),
+    );
+    return row;
+  };
+  querySummaryBody.replaceChildren(...summary.scopes.map(rowForScope));
+  document.querySelector('#summary-method-note').textContent = (
+    'Cs means use finite values and state their denominator. SNP-density means use only '
+    + 'finite values at QC-accessible focal bases; QC-failed bases remain unknown, never zero. '
+    + 'CDS and UTR are exonic unions, introns exclude the exon union, exon rows follow 5\u2032\u21923\u2032 '
+    + 'transcript order, and strand-aware flanks cover queried bases outside the selected transcript. '
+    + 'Inaccessible runs reset between disconnected feature segments. '
+    + summary.ranking_threshold_note
+  );
   querySummary.hidden = false;
 }
 
@@ -1425,10 +1449,8 @@ async function runLiveQuery() {
         : `Query complete: ${querySubject}.`;
     renderQuerySummary(
       result,
-      annotation,
-      resolution?.matchedAs === 'transcript' ? 'transcript' : 'gene',
-      transcriptAnnotations,
-      paddingDetails,
+      resolution ? annotation : null,
+      resolution ? transcriptAnnotations : [],
     );
     if (resolution) renderResolvedAccession(resolution, accessionIndex, paddingDetails);
     const figureStem = resolution

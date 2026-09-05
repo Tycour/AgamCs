@@ -32,6 +32,7 @@ QUERY_ASSETS = (
     ROOT / 'assets/data/plot-validation.json',
     ROOT / 'assets/query-worker.js',
     ROOT / 'assets/plot-model.js',
+    ROOT / 'assets/query-summary.js',
     ROOT / 'assets/live-plots.js',
     ROOT / 'assets/query-contract.js',
     ROOT / 'assets/query-interaction.js',
@@ -174,10 +175,10 @@ def validate_page(page: Path) -> list[str]:
             'accession-search-status',
             'accession-query-panel', 'isoform-control', 'isoform-select',
             'isoform-help', 'coordinate-query-panel',
-            'results-portal', 'resolved-accession', 'summary-count',
+            'results-portal', 'resolved-accession',
             'resolved-gene-id',
-            'summary-exons-card', 'summary-cs-exons', 'summary-snp-exons',
-            'summary-exon-count', 'summary-method-note',
+            'query-summary', 'query-summary-subject', 'query-summary-version',
+            'query-summary-body', 'summary-method-note', 'ranking-section',
             'summary-cs-ranking-card', 'summary-cs-rank-span',
             'summary-cs-rank-exons', 'summary-cs-ranking-note',
             'summary-snp-ranking-card', 'summary-snp-rank-span',
@@ -208,7 +209,8 @@ def validate_page(page: Path) -> list[str]:
         if 'First five returned positions' in page_text:
             errors.append('index.html: obsolete per-position preview remains')
         for required_summary_text in (
-            'Base pairs (bp)', 'Aggregated exons', 'Cs percentile',
+            'Exact query and selected-transcript summaries',
+            'agamcs-query-summary-v1', 'Accessibility', 'Cs percentile',
             'Low-variation percentile',
             'Find a gene or genomic region.',
             'Options and featured examples',
@@ -522,6 +524,33 @@ def validate_live_plot_renderer() -> list[str]:
     return errors
 
 
+def validate_query_summary_contract() -> list[str]:
+    """Keep the browser summary wired to the reviewed v1 semantics."""
+    summary = (ROOT / 'assets/query-summary.js').read_text(encoding='utf-8')
+    site = (ROOT / 'assets/site.js').read_text(encoding='utf-8')
+    index = (ROOT / 'index.html').read_text(encoding='utf-8')
+    errors = []
+    for fragment in (
+        "SUMMARY_VERSION = 'agamcs-query-summary-v1'",
+        'RANKING_ACCESSIBILITY_THRESHOLD = 0.8',
+        'finite_cs_bases', 'accessible_bases', 'accessible_fraction',
+        'mean_accessible_snp_density', 'longest_inaccessible_run',
+        'selectTranscriptAnnotation',
+    ):
+        if fragment not in summary:
+            errors.append(f'query-summary v1 implementation is missing {fragment!r}')
+    for fragment in (
+        'resolution ? annotation : null',
+        'QC-failed bases remain unknown, never zero',
+        'ranking reference; not a rank',
+    ):
+        if fragment not in site:
+            errors.append(f'query-summary UI is missing {fragment!r}')
+    if 'Representative-transcript gene rankings' not in index:
+        errors.append('ranking section no longer identifies representative-transcript rankings')
+    return errors
+
+
 def validate_query_hardening() -> list[str]:
     """Pin the Phase 2 submit, over-limit, cancellation, and cooldown guards."""
     errors = []
@@ -575,6 +604,7 @@ def main() -> None:
     errors.extend(validate_local_preview_guard())
     errors.extend(validate_vectorbase_gene_links())
     errors.extend(validate_live_plot_renderer())
+    errors.extend(validate_query_summary_contract())
     errors.extend(validate_query_hardening())
     for asset in QUERY_ASSETS:
         if not asset.exists() or asset.stat().st_size == 0:

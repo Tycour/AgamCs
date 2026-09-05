@@ -7,6 +7,7 @@ const manifest = require('../docs/assets/data/query-manifest.json');
 const plotContract = require('../docs/assets/data/plot-contract.json');
 
 require('../docs/assets/plot-model.js');
+require('../docs/assets/query-summary.js');
 require('../docs/assets/live-plots.js');
 globalThis.AgamCsPlots.configurePlotContract(plotContract);
 
@@ -151,7 +152,7 @@ test('CDS segments stay ordered from 5-prime to 3-prime on the minus strand', ()
   assert.deepEqual(cdsSegments(annotation), [[150, 200], [300, 350]]);
 });
 
-test('query summaries distinguish the full span from the union of exons', () => {
+test('plot API exposes the versioned selected-transcript query summary', () => {
   const result = {
     chromosome: '2L',
     start: 100,
@@ -163,19 +164,24 @@ test('query summaries distinguish the full span from the union of exons', () => 
     },
   };
   const annotation = {
+    id: 'AGAPTEST',
     chromosome: '2L',
     start: 100,
     end: 105,
+    strand: 1,
+    transcript_id: 'AGAPTEST-RA',
     exons: [{ start: 100, end: 102 }, { start: 102, end: 104 }],
+    cds_start: 101,
+    cds_end: 103,
   };
-  assert.deepEqual(summarizeQuery(result, annotation), {
-    queryBasePairs: 6,
-    queryMeanCs: 3.5,
-    queryMeanSnp: 32.5,
-    exonBasePairs: 5,
-    exonMeanCs: 3,
-    exonMeanSnp: 32.5,
-  });
+  const summary = summarizeQuery(result, annotation);
+  const scopes = Object.fromEntries(summary.scopes.map((scope) => [scope.scope_id, scope]));
+  assert.equal(summary.summary_version, 'agamcs-query-summary-v1');
+  assert.equal(scopes.query.total_bases, 6);
+  assert.equal(scopes.query.mean_cs, 3.5);
+  assert.equal(scopes.query.mean_accessible_snp_density, 32.5);
+  assert.equal(scopes['exon-1'].total_bases, 3);
+  assert.equal(scopes['exon-2'].total_bases, 3);
 });
 
 test('padded query summaries retain exon metrics from the contained annotation', () => {
@@ -190,19 +196,23 @@ test('padded query summaries retain exon metrics from the contained annotation',
     },
   };
   const annotation = {
+    id: 'AGAPTEST',
     chromosome: '2L',
     start: 100,
     end: 105,
+    strand: 1,
+    transcript_id: 'AGAPTEST-RA',
     exons: [{ start: 101, end: 102 }, { start: 104, end: 104 }],
+    cds_start: null,
+    cds_end: null,
   };
-  assert.deepEqual(summarizeQuery(result, annotation), {
-    queryBasePairs: 8,
-    queryMeanCs: 3.5,
-    queryMeanSnp: 35,
-    exonBasePairs: 3,
-    exonMeanCs: 10 / 3,
-    exonMeanSnp: 100 / 3,
-  });
+  const scopes = Object.fromEntries(
+    summarizeQuery(result, annotation).scopes.map((scope) => [scope.scope_id, scope]),
+  );
+  assert.equal(scopes.query.total_bases, 8);
+  assert.equal(scopes['five-prime-flank'].total_bases, 1);
+  assert.equal(scopes['three-prime-flank'].total_bases, 1);
+  assert.equal(scopes.introns.total_bases, 3);
 });
 
 test('manual coordinate summaries omit exon metrics', () => {
@@ -217,12 +227,12 @@ test('manual coordinate summaries omit exon metrics', () => {
     },
   };
   const summary = summarizeQuery(result);
-  assert.equal(summary.queryBasePairs, 2);
-  assert.equal(summary.queryMeanCs, 0.5);
-  assert.equal(summary.queryMeanSnp, 0.2);
-  assert.equal(summary.exonBasePairs, null);
-  assert.ok(Number.isNaN(summary.exonMeanCs));
-  assert.ok(Number.isNaN(summary.exonMeanSnp));
+  assert.equal(summary.selected_transcript, null);
+  assert.deepEqual(summary.scopes.map((scope) => scope.scope_id), ['query']);
+  assert.equal(summary.scopes[0].mean_cs, 0.5);
+  assert.equal(summary.scopes[0].mean_accessible_snp_density, 0.2);
+  const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
+  assert.match(source, /renderQuerySummary\(\s*result,\s*resolution \? annotation : null/);
 });
 
 test('transcript models align to a shared plus-strand gene coordinate frame', () => {
@@ -508,6 +518,8 @@ test('focus-first layout keeps the primary query visible and secondary controls 
   assert.match(html, /id="benchmark-end"[^>]+value="6930547"/);
   assert.match(html, /<details class="query-details">/);
   assert.match(html, /class="ranking-grid"/);
+  assert.match(html, /Representative-transcript gene rankings/);
+  assert.match(html, /agamcs-query-summary-v1/);
   assert.match(source, /\.filter\(\(example\) => Number\.isSafeInteger\(example\.quick_rank\)\)/);
   assert.match(source, /function selectFeaturedExample\(accession, \{ focusSubmit = true \} = \{\}\)/);
   assert.match(source, /selectFeaturedExample\(quickExamples\[0\]\.accession, \{ focusSubmit: false \}\)/);
