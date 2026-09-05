@@ -58,9 +58,9 @@ byte and element count matches its case.
 
 | Case | Region | Purpose | QC expectation | Browser result |
 | --- | --- | --- | --- | --- |
-| `plus-gene-2l` | `2L:28585064-28586748` | AGAP006241, plus strand, golden plots | Partly accessible (98.1%) | Exact arrays and Python plot summaries match |
+| `landing-gene-3r` | `3R:6928858-6930547` | CYP6M2 / AGAP008212, plus strand, golden plots | Fully accessible | Exact arrays and Python plot summaries match |
 | `mixed-manual-2r` | `2R:30000000-30000199` | Manual 2R query | Partly accessible (41.0%) | Exact arrays match |
-| `fully-accessible-gene-3l` | `3L:2905395-2905525` | AGAP013705, non-coding gene | Fully accessible | Exact arrays match |
+| `fully-accessible-noncoding-3r` | `3R:38377342-38377436` | aga-mir-275 / AGAP009678, non-coding gene | Fully accessible | Exact arrays match |
 | `unavailable-gene-3l` | `3L:3855186-3858609` | AGAP010449, no interpretable SNP bases | No accessible bases | Exact arrays match; SNP/QC remains unknown |
 | `minus-gene-3r` | `3R:5886340-5904286` | AGAP008118, minus strand | Partly accessible (71.1%) | Exact arrays match; 5-prime to 3-prime orientation preserved |
 | `fully-accessible-manual-x` | `X:10000000-10000199` | Manual X query | Fully accessible | Exact arrays match |

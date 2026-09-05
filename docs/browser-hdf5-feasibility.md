@@ -6,7 +6,7 @@ This Stage 5 experiment asks whether the existing Zenodo-hosted HDF5 can serve
 small coordinate queries directly to a static GitHub Pages client. It does not
 repackage the archive or alter the scientific values.
 
-The default interval is `2L:28585064-28586748` (AGAP006241). The worker reads
+The default interval is `3R:6928858-6930547` (CYP6M2 / AGAP008212). The worker reads
 `Cs` and raw `snp_density`, refuses non-range responses, decompresses the
 existing zlib chunks, and checks SHA-256 hashes generated from the local HDF5.
 

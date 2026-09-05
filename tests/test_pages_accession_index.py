@@ -1,4 +1,5 @@
 import copy
+import hashlib
 import json
 
 import pytest
@@ -34,10 +35,12 @@ def test_build_index_pins_annotation_and_provenance(tmp_path):
     build_pages_accession_index.validate_index(index)
 
     assert index['schema_version'] == 2
-    assert index['index_version'] == 'agamcs-agamp4.14-v3'
+    assert index['index_version'] == 'agamcs-agamp4.14-v4'
     assert index['annotation']['gene_build'] == 'AgamP4.14'
     assert index['annotation']['source_snapshot_sha256'] == build_pages_accession_index.source_sha256(source)
     assert index['live_lookup']['enabled'] is False
+    assert index['coverage']['privacy_filtered_gene_records'] == 0
+    assert index['coverage']['privacy_filtered_transcript_records'] == 0
     assert index['aliases'] == {}
     assert index['retired'] == {}
     assert index['accessions']['AGAP000001'] == {
@@ -75,6 +78,15 @@ def test_validate_index_rejects_silent_live_lookup(tmp_path):
 
     with pytest.raises(ValueError, match='Live lookup must remain disabled'):
         build_pages_accession_index.validate_index(invalid)
+
+
+def test_public_index_curation_uses_non_publishing_digests(monkeypatch):
+    accession = 'AGAP000001'
+    digest = hashlib.sha256(accession.encode('ascii')).hexdigest()
+    monkeypatch.setattr(build_pages_accession_index, 'PUBLIC_EXCLUSION_DIGESTS', frozenset({digest}))
+
+    assert build_pages_accession_index.include_in_public_index(accession) is False
+    assert build_pages_accession_index.include_in_public_index('AGAP000002') is True
 
 
 def test_bulk_gff_builds_supported_gene_models_and_chooses_representative_transcript(tmp_path):

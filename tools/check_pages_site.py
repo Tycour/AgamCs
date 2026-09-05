@@ -51,10 +51,10 @@ REQUIRED_META_NAMES = {'author', 'description', 'theme-color', 'twitter:card'}
 REQUIRED_META_PROPERTIES = {'og:type', 'og:title', 'og:description', 'og:url', 'og:image'}
 FORBIDDEN_PAGES_SUFFIXES = {'.h5', '.hdf5', '.zarr', '.zip', '.tar', '.gz'}
 MAX_PAGES_FILE_BYTES = 10 * 1024 * 1024
-EXPECTED_ACCESSION_RECORDS = 13_097
-EXPECTED_TRANSCRIPT_RECORDS = 15_317
+EXPECTED_ACCESSION_RECORDS = 13_096
+EXPECTED_TRANSCRIPT_RECORDS = 15_316
 EXPECTED_ACCESSION_SOURCE_SHA256 = '916a1e0e4d4613d36be31dc03c53871f6f62c94f4d8bc4662d0002131658c0c7'
-EXPECTED_GENE_SEARCH_RECORDS = 2_255
+EXPECTED_GENE_SEARCH_RECORDS = 2_254
 EXPECTED_GENE_SEARCH_SOURCE_SHA256 = 'fb1e13c3265b966901cd01524bb16d49ff854c3a002745489daaeae54f638bce'
 REQUIRED_ACCESSIONS = {'AGAP001683', 'AGAP004568'}
 REQUIRED_TRANSCRIPTS = {'AGAP000040-RA', 'AGAP000040-RB', 'AGAP000040-RC'}
@@ -284,6 +284,7 @@ def validate_examples() -> list[str]:
     try:
         catalogue = load_catalogue(EXAMPLES_PATH)
         batch_accessions = load_accession_list(BATCH_ACCESSIONS_PATH)
+        naming_index = json.loads(GENE_SEARCH_PATH.read_text(encoding='utf-8'))
     except (OSError, ValueError) as error:
         return [f'could not read examples.json: {error}']
     errors = [f'missing generated asset: {path.relative_to(ROOT)}'
@@ -293,6 +294,30 @@ def validate_examples() -> list[str]:
         errors.append(
             'featured examples must match batch_accessions_example.txt in the same order'
         )
+    quick_examples = sorted(
+        (example for example in catalogue['examples'] if example['quick_rank'] is not None),
+        key=lambda example: example['quick_rank'],
+    )
+    if [example['accession'] for example in quick_examples] != [
+        'AGAP008212', 'AGAP002560', 'AGAP008288',
+    ]:
+        errors.append('quick examples must be CYP6M2, Orco, and TIM in that order')
+    for example in catalogue['examples']:
+        expected_symbol = naming_index.get('names', {}).get(example['accession'], {}).get('name')
+        if example['symbol'] != expected_symbol:
+            errors.append(
+                f"featured-example symbol disagrees with the pinned naming index: {example['accession']}"
+            )
+    labelled = {example['accession']: example['labels'] for example in catalogue['examples']}
+    required_labels = {
+        'AGAP010815': ('Complex', 'QC-limited'),
+        'AGAP004707': ('High complexity', 'Partial QC'),
+        'AGAP010449': ('4 exons', 'All QC failed'),
+    }
+    for accession, (complexity, qc) in required_labels.items():
+        labels = labelled.get(accession, {})
+        if complexity not in labels.get('complexity', '') or qc not in labels.get('qc', ''):
+            errors.append(f'featured example lacks explicit QC/complexity labels: {accession}')
     return errors
 
 
@@ -318,6 +343,9 @@ def validate_accessions() -> list[str]:
         )
     if index['annotation']['source_snapshot_sha256'] != EXPECTED_ACCESSION_SOURCE_SHA256:
         errors.append('accession index does not match the reviewed VectorBase-68 GFF checksum')
+    if index.get('coverage', {}).get('privacy_filtered_gene_records') != 1 \
+            or index.get('coverage', {}).get('privacy_filtered_transcript_records') != 1:
+        errors.append('accession index is missing the reviewed public-curation exclusion counts')
     for accession in sorted(REQUIRED_ACCESSIONS):
         if accession not in index['accessions']:
             errors.append(f'required arbitrary-accession regression record is missing: {accession}')
@@ -386,8 +414,8 @@ def validate_rankings() -> list[str]:
             errors.append(f'packaged gene-ranking asset is missing: {package.name}')
         elif package.read_bytes() != browser.read_bytes():
             errors.append(f'package and browser gene-ranking assets differ: {package.name}')
-    if cs['cohorts']['global_gene_count'] != EXPECTED_ACCESSION_RECORDS:
-        errors.append('Cs ranking denominator does not cover every indexed gene')
+    if cs['cohorts']['global_gene_count'] != EXPECTED_ACCESSION_RECORDS + 1:
+        errors.append('Cs ranking denominator no longer preserves its reviewed source cohort')
     expected_eligible = {'gene_span': 8305, 'representative_exons': 10165}
     if snp['cohorts']['global_eligible_gene_counts'] != expected_eligible:
         errors.append('SNP ranking denominators no longer match the reviewed 80% QC cohorts')

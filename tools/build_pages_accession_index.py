@@ -22,7 +22,7 @@ DEFAULT_SOURCE = REPOSITORY_ROOT / 'data' / 'accession_annotation_cache.json'
 DEFAULT_OUTPUT = REPOSITORY_ROOT / 'docs' / 'assets' / 'data' / 'accession-index.json'
 ASSEMBLY = 'AgamP4'
 GENE_BUILD = 'AgamP4.14'
-INDEX_VERSION = 'agamcs-agamp4.14-v3'
+INDEX_VERSION = 'agamcs-agamp4.14-v4'
 VERIFIED_ON = '2026-08-04'
 VECTORBASE_RELEASE = '68'
 VECTORBASE_GFF_NAME = 'VectorBase-68_AgambiaePEST.gff'
@@ -43,6 +43,15 @@ TRANSCRIPT_FEATURES = {
     'snoRNA', 'lnc_RNA', 'RNase_P_RNA', 'RNase_MRP_RNA',
     'pseudogenic_transcript',
 }
+PUBLIC_EXCLUSION_DIGESTS = frozenset({
+    '92f4ad89d0c6385c80d86ea3073c0f76db871f63ba3ccc929a6de453e0c5952c',
+})
+
+
+def include_in_public_index(accession: str) -> bool:
+    """Apply the reviewed current-tree curation exclusions without publishing them."""
+    digest = hashlib.sha256(accession.encode('ascii')).hexdigest()
+    return digest not in PUBLIC_EXCLUSION_DIGESTS
 
 
 def source_sha256(path: Path) -> str:
@@ -298,6 +307,18 @@ def _index_document(
 ) -> dict:
     if transcript_models is None or transcript_ids_by_gene is None:
         transcript_models, transcript_ids_by_gene = _default_transcript_catalogue(source)
+    public_source = {
+        accession: annotation
+        for accession, annotation in source.items()
+        if include_in_public_index(accession)
+    }
+    public_transcript_models = {
+        transcript_id: model
+        for transcript_id, model in transcript_models.items()
+        if model['gene_accession'] in public_source
+    }
+    excluded_gene_records = len(source) - len(public_source)
+    excluded_transcript_records = len(transcript_models) - len(public_transcript_models)
     accessions = {
         accession: {
             'status': 'current',
@@ -305,7 +326,7 @@ def _index_document(
             'transcript_ids': transcript_ids_by_gene[accession],
             'annotation': annotation,
         }
-        for accession, annotation in sorted(source.items())
+        for accession, annotation in sorted(public_source.items())
     }
     if bulk_gff:
         source_name = f'VEuPathDB VectorBase release {VECTORBASE_RELEASE}'
@@ -340,9 +361,12 @@ def _index_document(
         },
         'coverage': {
             'chromosomes': sorted(CHROMOSOMES),
+            'privacy_filtered_gene_records': excluded_gene_records,
+            'privacy_filtered_transcript_records': excluded_transcript_records,
             'statement': (
                 'Includes current AGAP genes and their transcript isoforms on the five chromosome '
-                'arrays available to the browser. Unplaced and unknown scaffolds are not queryable.'
+                'arrays available to the browser after reviewed public curation. Unplaced and '
+                'unknown scaffolds are not queryable.'
             ),
         },
         'refresh_policy': {
@@ -357,7 +381,7 @@ def _index_document(
             'statement': 'Live Ensembl lookup is intentionally disabled; the browser uses this versioned release.',
         },
         'accessions': accessions,
-        'transcripts': dict(sorted(transcript_models.items())),
+        'transcripts': dict(sorted(public_transcript_models.items())),
         'aliases': {},
         'retired': {},
     }

@@ -1,274 +1,260 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "assembly": "AgamP4",
   "examples": [
     {
+      "accession": "AGAP008212",
+      "symbol": "CYP6M2",
+      "topic": "Insecticide metabolism",
+      "quick_rank": 1,
+      "why_featured": "A compact, well-studied cytochrome P450 gives a broadly relevant first look at conservation, standing variation, and cross-species identity.",
+      "teaches": ["Conservation and within-species variation are distinct signals.", "A fully accessible locus supports direct inspection of the SNP-density track.", "A compact coding gene is a clear introduction to the plots."],
+      "limitations": ["These tracks do not establish resistance phenotype, recent selection, or causal function."],
+      "labels": {"complexity": "Compact · 1 isoform · 2 exons", "qc": "Complete QC · 1,690/1,690 bp accessible"},
+      "region": "3R:6928858-6930547",
+      "transcript_id": "AGAP008212-RA",
+      "strand": "+",
+      "feature_summary": "Compact, fully accessible cytochrome P450",
+      "description": "A compact plus-strand coding gene with two exons and complete companion accessibility coverage.",
+      "qc_note": "All 1,690 positions pass the companion accessibility mask.",
+      "annotation": {
+        "id": "AGAP008212", "assembly": "AgamP4", "chromosome": "3R",
+        "start": 6928858, "end": 6930547, "strand": 1,
+        "transcript_id": "AGAP008212-RA",
+        "exons": [{"start": 6928858, "end": 6929992}, {"start": 6930071, "end": 6930547}],
+        "cds_start": 6928909, "cds_end": 6930486
+      },
+      "assets": {"summary": "examples/AGAP008212/cs_snp_summary.png", "heatmap": "examples/AGAP008212/heatmap.png"}
+    },
+    {
+      "accession": "AGAP002560",
+      "symbol": "Orco",
+      "topic": "Olfaction and host seeking",
+      "quick_rank": 2,
+      "why_featured": "A familiar olfactory co-receptor connects comparative sequence evidence to mosquito sensory and behavioural research.",
+      "teaches": ["A minus-strand gene is displayed in transcriptional orientation.", "A longer locus demonstrates adaptive binning.", "Conservation and low variation need not rank similarly."],
+      "limitations": ["The displayed sequence signals do not establish olfactory phenotype, host preference, or repellent response."],
+      "labels": {"complexity": "9 exons · minus strand", "qc": "High QC · 9,504/10,821 bp accessible"},
+      "region": "2R:22848871-22859691",
+      "transcript_id": "AGAP002560-RA",
+      "strand": "−",
+      "feature_summary": "Olfactory co-receptor on the minus strand",
+      "description": "A nine-exon minus-strand coding gene spanning 10.8 kb.",
+      "qc_note": "9,504 of 10,821 positions (87.8%) pass the companion accessibility mask.",
+      "annotation": {
+        "id": "AGAP002560", "assembly": "AgamP4", "chromosome": "2R",
+        "start": 22848871, "end": 22859691, "strand": -1,
+        "transcript_id": "AGAP002560-RA",
+        "exons": [
+          {"start": 22859138, "end": 22859691}, {"start": 22858212, "end": 22858650},
+          {"start": 22857702, "end": 22857862}, {"start": 22856067, "end": 22856165},
+          {"start": 22855744, "end": 22855861}, {"start": 22853818, "end": 22854025},
+          {"start": 22849744, "end": 22849948}, {"start": 22849425, "end": 22849580},
+          {"start": 22848871, "end": 22849302}
+        ],
+        "cds_start": 22849252, "cds_end": 22858650
+      },
+      "assets": {"summary": "examples/AGAP002560/cs_snp_summary.png", "heatmap": "examples/AGAP002560/heatmap.png"}
+    },
+    {
+      "accession": "AGAP008288",
+      "symbol": "TIM",
+      "topic": "Circadian biology",
+      "quick_rank": 3,
+      "why_featured": "A recognizable circadian gene broadens the examples beyond vector-control targets and demonstrates a longer multi-exon locus.",
+      "teaches": ["Alternative isoforms can be inspected without changing the full-gene default.", "Range zoom can focus on subregions after one genomic query.", "Accessible-base SNP summaries retain explicit denominators."],
+      "limitations": ["The plots do not measure expression, daily rhythmicity, or behavioural timing."],
+      "labels": {"complexity": "2 isoforms · 15 representative exons", "qc": "Ranking-eligible QC · 14,526/17,275 bp accessible"},
+      "region": "3R:8585055-8602329",
+      "transcript_id": "AGAP008288-RA",
+      "strand": "+",
+      "feature_summary": "Circadian gene with two isoforms",
+      "description": "A 17.3-kb plus-strand coding gene with two indexed isoforms and fifteen representative exons.",
+      "qc_note": "14,526 of 17,275 positions (84.1%) pass the companion accessibility mask.",
+      "annotation": {
+        "id": "AGAP008288", "assembly": "AgamP4", "chromosome": "3R",
+        "start": 8585055, "end": 8602329, "strand": 1,
+        "transcript_id": "AGAP008288-RA",
+        "exons": [
+          {"start": 8585055, "end": 8586340}, {"start": 8592854, "end": 8593816},
+          {"start": 8593958, "end": 8594292}, {"start": 8594346, "end": 8594902},
+          {"start": 8594984, "end": 8595125}, {"start": 8595476, "end": 8595694},
+          {"start": 8595796, "end": 8595864}, {"start": 8595976, "end": 8596199},
+          {"start": 8596358, "end": 8596556}, {"start": 8596627, "end": 8597248},
+          {"start": 8597323, "end": 8597523}, {"start": 8597857, "end": 8597947},
+          {"start": 8598815, "end": 8598877}, {"start": 8599232, "end": 8599468},
+          {"start": 8600576, "end": 8602329}
+        ],
+        "cds_start": 8592943, "cds_end": 8600669
+      },
+      "assets": {"summary": "examples/AGAP008288/cs_snp_summary.png", "heatmap": "examples/AGAP008288/heatmap.png"}
+    },
+    {
+      "accession": "AGAP010815",
+      "symbol": "TEP1",
+      "topic": "Immunity and parasite interaction",
+      "quick_rank": null,
+      "why_featured": "A prominent mosquito immunity gene provides a deliberate example of why accessibility QC must be read before interpreting apparent low variation.",
+      "teaches": ["QC-failed positions are unknown rather than zero.", "The 80% accessibility rule can withhold a gene-level SNP ranking.", "A multi-exon minus-strand locus remains navigable."],
+      "limitations": ["Only 13.0% of the gene span is accessible in the companion mask, so the whole-gene SNP-density pattern is not representative of most positions.", "The sequence tracks do not measure immune phenotype or parasite susceptibility."],
+      "labels": {"complexity": "Complex · 12 exons · minus strand", "qc": "QC-limited · 661/5,068 bp accessible"},
+      "region": "3L:11201863-11206930",
+      "transcript_id": "AGAP010815-RA",
+      "strand": "−",
+      "feature_summary": "Immunity gene with deliberately limited QC",
+      "description": "A twelve-exon minus-strand coding gene selected as an explicit low-accessibility teaching example.",
+      "qc_note": "661 of 5,068 positions (13.0%) pass the companion accessibility mask; the gene-span SNP ranking is withheld.",
+      "annotation": {
+        "id": "AGAP010815", "assembly": "AgamP4", "chromosome": "3L",
+        "start": 11201863, "end": 11206930, "strand": -1,
+        "transcript_id": "AGAP010815-RA",
+        "exons": [
+          {"start": 11206821, "end": 11206930}, {"start": 11206538, "end": 11206733},
+          {"start": 11205800, "end": 11206475}, {"start": 11205469, "end": 11205737},
+          {"start": 11205313, "end": 11205404}, {"start": 11204992, "end": 11205247},
+          {"start": 11204723, "end": 11204932}, {"start": 11204192, "end": 11204645},
+          {"start": 11203827, "end": 11204126}, {"start": 11202489, "end": 11203750},
+          {"start": 11202258, "end": 11202411}, {"start": 11201863, "end": 11202182}
+        ],
+        "cds_start": 11202091, "cds_end": 11206882
+      },
+      "assets": {"summary": "examples/AGAP010815/cs_snp_summary.png", "heatmap": "examples/AGAP010815/heatmap.png"}
+    },
+    {
+      "accession": "AGAP004707",
+      "symbol": "para",
+      "topic": "Target-site resistance",
+      "quick_rank": null,
+      "why_featured": "A large voltage-gated sodium-channel locus demonstrates real-world isoform complexity, adaptive binning, range zoom, and partial accessibility.",
+      "teaches": ["Thirteen isoforms can be selected from one indexed gene.", "A 73.5-kb locus remains within the 200,000-base browser ceiling.", "Exon and gene-span QC eligibility can differ."],
+      "limitations": ["Only 43.3% of the full gene span is accessible, so its gene-span SNP ranking is withheld even though the representative exon union passes the 80% rule.", "The plots do not identify resistance mutations or establish target-site resistance."],
+      "labels": {"complexity": "High complexity · 13 isoforms · 30 representative exons", "qc": "Partial QC · 31,809/73,460 bp accessible"},
+      "region": "2L:2358158-2431617",
+      "transcript_id": "AGAP004707-RA",
+      "strand": "+",
+      "feature_summary": "Large, 13-isoform sodium-channel locus",
+      "description": "A 73.5-kb plus-strand coding gene with thirteen indexed isoforms and a thirty-exon representative transcript.",
+      "qc_note": "31,809 of 73,460 positions (43.3%) pass the companion accessibility mask; the gene-span SNP ranking is withheld.",
+      "annotation": {
+        "id": "AGAP004707", "assembly": "AgamP4", "chromosome": "2L",
+        "start": 2358158, "end": 2431617, "strand": 1,
+        "transcript_id": "AGAP004707-RA",
+        "exons": [
+          {"start": 2358158, "end": 2358304}, {"start": 2361989, "end": 2362144},
+          {"start": 2381065, "end": 2381270}, {"start": 2382270, "end": 2382398},
+          {"start": 2385694, "end": 2385785}, {"start": 2390129, "end": 2390341},
+          {"start": 2390425, "end": 2390485}, {"start": 2390594, "end": 2390738},
+          {"start": 2391156, "end": 2391320}, {"start": 2399898, "end": 2400173},
+          {"start": 2403086, "end": 2403269}, {"start": 2407622, "end": 2407818},
+          {"start": 2407894, "end": 2407993}, {"start": 2408071, "end": 2408139},
+          {"start": 2416794, "end": 2417071}, {"start": 2417185, "end": 2417358},
+          {"start": 2421385, "end": 2421547}, {"start": 2422468, "end": 2422655},
+          {"start": 2422713, "end": 2422920}, {"start": 2424237, "end": 2424418},
+          {"start": 2424729, "end": 2424870}, {"start": 2424946, "end": 2425211},
+          {"start": 2425278, "end": 2425451}, {"start": 2427988, "end": 2428110},
+          {"start": 2429097, "end": 2429219}, {"start": 2429282, "end": 2429476},
+          {"start": 2429556, "end": 2429801}, {"start": 2429872, "end": 2430142},
+          {"start": 2430224, "end": 2430528}, {"start": 2430601, "end": 2431617}
+        ],
+        "cds_start": 2358158, "cds_end": 2431617
+      },
+      "assets": {"summary": "examples/AGAP004707/cs_snp_summary.png", "heatmap": "examples/AGAP004707/heatmap.png"}
+    },
+    {
+      "accession": "AGAP009678",
+      "symbol": "aga-mir-275",
+      "topic": "Non-coding RNA",
+      "quick_rank": null,
+      "why_featured": "A public pre-miRNA preserves the non-coding renderer and short-locus regression coverage without presenting an unpublished target of interest.",
+      "teaches": ["A non-coding transcript is drawn as an exon without invented CDS or UTR blocks.", "Adaptive resolution retains one display bin per base for a 95-bp locus.", "Complete accessibility makes the short-locus SNP track interpretable."],
+      "limitations": ["The plots do not establish mature-miRNA processing, targets, expression, or phenotype."],
+      "labels": {"complexity": "Non-coding · single exon · 95 bp", "qc": "Complete QC · 95/95 bp accessible"},
+      "region": "3R:38377342-38377436",
+      "transcript_id": "AGAP009678-RA",
+      "strand": "+",
+      "feature_summary": "Short, fully accessible pre-miRNA",
+      "description": "A 95-bp single-exon non-coding transcript with no CDS or UTR blocks.",
+      "qc_note": "All 95 positions pass the companion accessibility mask.",
+      "annotation": {
+        "id": "AGAP009678", "assembly": "AgamP4", "chromosome": "3R",
+        "start": 38377342, "end": 38377436, "strand": 1,
+        "transcript_id": "AGAP009678-RA",
+        "exons": [{"start": 38377342, "end": 38377436}],
+        "cds_start": null, "cds_end": null
+      },
+      "assets": {"summary": "examples/AGAP009678/cs_snp_summary.png", "heatmap": "examples/AGAP009678/heatmap.png"}
+    },
+    {
       "accession": "AGAP006241",
+      "symbol": "ZPG",
+      "topic": "Reproduction and germline",
+      "quick_rank": null,
+      "why_featured": "The former default remains a compact, high-QC regression locus and provides continuity for established examples.",
+      "teaches": ["A compact three-exon coding model provides a stable technical baseline.", "Nearly complete accessibility supports comparison with earlier outputs."],
+      "limitations": ["Its biological relevance is more field-specific than the three quick examples."],
+      "labels": {"complexity": "Compact · 1 isoform · 3 exons", "qc": "High QC · 1,653/1,685 bp accessible"},
       "region": "2L:28585064-28586748",
       "transcript_id": "AGAP006241-RA",
       "strand": "+",
-      "feature_summary": "Compact single-isoform coding gene",
-      "description": "A compact plus-strand baseline with three representative exons.",
-      "qc_note": "98.1% of positions pass the companion accessibility mask.",
+      "feature_summary": "Compact legacy regression locus",
+      "description": "A compact plus-strand coding gene with three representative exons.",
+      "qc_note": "1,653 of 1,685 positions (98.1%) pass the companion accessibility mask.",
       "annotation": {
         "id": "AGAP006241", "assembly": "AgamP4", "chromosome": "2L",
         "start": 28585064, "end": 28586748, "strand": 1,
         "transcript_id": "AGAP006241-RA",
-        "exons": [
-          {"start": 28585064, "end": 28585457},
-          {"start": 28585566, "end": 28585757},
-          {"start": 28585828, "end": 28586748}
-        ],
+        "exons": [{"start": 28585064, "end": 28585457}, {"start": 28585566, "end": 28585757}, {"start": 28585828, "end": 28586748}],
         "cds_start": 28585208, "cds_end": 28586546
       },
-      "assets": {
-        "summary": "examples/AGAP006241/cs_snp_summary.png",
-        "heatmap": "examples/AGAP006241/heatmap.png"
-      }
-    },
-    {
-      "accession": "AGAP013705",
-      "region": "3L:2905395-2905525",
-      "transcript_id": "AGAP013705-RA",
-      "strand": "+",
-      "feature_summary": "Single-exon non-coding gene",
-      "description": "A short non-coding model drawn as an exon rather than CDS and UTR blocks.",
-      "qc_note": "All positions pass the companion accessibility mask.",
-      "annotation": {
-        "id": "AGAP013705", "assembly": "AgamP4", "chromosome": "3L",
-        "start": 2905395, "end": 2905525, "strand": 1,
-        "transcript_id": "AGAP013705-RA",
-        "exons": [{"start": 2905395, "end": 2905525}],
-        "cds_start": null, "cds_end": null
-      },
-      "assets": {
-        "summary": "examples/AGAP013705/cs_snp_summary.png",
-        "heatmap": "examples/AGAP013705/heatmap.png"
-      }
+      "assets": {"summary": "examples/AGAP006241/cs_snp_summary.png", "heatmap": "examples/AGAP006241/heatmap.png"}
     },
     {
       "accession": "AGAP000040",
+      "symbol": null,
+      "topic": "Alternative isoforms",
+      "quick_rank": null,
+      "why_featured": "An officially unnamed gene retains a clear multi-isoform example while demonstrating honest symbol fallback behavior.",
+      "teaches": ["Unnamed genes remain identifiable by accession without an invented symbol.", "Three transcript models can be compared on chromosome X.", "The representative transcript contains seven exons."],
+      "limitations": ["This entry is included for annotation structure rather than a named biological narrative."],
+      "labels": {"complexity": "3 isoforms · 7 representative exons", "qc": "Ranking-eligible QC · 8,520/9,569 bp accessible"},
       "region": "X:500521-510089",
       "transcript_id": "AGAP000040-RC",
       "strand": "+",
-      "feature_summary": "Three-isoform coding gene on X",
-      "description": "Three aligned transcript tracks demonstrate alternative isoform display on chromosome X.",
-      "qc_note": "89.0% of positions pass the companion accessibility mask.",
+      "feature_summary": "Unnamed three-isoform gene on chromosome X",
+      "description": "Three aligned transcript tracks demonstrate alternative isoforms without inventing an official symbol.",
+      "qc_note": "8,520 of 9,569 positions (89.0%) pass the companion accessibility mask.",
       "annotation": {
         "id": "AGAP000040", "assembly": "AgamP4", "chromosome": "X",
         "start": 500521, "end": 510089, "strand": 1,
         "transcript_id": "AGAP000040-RC",
-        "exons": [
-          {"start": 500521, "end": 501102},
-          {"start": 504451, "end": 504823},
-          {"start": 507379, "end": 507498},
-          {"start": 508166, "end": 508603},
-          {"start": 508667, "end": 508773},
-          {"start": 508872, "end": 509700},
-          {"start": 509778, "end": 510089}
-        ],
+        "exons": [{"start": 500521, "end": 501102}, {"start": 504451, "end": 504823}, {"start": 507379, "end": 507498}, {"start": 508166, "end": 508603}, {"start": 508667, "end": 508773}, {"start": 508872, "end": 509700}, {"start": 509778, "end": 510089}],
         "cds_start": 504661, "cds_end": 509941
       },
-      "assets": {
-        "summary": "examples/AGAP000040/cs_snp_summary.png",
-        "heatmap": "examples/AGAP000040/heatmap.png"
-      }
-    },
-    {
-      "accession": "AGAP004559",
-      "region": "2R:57595300-57600255",
-      "transcript_id": "AGAP004559-RD",
-      "strand": "+",
-      "feature_summary": "Eleven-isoform compact coding gene",
-      "description": "Eleven aligned transcript tracks demonstrate a dense alternative-isoform annotation.",
-      "qc_note": "57.4% of positions pass the companion accessibility mask.",
-      "annotation": {
-        "id": "AGAP004559", "assembly": "AgamP4", "chromosome": "2R",
-        "start": 57595300, "end": 57600255, "strand": 1,
-        "transcript_id": "AGAP004559-RD",
-        "exons": [
-          {"start": 57595300, "end": 57595327},
-          {"start": 57598007, "end": 57598181},
-          {"start": 57599237, "end": 57599358},
-          {"start": 57599425, "end": 57599773},
-          {"start": 57599861, "end": 57600255}
-        ],
-        "cds_start": 57598142, "cds_end": 57599997
-      },
-      "assets": {
-        "summary": "examples/AGAP004559/cs_snp_summary.png",
-        "heatmap": "examples/AGAP004559/heatmap.png"
-      }
-    },
-    {
-      "accession": "AGAP005079",
-      "region": "2L:9735321-9746596",
-      "transcript_id": "AGAP005079-RI",
-      "strand": "+",
-      "feature_summary": "Eleven-isoform, ten-exon coding gene",
-      "description": "A longer multi-isoform model combines eleven transcript tracks with a ten-exon representative transcript.",
-      "qc_note": "85.8% of positions pass the companion accessibility mask.",
-      "annotation": {
-        "id": "AGAP005079", "assembly": "AgamP4", "chromosome": "2L",
-        "start": 9735321, "end": 9746596, "strand": 1,
-        "transcript_id": "AGAP005079-RI",
-        "exons": [
-          {"start": 9735321, "end": 9735425},
-          {"start": 9736334, "end": 9737227},
-          {"start": 9737438, "end": 9737664},
-          {"start": 9741874, "end": 9742058},
-          {"start": 9742225, "end": 9742379},
-          {"start": 9742780, "end": 9742908},
-          {"start": 9744527, "end": 9744656},
-          {"start": 9744735, "end": 9744888},
-          {"start": 9745414, "end": 9745521},
-          {"start": 9746446, "end": 9746596}
-        ],
-        "cds_start": 9737547, "cds_end": 9746528
-      },
-      "assets": {
-        "summary": "examples/AGAP005079/cs_snp_summary.png",
-        "heatmap": "examples/AGAP005079/heatmap.png"
-      }
-    },
-    {
-      "accession": "AGAP004592",
-      "region": "2R:58135368-58142209",
-      "transcript_id": "AGAP004592-RA",
-      "strand": "−",
-      "feature_summary": "Nine-isoform minus-strand gene",
-      "description": "Nine transcript tracks are displayed together in 5′→3′ orientation on the minus strand.",
-      "qc_note": "98.6% of positions pass the companion accessibility mask.",
-      "annotation": {
-        "id": "AGAP004592", "assembly": "AgamP4", "chromosome": "2R",
-        "start": 58135368, "end": 58142209, "strand": -1,
-        "transcript_id": "AGAP004592-RA",
-        "exons": [
-          {"start": 58142055, "end": 58142209},
-          {"start": 58141670, "end": 58141850},
-          {"start": 58141525, "end": 58141595},
-          {"start": 58141339, "end": 58141437},
-          {"start": 58141154, "end": 58141235},
-          {"start": 58136305, "end": 58136378},
-          {"start": 58135930, "end": 58136223},
-          {"start": 58135368, "end": 58135835}
-        ],
-        "cds_start": 58135544, "cds_end": 58141795
-      },
-      "assets": {
-        "summary": "examples/AGAP004592/cs_snp_summary.png",
-        "heatmap": "examples/AGAP004592/heatmap.png"
-      }
-    },
-    {
-      "accession": "AGAP008118",
-      "region": "3R:5886340-5904286",
-      "transcript_id": "AGAP008118-RA",
-      "strand": "−",
-      "feature_summary": "Long seven-exon minus-strand gene",
-      "description": "A long minus-strand model demonstrates adaptive display binning and 5′→3′ orientation.",
-      "qc_note": "71.1% of positions pass the companion accessibility mask.",
-      "annotation": {
-        "id": "AGAP008118", "assembly": "AgamP4", "chromosome": "3R",
-        "start": 5886340, "end": 5904286, "strand": -1,
-        "transcript_id": "AGAP008118-RA",
-        "exons": [
-          {"start": 5903941, "end": 5904286},
-          {"start": 5893337, "end": 5893558},
-          {"start": 5893009, "end": 5893232},
-          {"start": 5892751, "end": 5892928},
-          {"start": 5892379, "end": 5892521},
-          {"start": 5889619, "end": 5889825},
-          {"start": 5886340, "end": 5887383}
-        ],
-        "cds_start": 5886695, "cds_end": 5893452
-      },
-      "assets": {
-        "summary": "examples/AGAP008118/cs_snp_summary.png",
-        "heatmap": "examples/AGAP008118/heatmap.png"
-      }
-    },
-    {
-      "accession": "AGAP008727",
-      "region": "3R:16157743-16159238",
-      "transcript_id": "AGAP008727-RB",
-      "strand": "+",
-      "feature_summary": "Compact four-isoform coding gene",
-      "description": "Four transcript tracks show alternative annotations across a compact gene span.",
-      "qc_note": "94.1% of positions pass the companion accessibility mask.",
-      "annotation": {
-        "id": "AGAP008727", "assembly": "AgamP4", "chromosome": "3R",
-        "start": 16157743, "end": 16159238, "strand": 1,
-        "transcript_id": "AGAP008727-RB",
-        "exons": [
-          {"start": 16157743, "end": 16157837},
-          {"start": 16158444, "end": 16158655},
-          {"start": 16158756, "end": 16159238}
-        ],
-        "cds_start": 16158449, "cds_end": 16159082
-      },
-      "assets": {
-        "summary": "examples/AGAP008727/cs_snp_summary.png",
-        "heatmap": "examples/AGAP008727/heatmap.png"
-      }
-    },
-    {
-      "accession": "AGAP010139",
-      "region": "3R:49356301-49362525",
-      "transcript_id": "AGAP010139-RA",
-      "strand": "−",
-      "feature_summary": "Four-isoform, twelve-exon gene",
-      "description": "A structurally detailed minus-strand gene with four isoforms and twelve representative exons.",
-      "qc_note": "54.8% of positions pass the companion accessibility mask.",
-      "annotation": {
-        "id": "AGAP010139", "assembly": "AgamP4", "chromosome": "3R",
-        "start": 49356301, "end": 49362525, "strand": -1,
-        "transcript_id": "AGAP010139-RA",
-        "exons": [
-          {"start": 49362378, "end": 49362525},
-          {"start": 49359481, "end": 49359594},
-          {"start": 49359209, "end": 49359395},
-          {"start": 49358975, "end": 49359092},
-          {"start": 49358517, "end": 49358673},
-          {"start": 49358283, "end": 49358426},
-          {"start": 49358110, "end": 49358206},
-          {"start": 49357474, "end": 49358033},
-          {"start": 49357233, "end": 49357404},
-          {"start": 49356938, "end": 49357167},
-          {"start": 49356680, "end": 49356871},
-          {"start": 49356301, "end": 49356577}
-        ],
-        "cds_start": 49356476, "cds_end": 49359576
-      },
-      "assets": {
-        "summary": "examples/AGAP010139/cs_snp_summary.png",
-        "heatmap": "examples/AGAP010139/heatmap.png"
-      }
+      "assets": {"summary": "examples/AGAP000040/cs_snp_summary.png", "heatmap": "examples/AGAP000040/heatmap.png"}
     },
     {
       "accession": "AGAP010449",
+      "symbol": null,
+      "topic": "QC tutorial",
+      "quick_rank": null,
+      "why_featured": "An officially unnamed coding gene provides the deliberate all-QC-failed example used to show that unavailable evidence remains unknown rather than zero.",
+      "teaches": ["Zero accessible bases produce no SNP-density mean or ranking.", "Conservation and cross-species identity remain distinct from SNP accessibility.", "The interface reports the exact 0/3,424 denominator."],
+      "limitations": ["No within-species variation conclusion can be drawn for this locus from the bundled SNP-density track."],
+      "labels": {"complexity": "4 exons · minus strand", "qc": "All QC failed · 0/3,424 bp accessible"},
       "region": "3L:3855186-3858609",
       "transcript_id": "AGAP010449-RA",
       "strand": "−",
-      "feature_summary": "QC-failed four-exon coding gene",
-      "description": "A minus-strand coding model that demonstrates the explicit unknown state for SNP density.",
-      "qc_note": "No positions pass the companion accessibility mask; SNP density remains unknown.",
+      "feature_summary": "All-QC-failed coding-gene tutorial",
+      "description": "A four-exon minus-strand coding gene that demonstrates the explicit unknown state for SNP density.",
+      "qc_note": "No positions pass the companion accessibility mask; SNP density remains unknown and both SNP rankings are withheld.",
       "annotation": {
         "id": "AGAP010449", "assembly": "AgamP4", "chromosome": "3L",
         "start": 3855186, "end": 3858609, "strand": -1,
         "transcript_id": "AGAP010449-RA",
-        "exons": [
-          {"start": 3858337, "end": 3858609},
-          {"start": 3855785, "end": 3855819},
-          {"start": 3855559, "end": 3855698},
-          {"start": 3855186, "end": 3855499}
-        ],
+        "exons": [{"start": 3858337, "end": 3858609}, {"start": 3855785, "end": 3855819}, {"start": 3855559, "end": 3855698}, {"start": 3855186, "end": 3855499}],
         "cds_start": 3855186, "cds_end": 3858341
       },
-      "assets": {
-        "summary": "examples/AGAP010449/cs_snp_summary.png",
-        "heatmap": "examples/AGAP010449/heatmap.png"
-      }
+      "assets": {"summary": "examples/AGAP010449/cs_snp_summary.png", "heatmap": "examples/AGAP010449/heatmap.png"}
     }
   ]
 }
