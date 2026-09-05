@@ -1,76 +1,70 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 
 const geneRanking = require('../docs/assets/gene-ranking.js');
+const fixture = JSON.parse(fs.readFileSync(
+  path.join(__dirname, 'fixtures', 'gene-ranking-v2-cases.json'), 'utf8',
+));
 
-function csDocument() {
-  const stat = { rank: 2, ties: 1, percentile: 50 };
-  return {
-    schema_version: 1, assembly: 'AgamP4', ranking_type: 'mean_cs',
-    score_source: { interpretation: 'Arm-scaled warning.' },
-    cohorts: { global_gene_count: 3, chromosome_gene_counts: { '2L': 2 } },
-    records: { AGAP000001: {
-      chromosome: '2L', representative_transcript: 'AGAP000001-RA',
-      gene_span: { mean_cs: 0.25, global: stat, chromosome: stat },
-      representative_exons: { mean_cs: 0.75, global: stat, chromosome: stat },
-    } },
-  };
-}
-
-function snpDocument(eligible = true) {
-  const stat = { rank: 1, ties: 1, percentile: 100 };
-  const metric = {
-    accessible_bases: eligible ? 8 : 7, total_bases: 10,
-    accessible_fraction: eligible ? 0.8 : 0.7,
-    mean_snp_density: 0.1, eligible,
-    global: eligible ? stat : null, chromosome: eligible ? stat : null,
-  };
-  return {
-    schema_version: 1, assembly: 'AgamP4', ranking_type: 'accessible_mean_snp_density',
-    score_source: { interpretation: 'Archived density warning.' },
-    accessibility_source: { interpretation: 'QC warning.' },
-    minimum_accessible_fraction: 0.8,
-    cohorts: {
-      global_eligible_gene_counts: { gene_span: 1, representative_exons: 1 },
-      chromosome_eligible_gene_counts: {
-        gene_span: { '2L': 1 }, representative_exons: { '2L': 1 },
-      },
-    },
-    records: { AGAP000001: {
-      chromosome: '2L', representative_transcript: 'AGAP000001-RA',
-      gene_span: metric, representative_exons: metric,
-    } },
-  };
-}
-
-test('looks up both ranking types with explicit denominators', () => {
-  const result = geneRanking.lookup(csDocument(), snpDocument(), ' agap000001 ');
-  assert.equal(result.accession, 'AGAP000001');
-  assert.deepEqual(result.cs.metrics.gene_span.global, {
-    first: 2, last: 2, ties: 1, count: 3, percentile: 50,
-  });
-  assert.deepEqual(result.snpDensity.metrics.gene_span.global, {
-    first: 1, last: 1, ties: 1, count: 1, percentile: 100,
-  });
-  assert.equal(result.snpDensity.metrics.gene_span.accessibleFraction, 0.8);
+test('decodes all v2 partition states from the shared parity fixture', () => {
+  const result = geneRanking.lookup(
+    fixture.documents.cs, fixture.documents.snp_density, ' agap000001 ',
+  );
+  assert.equal(result.accession, fixture.expected.accession);
+  assert.equal(result.chromosome, fixture.expected.chromosome);
+  assert.equal(result.representativeTranscript, fixture.expected.representative_transcript);
+  assert.deepEqual(
+    geneRanking.METRICS.map((scope) => result.cs.metrics[scope].state),
+    fixture.expected.cs_states,
+  );
+  assert.deepEqual(
+    geneRanking.METRICS.map((scope) => result.snpDensity.metrics[scope].state),
+    fixture.expected.snp_states,
+  );
 });
 
-test('preserves an ineligible SNP metric without inventing a rank', () => {
-  const result = geneRanking.lookup(csDocument(), snpDocument(false), 'AGAP000001');
-  assert.equal(result.snpDensity.metrics.gene_span.eligible, false);
-  assert.equal(result.snpDensity.metrics.gene_span.global, undefined);
-  assert.equal(result.snpDensity.metrics.gene_span.accessibleBases, 7);
+test('publishes assessed bases, representative transcript, and rank denominators', () => {
+  const result = geneRanking.lookup(
+    fixture.documents.cs, fixture.documents.snp_density, 'AGAP000001',
+  );
+  const cds = result.cs.metrics.representative_cds;
+  assert.equal(cds.basesAssessed, 6);
+  assert.equal(cds.totalBases, 6);
+  assert.equal(cds.representativeTranscript, 'AGAP000001-RA');
+  assert.equal(cds.global.cohortDenominator, 1);
+  assert.equal(cds.chromosome.count, 1);
+
+  const edge = result.snpDensity.metrics.representative_exons;
+  assert.equal(edge.accessibleFraction, 0.8);
+  assert.equal(edge.state, 'ranked');
+  assert.equal(edge.basesAssessed, 4);
+  assert.equal(edge.global.cohortDenominator, 1);
+});
+
+test('never invents ranks for ineligible, zero-base, unavailable, or failed-QC evidence', () => {
+  const result = geneRanking.lookup(
+    fixture.documents.cs, fixture.documents.snp_density, 'AGAP000001',
+  );
+  assert.equal(result.snpDensity.metrics.representative_cds.global, undefined);
+  assert.equal(result.snpDensity.metrics.representative_utr.value, null);
+  assert.equal(result.snpDensity.metrics.representative_introns.basesAssessed, 0);
+  assert.equal(result.snpDensity.metrics.representative_introns.globalCohortDenominator, 0);
+  assert.equal(result.cs.metrics.representative_introns.global, undefined);
 });
 
 test('can show one ranking when the other asset is unavailable', () => {
-  assert.ok(geneRanking.lookup(csDocument(), null, 'AGAP000001').cs);
-  assert.ok(geneRanking.lookup(null, snpDocument(), 'AGAP000001').snpDensity);
-  assert.equal(geneRanking.lookup(csDocument(), snpDocument(), 'AGAP999999'), null);
+  assert.ok(geneRanking.lookup(fixture.documents.cs, null, 'AGAP000001').cs);
+  assert.ok(geneRanking.lookup(null, fixture.documents.snp_density, 'AGAP000001').snpDensity);
+  assert.equal(geneRanking.lookup(
+    fixture.documents.cs, fixture.documents.snp_density, 'AGAP999999',
+  ), null);
 });
 
 test('rejects incompatible documents and malformed rank positions', () => {
   assert.throws(() => geneRanking.lookup({}, null, 'AGAP000001'), /not compatible/i);
-  const invalid = csDocument();
-  invalid.records.AGAP000001.gene_span.global.rank = 0;
+  const invalid = structuredClone(fixture.documents.cs);
+  invalid.records.AGAP000001[2][0][3][0] = 0;
   assert.throws(() => geneRanking.lookup(invalid, null, 'AGAP000001'), /position/i);
 });

@@ -70,22 +70,32 @@ def test_explicit_base_level_mode_preserves_legacy_renderer(tmp_path, monkeypatc
 def test_accession_pipeline_writes_and_reports_gene_ranking(tmp_path, monkeypatch, capsys):
     observed = {}
     _stub_plot_pipeline(monkeypatch, observed)
+    ranked = lambda mean, rank: {
+        'total_bases': 3, 'bases_assessed': 3, 'mean_cs': mean,
+        'rank_state': 'ranked', 'representative_transcript': 'AGAPTEST-RA',
+        'global': {'rank': rank, 'ties': 1, 'percentile': 100.0 if rank == 1 else 0.0,
+                   'cohort_denominator': 2},
+        'chromosome': {'rank': rank, 'ties': 1, 'percentile': 100.0 if rank == 1 else 0.0,
+                       'cohort_denominator': 2},
+    }
+    absent = {
+        'total_bases': 0, 'bases_assessed': 0, 'mean_cs': None,
+        'rank_state': 'not_ranked_zero_bases',
+        'representative_transcript': 'AGAPTEST-RA',
+        'global_cohort_denominator': 0, 'chromosome_cohort_denominator': 0,
+        'global': None, 'chromosome': None,
+    }
     ranking = {
         'accession': 'AGAPTEST',
         'chromosome': '2L',
         'representative_transcript': 'AGAPTEST-RA',
         'cs': {
-            'cohorts': {'global_gene_count': 2, 'chromosome_gene_counts': {'2L': 2}},
-            'gene_span': {
-                'mean_cs': 0.25,
-                'global': {'rank': 2, 'ties': 1, 'percentile': 0.0},
-                'chromosome': {'rank': 2, 'ties': 1, 'percentile': 0.0},
-            },
-            'representative_exons': {
-                'mean_cs': 0.75,
-                'global': {'rank': 1, 'ties': 1, 'percentile': 100.0},
-                'chromosome': {'rank': 1, 'ties': 1, 'percentile': 100.0},
-            },
+            'cohorts': {},
+            'gene_span': ranked(0.25, 2),
+            'representative_exons': ranked(0.75, 1),
+            'representative_cds': ranked(0.80, 1),
+            'representative_utr': absent,
+            'representative_introns': absent,
         },
     }
 
