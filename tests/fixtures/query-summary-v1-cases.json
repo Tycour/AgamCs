@@ -1,0 +1,206 @@
+{
+  "summary_version": "agamcs-query-summary-v1",
+  "cases": [
+    {
+      "name": "coding-plus-padding-partial-accessibility",
+      "result": {
+        "chromosome": "2L",
+        "start": 98,
+        "end": 112,
+        "values": {
+          "Cs": [null, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6],
+          "snp_density": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6],
+          "status": [1, 0, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 1, 0]
+        }
+      },
+      "annotation": {
+        "id": "AGAPPLUS",
+        "chromosome": "2L",
+        "start": 100,
+        "end": 110,
+        "strand": 1,
+        "transcript_id": "AGAPPLUS-RA",
+        "exons": [{"start": 100, "end": 103}, {"start": 106, "end": 110}],
+        "cds_start": 102,
+        "cds_end": 108
+      },
+      "expect": {
+        "scope_ids": ["query", "cds", "utr", "introns", "exon-1", "exon-2", "five-prime-flank", "three-prime-flank"],
+        "totals": {"query": 15, "cds": 5, "utr": 4, "introns": 2, "exon-1": 4, "exon-2": 5, "five-prime-flank": 2, "three-prime-flank": 2},
+        "query_finite_cs_bases": 14,
+        "query_accessible_bases": 8,
+        "query_accessible_fraction": 0.5333333333333333,
+        "query_snp_mean": 0.575,
+        "query_longest_inaccessible_run": 2,
+        "query_meets_threshold": false,
+        "selected_transcript": "AGAPPLUS-RA"
+      }
+    },
+    {
+      "name": "coding-minus-strand-flanks",
+      "result": {
+        "chromosome": "3L",
+        "start": 198,
+        "end": 212,
+        "values": {
+          "Cs": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6],
+          "snp_density": [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0, 0.1, 0.2, 0.3, 0.4],
+          "status": [1, 1, 1, 1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 0, 0]
+        }
+      },
+      "annotation": {
+        "id": "AGAPMINUS",
+        "chromosome": "3L",
+        "start": 200,
+        "end": 210,
+        "strand": -1,
+        "transcript_id": "AGAPMINUS-RA",
+        "exons": [{"start": 207, "end": 210}, {"start": 200, "end": 204}],
+        "cds_start": 202,
+        "cds_end": 208
+      },
+      "expect": {
+        "scope_ids": ["query", "cds", "utr", "introns", "exon-1", "exon-2", "five-prime-flank", "three-prime-flank"],
+        "totals": {"five-prime-flank": 2, "three-prime-flank": 2},
+        "first_exon_segment": {"start": 207, "end": 210},
+        "selected_transcript": "AGAPMINUS-RA"
+      }
+    },
+    {
+      "name": "non-coding-transcript-absent-cds-and-utr",
+      "result": {
+        "chromosome": "3R",
+        "start": 300,
+        "end": 305,
+        "values": {
+          "Cs": [0.2, 0.4, 0.6, 0.8, 1.0, 0.5],
+          "snp_density": [0.5, 0.4, 0.3, 0.2, 0.1, 0.0],
+          "status": [1, 1, 1, 1, 1, 1]
+        }
+      },
+      "annotation": {
+        "id": "AGAPNCRNA",
+        "chromosome": "3R",
+        "start": 300,
+        "end": 305,
+        "strand": 1,
+        "transcript_id": "AGAPNCRNA-RA",
+        "exons": [{"start": 300, "end": 302}, {"start": 305, "end": 305}],
+        "cds_start": null,
+        "cds_end": null
+      },
+      "expect": {
+        "totals": {"cds": 0, "utr": 0, "introns": 2, "five-prime-flank": 0, "three-prime-flank": 0},
+        "query_meets_threshold": true,
+        "selected_transcript": "AGAPNCRNA-RA"
+      }
+    },
+    {
+      "name": "overlapping-exon-bounds-use-unions",
+      "result": {
+        "chromosome": "X",
+        "start": 400,
+        "end": 410,
+        "values": {
+          "Cs": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+          "snp_density": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+          "status": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        }
+      },
+      "annotation": {
+        "id": "AGAPOVERLAP",
+        "chromosome": "X",
+        "start": 400,
+        "end": 410,
+        "strand": 1,
+        "transcript_id": "AGAPOVERLAP-RA",
+        "exons": [{"start": 400, "end": 405}, {"start": 404, "end": 408}],
+        "cds_start": 402,
+        "cds_end": 407
+      },
+      "expect": {
+        "totals": {"cds": 6, "utr": 3, "introns": 2, "exon-1": 6, "exon-2": 5},
+        "selected_transcript": "AGAPOVERLAP-RA"
+      }
+    },
+    {
+      "name": "selected-alternative-isoform",
+      "result": {
+        "chromosome": "2R",
+        "start": 500,
+        "end": 514,
+        "values": {
+          "Cs": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 0.9, 0.8, 0.7, 0.6, 0.5],
+          "snp_density": [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.0, 0.1, 0.2, 0.3, 0.4, 0.5],
+          "status": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        }
+      },
+      "annotation": {
+        "id": "AGAPISOFORM",
+        "chromosome": "2R",
+        "start": 503,
+        "end": 511,
+        "strand": 1,
+        "transcript_id": "AGAPISOFORM-RB",
+        "exons": [{"start": 503, "end": 505}, {"start": 510, "end": 511}],
+        "cds_start": 504,
+        "cds_end": 510
+      },
+      "expect": {
+        "totals": {"cds": 3, "utr": 2, "introns": 4, "five-prime-flank": 3, "three-prime-flank": 3},
+        "selected_transcript": "AGAPISOFORM-RB"
+      }
+    },
+    {
+      "name": "manual-coordinate-query-only",
+      "result": {
+        "chromosome": "2L",
+        "start": 600,
+        "end": 604,
+        "values": {
+          "Cs": [0.0, 0.25, 0.5, 0.75, 1.0],
+          "snp_density": [1.0, 0.75, 0.5, 0.25, 0.0],
+          "status": [1, 0, 1, 0, 1]
+        }
+      },
+      "annotation": null,
+      "expect": {
+        "scope_ids": ["query"],
+        "totals": {"query": 5},
+        "selected_transcript": null
+      }
+    },
+    {
+      "name": "all-qc-failed-remains-unknown",
+      "result": {
+        "chromosome": "3L",
+        "start": 700,
+        "end": 705,
+        "values": {
+          "Cs": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6],
+          "snp_density": [0.9, 0.8, 0.7, 0.6, 0.5, 0.4],
+          "status": [0, 2, 4, 8, 16, 32]
+        }
+      },
+      "annotation": {
+        "id": "AGAPFAILED",
+        "chromosome": "3L",
+        "start": 700,
+        "end": 705,
+        "strand": -1,
+        "transcript_id": "AGAPFAILED-RA",
+        "exons": [{"start": 700, "end": 705}],
+        "cds_start": 701,
+        "cds_end": 704
+      },
+      "expect": {
+        "totals": {"query": 6, "cds": 4, "utr": 2},
+        "query_accessible_bases": 0,
+        "query_snp_mean": null,
+        "query_longest_inaccessible_run": 6,
+        "query_meets_threshold": false,
+        "selected_transcript": "AGAPFAILED-RA"
+      }
+    }
+  ]
+}

@@ -26,6 +26,8 @@
   ]);
   const plotModel = global.AgamCsPlotModel;
   if (!plotModel) throw new Error('AgamCsPlotModel must load before live-plots.js.');
+  const querySummary = global.AgamCsQuerySummary;
+  if (!querySummary) throw new Error('AgamCsQuerySummary must load before live-plots.js.');
   let plotContract = null;
 
   function configurePlotContract(contract) {
@@ -44,38 +46,7 @@
   const transcriptAnnotationsForDisplay = plotModel.transcriptAnnotationsForDisplay;
 
   function summarizeQuery(result, annotation = null) {
-    const useAnnotation = annotationMatches(result, annotation)
-      && Array.isArray(annotation.exons)
-      && annotation.exons.length > 0;
-    const queryCs = [];
-    const querySnp = [];
-    const exonCs = [];
-    const exonSnp = [];
-    let exonBasePairs = 0;
-
-    for (let index = 0; index < result.values.Cs.length; index += 1) {
-      const position = result.start + index;
-      const accessible = (result.values.status[index] & 1) === 1;
-      queryCs.push(result.values.Cs[index]);
-      if (accessible) querySnp.push(result.values.snp_density[index]);
-
-      const inExon = useAnnotation && annotation.exons.some((exon) => (
-        position >= Number(exon.start) && position <= Number(exon.end)
-      ));
-      if (!inExon) continue;
-      exonBasePairs += 1;
-      exonCs.push(result.values.Cs[index]);
-      if (accessible) exonSnp.push(result.values.snp_density[index]);
-    }
-
-    return {
-      queryBasePairs: result.values.Cs.length,
-      queryMeanCs: mean(queryCs),
-      queryMeanSnp: mean(querySnp),
-      exonBasePairs: useAnnotation ? exonBasePairs : null,
-      exonMeanCs: useAnnotation ? mean(exonCs) : Number.NaN,
-      exonMeanSnp: useAnnotation ? mean(exonSnp) : Number.NaN,
-    };
+    return querySummary.summarizeQuery(result, annotation);
   }
 
   function summarizeSignals(
