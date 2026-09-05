@@ -1,0 +1,55 @@
+{
+  "documents": {
+    "cs": {
+      "schema_version": 2,
+      "ranking_version": "agamcs-agamp4.14-gene-cs-v2",
+      "ranking_type": "mean_cs",
+      "assembly": "AgamP4",
+      "scope_order": ["gene_span", "representative_exons", "representative_cds", "representative_utr", "representative_introns"],
+      "record_fields": ["chromosome", "representative_transcript", "scopes"],
+      "rank_fields": ["rank", "ties", "percentile"],
+      "scope_value_fields": ["total_bases", "bases_assessed", "mean_cs", "global", "chromosome"],
+      "score_source": {"interpretation": "Arm-scaled warning."},
+      "percentile_method": "fixture method",
+      "cohorts": {
+        "global_ranked_scope_counts": {"gene_span": 1, "representative_exons": 1, "representative_cds": 1, "representative_utr": 0, "representative_introns": 0},
+        "chromosome_ranked_scope_counts": {
+          "gene_span": {"2L": 1}, "representative_exons": {"2L": 1}, "representative_cds": {"2L": 1}, "representative_utr": {"2L": 0}, "representative_introns": {"2L": 0}
+        }
+      },
+      "records": {
+        "AGAP000001": ["2L", "AGAP000001-RA", [[10, 10, 0.5, [1, 1, 100], [1, 1, 100]], [8, 8, 0.75, [1, 1, 100], [1, 1, 100]], [6, 6, 0.9, [1, 1, 100], [1, 1, 100]], [0, 0, null, null, null], [2, 0, null, null, null]]]
+      }
+    },
+    "snp_density": {
+      "schema_version": 2,
+      "ranking_version": "agamcs-agamp4.14-gene-snp-density-v2",
+      "ranking_type": "accessible_mean_snp_density",
+      "assembly": "AgamP4",
+      "scope_order": ["gene_span", "representative_exons", "representative_cds", "representative_utr", "representative_introns"],
+      "record_fields": ["chromosome", "representative_transcript", "scopes"],
+      "rank_fields": ["rank", "ties", "percentile"],
+      "scope_value_fields": ["total_bases", "accessible_bases", "bases_assessed", "accessible_fraction", "mean_snp_density", "global", "chromosome"],
+      "score_source": {"interpretation": "Archived density warning."},
+      "accessibility_source": {"interpretation": "QC warning."},
+      "minimum_accessible_fraction": 0.8,
+      "percentile_method": "fixture method",
+      "cohorts": {
+        "global_ranked_scope_counts": {"gene_span": 1, "representative_exons": 1, "representative_cds": 0, "representative_utr": 0, "representative_introns": 0},
+        "chromosome_ranked_scope_counts": {
+          "gene_span": {"2L": 1}, "representative_exons": {"2L": 1}, "representative_cds": {"2L": 0}, "representative_utr": {"2L": 0}, "representative_introns": {"2L": 0}
+        }
+      },
+      "records": {
+        "AGAP000001": ["2L", "AGAP000001-RA", [[10, 9, 9, 0.9, 0.1, [1, 1, 100], [1, 1, 100]], [5, 4, 4, 0.8, 0.2, [1, 1, 100], [1, 1, 100]], [4, 3, 3, 0.75, 0.3, null, null], [0, 0, 0, null, null, null, null], [2, 0, 0, 0.0, null, null, null]]]
+      }
+    }
+  },
+  "expected": {
+    "accession": "AGAP000001",
+    "chromosome": "2L",
+    "representative_transcript": "AGAP000001-RA",
+    "cs_states": ["ranked", "ranked", "ranked", "not_ranked_zero_bases", "not_ranked_unavailable"],
+    "snp_states": ["ranked", "ranked", "not_ranked_ineligible", "not_ranked_zero_bases", "not_ranked_ineligible"]
+  }
+}

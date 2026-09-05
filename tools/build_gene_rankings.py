@@ -1,9 +1,10 @@
-"""Build versioned AgamP4.14 gene-level Cs and SNP-density rankings.
+"""Build versioned AgamP4.14 representative-transcript gene rankings.
 
-Both outputs summarize the complete annotated gene span and the union of exons
-in the pinned representative transcript. Cs ranks include every indexed gene.
-SNP-density ranks include only genes for which at least 80% of focal bases pass
-the companion Ag1000G accessibility mask; failed bases remain unknown.
+Both outputs summarize the complete annotated gene span plus the exon, CDS, UTR,
+and intron unions of the pinned representative transcript. SNP-density ranking
+eligibility is evaluated independently for every scope; QC-failed bases remain
+unknown. Schema v2 stores scope rows compactly so the browser assets remain
+within the GitHub Pages payload limit.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ import copy
 import hashlib
 import json
 import math
-from collections import Counter, defaultdict
+from collections import defaultdict
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,28 +27,73 @@ DEFAULT_CS_OUTPUT = ROOT / 'AgamCs/data' / CS_FILENAME
 DEFAULT_CS_BROWSER_OUTPUT = ROOT / 'docs/assets/data' / CS_FILENAME
 DEFAULT_SNP_OUTPUT = ROOT / 'AgamCs/data' / SNP_FILENAME
 DEFAULT_SNP_BROWSER_OUTPUT = ROOT / 'docs/assets/data' / SNP_FILENAME
-CS_RANKING_VERSION = 'agamcs-agamp4.14-gene-cs-v1'
-SNP_RANKING_VERSION = 'agamcs-agamp4.14-gene-snp-density-v1'
+CS_RANKING_VERSION = 'agamcs-agamp4.14-gene-cs-v2'
+SNP_RANKING_VERSION = 'agamcs-agamp4.14-gene-snp-density-v2'
 RANKING_VERSION = CS_RANKING_VERSION
 ASSEMBLY = 'AgamP4'
-METRICS = ('gene_span', 'representative_exons')
+METRICS = (
+    'gene_span',
+    'representative_exons',
+    'representative_cds',
+    'representative_utr',
+    'representative_introns',
+)
+SCOPE_LABELS = {
+    'gene_span': 'Whole gene span',
+    'representative_exons': 'Representative-transcript exons',
+    'representative_cds': 'Representative-transcript CDS',
+    'representative_utr': 'Representative-transcript UTR',
+    'representative_introns': 'Representative-transcript introns',
+}
+RECORD_FIELDS = ('chromosome', 'representative_transcript', 'scopes')
+RANK_FIELDS = ('rank', 'ties', 'percentile')
+CS_SCOPE_FIELDS = ('total_bases', 'bases_assessed', 'mean_cs', 'global', 'chromosome')
+SNP_SCOPE_FIELDS = (
+    'total_bases', 'accessible_bases', 'bases_assessed', 'accessible_fraction',
+    'mean_snp_density', 'global', 'chromosome',
+)
 MIN_ACCESSIBLE_FRACTION = 0.8
 PRESERVED_CS_RANKING_CONTEXT = ({
     'chromosome': '3L',
-    'gene_span': {'bases': 131, 'mean_cs': 0.3467839052829579},
-    'representative_exons': {'bases': 131, 'mean_cs': 0.3467839052829579},
+    'gene_span': {
+        'total_bases': 131, 'bases_assessed': 131,
+        'mean_cs': 0.3467839052829579, 'rankable': True,
+        'global': None, 'chromosome': None,
+    },
+    'representative_exons': {
+        'total_bases': 131, 'bases_assessed': 131,
+        'mean_cs': 0.3467839052829579, 'rankable': True,
+        'global': None, 'chromosome': None,
+    },
+    **{
+        metric: {
+            'total_bases': None, 'bases_assessed': 0, 'mean_cs': None,
+            'rankable': False, 'global': None, 'chromosome': None,
+        }
+        for metric in METRICS[2:]
+    },
 },)
 PRESERVED_SNP_RANKING_CONTEXT = ({
     'chromosome': '3L',
     'gene_span': {
-        'total_bases': 131, 'accessible_bases': 131, 'accessible_fraction': 1.0,
-        'mean_snp_density': 0.058396947264443826, 'eligible': True,
+        'total_bases': 131, 'accessible_bases': 131, 'bases_assessed': 131,
+        'accessible_fraction': 1.0, 'mean_snp_density': 0.058396947264443826,
+        'eligible': True,
         'global': None, 'chromosome': None,
     },
     'representative_exons': {
-        'total_bases': 131, 'accessible_bases': 131, 'accessible_fraction': 1.0,
-        'mean_snp_density': 0.058396947264443826, 'eligible': True,
+        'total_bases': 131, 'accessible_bases': 131, 'bases_assessed': 131,
+        'accessible_fraction': 1.0, 'mean_snp_density': 0.058396947264443826,
+        'eligible': True,
         'global': None, 'chromosome': None,
+    },
+    **{
+        metric: {
+            'total_bases': None, 'accessible_bases': None, 'bases_assessed': 0,
+            'accessible_fraction': None, 'mean_snp_density': None,
+            'eligible': False, 'global': None, 'chromosome': None,
+        }
+        for metric in METRICS[2:]
     },
 },)
 
@@ -74,8 +120,12 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _merged_intervals(intervals: list[dict]) -> list[tuple[int, int]]:
-    ordered = sorted((int(item['start']), int(item['end'])) for item in intervals)
+def _merged_intervals(intervals) -> list[tuple[int, int]]:
+    ordered = sorted(
+        (int(item['start']), int(item['end'])) if isinstance(item, dict)
+        else (int(item[0]), int(item[1]))
+        for item in intervals
+    )
     merged: list[list[int]] = []
     for start, end in ordered:
         if start < 1 or end < start:
@@ -87,14 +137,68 @@ def _merged_intervals(intervals: list[dict]) -> list[tuple[int, int]]:
     return [(start, end) for start, end in merged]
 
 
-def _annotation_intervals(annotation: dict, accession: str) -> dict[str, list[tuple[int, int]]]:
+def _subtract_intervals(intervals, removed) -> list[tuple[int, int]]:
+    output = []
+    removed = _merged_intervals(removed)
+    for start, end in _merged_intervals(intervals):
+        cursor = start
+        for removed_start, removed_end in removed:
+            if removed_end < cursor:
+                continue
+            if removed_start > end:
+                break
+            if removed_start > cursor:
+                output.append((cursor, min(end, removed_start - 1)))
+            cursor = max(cursor, removed_end + 1)
+            if cursor > end:
+                break
+        if cursor <= end:
+            output.append((cursor, end))
+    return output
+
+
+def _intersection(intervals, lower: int, upper: int) -> list[tuple[int, int]]:
+    return _merged_intervals(
+        (max(start, lower), min(end, upper))
+        for start, end in intervals
+        if max(start, lower) <= min(end, upper)
+    )
+
+
+def _annotation_intervals(annotation: dict, transcript: dict,
+                          accession: str) -> dict[str, list[tuple[int, int]]]:
     start, end = int(annotation['start']), int(annotation['end'])
     if start < 1 or end < start:
         raise ValueError(f'{accession} has an invalid gene span.')
-    exons = _merged_intervals(annotation.get('exons') or [])
+    transcript_start = int(transcript.get('start', start))
+    transcript_end = int(transcript.get('end', end))
+    if transcript_start < start or transcript_end > end or transcript_end < transcript_start:
+        raise ValueError(f'{accession} has an invalid representative-transcript span.')
+    exons = _merged_intervals(transcript.get('exons') or annotation.get('exons') or [])
     if not exons:
         raise ValueError(f'{accession} has no representative-transcript exons.')
-    return {'gene_span': [(start, end)], 'representative_exons': exons}
+    if any(left < transcript_start or right > transcript_end for left, right in exons):
+        raise ValueError(f'{accession} has representative exons outside its transcript span.')
+    cds_start = transcript.get('cds_start', annotation.get('cds_start'))
+    cds_end = transcript.get('cds_end', annotation.get('cds_end'))
+    if (cds_start is None) != (cds_end is None):
+        raise ValueError(f'{accession} has incomplete representative-transcript CDS bounds.')
+    cds = []
+    if cds_start is not None:
+        cds_start, cds_end = int(cds_start), int(cds_end)
+        if cds_start > cds_end:
+            raise ValueError(f'{accession} has invalid representative-transcript CDS bounds.')
+        cds = _intersection(exons, cds_start, cds_end)
+    return {
+        'gene_span': [(start, end)],
+        'representative_exons': exons,
+        'representative_cds': cds,
+        # Match query-summary-v1: a non-coding transcript has absent CDS and UTR.
+        'representative_utr': _subtract_intervals(exons, cds) if cds else [],
+        'representative_introns': _subtract_intervals(
+            [(transcript_start, transcript_end)], exons,
+        ),
+    }
 
 
 def _parts(dataset, intervals: list[tuple[int, int]]) -> list:
@@ -112,11 +216,18 @@ def _cs_summary(dataset, intervals: dict, accession: str) -> dict[str, dict]:
 
     summaries = {}
     for metric, regions in intervals.items():
-        values = np.concatenate(_parts(dataset, regions)).astype(np.float64, copy=False)
+        total = sum(end - start + 1 for start, end in regions)
+        values = (np.concatenate(_parts(dataset, regions)).astype(np.float64, copy=False)
+                  if regions else np.asarray([], dtype=np.float64))
         finite = values[np.isfinite(values)]
-        if not finite.size:
-            raise ValueError(f'{accession} has no finite Cs values for {metric}.')
-        summaries[metric] = {'bases': int(finite.size), 'mean_cs': float(finite.mean())}
+        summaries[metric] = {
+            'total_bases': total,
+            'bases_assessed': int(finite.size),
+            'mean_cs': float(finite.mean()) if finite.size else None,
+            'rankable': bool(total and finite.size),
+            'global': None,
+            'chromosome': None,
+        }
     return summaries
 
 
@@ -125,21 +236,24 @@ def _snp_summary(snp_dataset, status_dataset, intervals: dict) -> dict[str, dict
 
     summaries = {}
     for metric, regions in intervals.items():
-        values = np.concatenate(_parts(snp_dataset, regions)).astype(np.float64, copy=False)
-        status = np.concatenate(_parts(status_dataset, regions))
+        values = (np.concatenate(_parts(snp_dataset, regions)).astype(np.float64, copy=False)
+                  if regions else np.asarray([], dtype=np.float64))
+        status = (np.concatenate(_parts(status_dataset, regions))
+                  if regions else np.asarray([], dtype=np.uint8))
         accessible = (status & 1) == 1
         total = int(accessible.size)
         observed_count = int(np.count_nonzero(accessible))
         observed = values[accessible & np.isfinite(values)]
         if observed.size != observed_count:
             raise ValueError(f'{metric} has non-finite SNP density at accessible bases.')
-        fraction = observed_count / total
+        fraction = observed_count / total if total else None
         summaries[metric] = {
             'total_bases': total,
             'accessible_bases': observed_count,
+            'bases_assessed': int(observed.size),
             'accessible_fraction': fraction,
             'mean_snp_density': float(observed.mean()) if observed.size else None,
-            'eligible': fraction >= MIN_ACCESSIBLE_FRACTION,
+            'eligible': bool(total and fraction >= MIN_ACCESSIBLE_FRACTION and observed.size),
             'global': None,
             'chromosome': None,
         }
@@ -176,7 +290,7 @@ def _attach_rankings(records: dict[str, dict], field: str, higher: bool) -> dict
         eligible = [
             (accession, record[metric][field])
             for accession, record in records.items()
-            if record[metric].get('eligible', True)
+            if record[metric].get('rankable', record[metric].get('eligible', False))
         ]
         global_stats = _ranking_stats(eligible, higher)
         global_counts[metric] = len(eligible)
@@ -193,8 +307,82 @@ def _attach_rankings(records: dict[str, dict], field: str, higher: bool) -> dict
             for accession, _value in arm_values:
                 records[accession][metric]['chromosome'] = stats[accession]
     return {
-        'global_eligible_gene_counts': global_counts,
-        'chromosome_eligible_gene_counts': arm_counts,
+        'global_ranked_scope_counts': global_counts,
+        'chromosome_ranked_scope_counts': arm_counts,
+    }
+
+
+def _stat_row(statistics: dict | None):
+    return ([statistics['rank'], statistics['ties'], statistics['percentile']]
+            if statistics is not None else None)
+
+
+def _scope_row(summary: dict, ranking_type: str) -> list:
+    if ranking_type == 'mean_cs':
+        return [
+            summary['total_bases'], summary['bases_assessed'], summary['mean_cs'],
+            _stat_row(summary['global']), _stat_row(summary['chromosome']),
+        ]
+    return [
+        summary['total_bases'], summary['accessible_bases'], summary['bases_assessed'],
+        summary['accessible_fraction'], summary['mean_snp_density'],
+        _stat_row(summary['global']), _stat_row(summary['chromosome']),
+    ]
+
+
+def _encode_record(record: dict, ranking_type: str) -> list:
+    return [
+        record['chromosome'], record.get('representative_transcript'),
+        [_scope_row(record[metric], ranking_type) for metric in METRICS],
+    ]
+
+
+def _decode_stat(row):
+    if row is None:
+        return None
+    if not isinstance(row, list) or len(row) != len(RANK_FIELDS):
+        raise ValueError('Invalid compact ranking statistics.')
+    return dict(zip(RANK_FIELDS, row))
+
+
+def _decode_record(document: dict, row) -> dict:
+    if not isinstance(row, list) or len(row) != len(RECORD_FIELDS):
+        raise ValueError('Invalid compact gene-ranking record.')
+    chromosome, representative_transcript, scope_rows = row
+    if not isinstance(scope_rows, list) or len(scope_rows) != len(METRICS):
+        raise ValueError('Invalid compact gene-ranking scopes.')
+    fields = (CS_SCOPE_FIELDS if document['ranking_type'] == 'mean_cs'
+              else SNP_SCOPE_FIELDS)
+    record = {
+        'chromosome': chromosome,
+        'representative_transcript': representative_transcript,
+    }
+    for metric, values in zip(METRICS, scope_rows):
+        if not isinstance(values, list) or len(values) != len(fields):
+            raise ValueError(f'Invalid compact {metric} ranking summary.')
+        summary = dict(zip(fields, values))
+        summary['global'] = _decode_stat(summary['global'])
+        summary['chromosome'] = _decode_stat(summary['chromosome'])
+        if document['ranking_type'] == 'mean_cs':
+            summary['rankable'] = bool(
+                summary['total_bases'] and summary['bases_assessed']
+                and summary['mean_cs'] is not None
+            )
+        else:
+            fraction = summary['accessible_fraction']
+            summary['eligible'] = bool(
+                summary['total_bases'] and fraction is not None
+                and fraction >= document['minimum_accessible_fraction']
+                and summary['bases_assessed'] and summary['mean_snp_density'] is not None
+            )
+        record[metric] = summary
+    return record
+
+
+def _decoded_records(document: dict) -> dict[str, dict]:
+    return {
+        accession: _decode_record(document, row)
+        for accession, row in document['records'].items()
     }
 
 
@@ -205,10 +393,12 @@ def _validate_index(index: dict) -> None:
         raise ValueError(f'The accession index must use {ASSEMBLY}.')
 
 
-def _common_document(index: dict, version: str, browser_copy: str, records: dict) -> dict:
+def _common_document(index: dict, version: str, browser_copy: str,
+                     records: dict, ranking_type: str) -> dict:
     return {
-        'schema_version': 1,
+        'schema_version': 2,
         'ranking_version': version,
+        'ranking_type': ranking_type,
         'assembly': ASSEMBLY,
         'coordinate_index_version': index['index_version'],
         'generated_browser_copy': browser_copy,
@@ -217,7 +407,17 @@ def _common_document(index: dict, version: str, browser_copy: str, records: dict
             'release': index['annotation']['release'],
             'source_snapshot_sha256': index['annotation']['source_snapshot_sha256'],
         },
-        'records': records,
+        'scope_order': list(METRICS),
+        'scope_labels': SCOPE_LABELS,
+        'record_fields': list(RECORD_FIELDS),
+        'rank_fields': list(RANK_FIELDS),
+        'scope_value_fields': list(
+            CS_SCOPE_FIELDS if ranking_type == 'mean_cs' else SNP_SCOPE_FIELDS
+        ),
+        'records': {
+            accession: _encode_record(record, ranking_type)
+            for accession, record in records.items()
+        },
     }
 
 
@@ -226,27 +426,32 @@ def build_cs_rankings(score_root, index: dict, score_sha256: str) -> dict:
     records = {}
     for accession, index_record in sorted(index['accessions'].items()):
         annotation = index_record['annotation']
+        transcript_id = annotation['transcript_id']
+        transcript = index.get('transcripts', {}).get(transcript_id, annotation)
         chromosome = annotation['chromosome']
         if chromosome not in score_root or 'Cs' not in score_root[chromosome]:
             raise ValueError(f'Cs is unavailable for {accession} on {chromosome}.')
-        intervals = _annotation_intervals(annotation, accession)
+        intervals = _annotation_intervals(annotation, transcript, accession)
         records[accession] = {
             'chromosome': chromosome,
-            'representative_transcript': annotation['transcript_id'],
+            'representative_transcript': transcript_id,
             **_cs_summary(score_root[chromosome]['Cs'], intervals, accession),
         }
     ranking_records, redacted_keys = _records_with_preserved_context(
         index, records, PRESERVED_CS_RANKING_CONTEXT,
     )
     counts = _attach_rankings(ranking_records, 'mean_cs', True)
-    document = _common_document(index, CS_RANKING_VERSION, f'docs/assets/data/{CS_FILENAME}', records)
+    document = _common_document(
+        index, CS_RANKING_VERSION, f'docs/assets/data/{CS_FILENAME}', records, 'mean_cs',
+    )
     document.update({
-        'redacted_records': [ranking_records[key] for key in redacted_keys],
+        'redacted_records': [
+            _encode_record(ranking_records[key], 'mean_cs') for key in redacted_keys
+        ],
         'ranking_context': (
             'Anonymous values from reviewed public-curation exclusions remain in cohort '
             'calculations so established ranks and denominators do not change.'
         ),
-        'ranking_type': 'mean_cs',
         'score_source': {
             'file': 'AgamP4_conservation.h5', 'array': 'Cs',
             'zenodo_record': 4304586, 'sha256': score_sha256,
@@ -263,12 +468,11 @@ def build_cs_rankings(score_root, index: dict, score_sha256: str) -> dict:
         'metrics': {
             'gene_span': 'Mean finite per-base Cs across the inclusive gene span.',
             'representative_exons': 'Mean finite per-base Cs across the representative exon union.',
+            'representative_cds': 'Mean finite per-base Cs across the representative exonic CDS union.',
+            'representative_utr': 'Mean finite per-base Cs across the representative exonic UTR union.',
+            'representative_introns': 'Mean finite per-base Cs across the representative intron union.',
         },
         'cohorts': {
-            'global_gene_count': len(ranking_records),
-            'chromosome_gene_counts': dict(sorted(Counter(
-                record['chromosome'] for record in ranking_records.values()
-            ).items())),
             **counts,
         },
     })
@@ -281,15 +485,17 @@ def build_snp_rankings(score_root, accessibility_root, index: dict,
     records = {}
     for accession, index_record in sorted(index['accessions'].items()):
         annotation = index_record['annotation']
+        transcript_id = annotation['transcript_id']
+        transcript = index.get('transcripts', {}).get(transcript_id, annotation)
         chromosome = annotation['chromosome']
         if chromosome not in score_root or 'snp_density' not in score_root[chromosome]:
             raise ValueError(f'SNP density is unavailable for {accession} on {chromosome}.')
         if chromosome not in accessibility_root or 'status' not in accessibility_root[chromosome]:
             raise ValueError(f'Accessibility is unavailable for {accession} on {chromosome}.')
-        intervals = _annotation_intervals(annotation, accession)
+        intervals = _annotation_intervals(annotation, transcript, accession)
         records[accession] = {
             'chromosome': chromosome,
-            'representative_transcript': annotation['transcript_id'],
+            'representative_transcript': transcript_id,
             **_snp_summary(score_root[chromosome]['snp_density'],
                            accessibility_root[chromosome]['status'], intervals),
         }
@@ -297,14 +503,19 @@ def build_snp_rankings(score_root, accessibility_root, index: dict,
         index, records, PRESERVED_SNP_RANKING_CONTEXT,
     )
     counts = _attach_rankings(ranking_records, 'mean_snp_density', False)
-    document = _common_document(index, SNP_RANKING_VERSION, f'docs/assets/data/{SNP_FILENAME}', records)
+    document = _common_document(
+        index, SNP_RANKING_VERSION, f'docs/assets/data/{SNP_FILENAME}', records,
+        'accessible_mean_snp_density',
+    )
     document.update({
-        'redacted_records': [ranking_records[key] for key in redacted_keys],
+        'redacted_records': [
+            _encode_record(ranking_records[key], 'accessible_mean_snp_density')
+            for key in redacted_keys
+        ],
         'ranking_context': (
             'Anonymous values from reviewed public-curation exclusions remain in cohort '
             'calculations so established ranks and denominators do not change.'
         ),
-        'ranking_type': 'accessible_mean_snp_density',
         'score_source': {
             'file': 'AgamP4_conservation.h5', 'array': 'snp_density',
             'zenodo_record': 4304586, 'sha256': score_sha256,
@@ -330,6 +541,9 @@ def build_snp_rankings(score_root, accessibility_root, index: dict,
         'metrics': {
             'gene_span': 'Accessible-base mean SNP density across the inclusive gene span.',
             'representative_exons': 'Accessible-base mean SNP density across the representative exon union.',
+            'representative_cds': 'Accessible-base mean SNP density across the representative exonic CDS union.',
+            'representative_utr': 'Accessible-base mean SNP density across the representative exonic UTR union.',
+            'representative_introns': 'Accessible-base mean SNP density across the representative intron union.',
         },
         'cohorts': counts,
     })
@@ -337,7 +551,7 @@ def build_snp_rankings(score_root, accessibility_root, index: dict,
 
 
 def _validate_common(document: dict, index: dict | None, version: str) -> dict:
-    if document.get('schema_version') != 1 or document.get('ranking_version') != version:
+    if document.get('schema_version') != 2 or document.get('ranking_version') != version:
         raise ValueError('Unsupported or unexpected gene-ranking version.')
     if document.get('assembly') != ASSEMBLY:
         raise ValueError('Unexpected gene-ranking assembly.')
@@ -349,7 +563,18 @@ def _validate_common(document: dict, index: dict | None, version: str) -> dict:
             raise ValueError('Gene rankings and accession index versions disagree.')
         if set(records) != set(index.get('accessions', {})):
             raise ValueError('Gene rankings do not cover the exact accession-index gene set.')
-    return records
+    if document.get('scope_order') != list(METRICS):
+        raise ValueError('Unexpected gene-ranking scope order.')
+    if document.get('record_fields') != list(RECORD_FIELDS):
+        raise ValueError('Unexpected compact gene-ranking record schema.')
+    if document.get('rank_fields') != list(RANK_FIELDS):
+        raise ValueError('Unexpected compact gene-ranking rank schema.')
+    expected_scope_fields = (
+        CS_SCOPE_FIELDS if document.get('ranking_type') == 'mean_cs' else SNP_SCOPE_FIELDS
+    )
+    if document.get('scope_value_fields') != list(expected_scope_fields):
+        raise ValueError('Unexpected compact gene-ranking scope schema.')
+    return _decoded_records(document)
 
 
 def _records_with_document_context(document: dict, records: dict) -> dict:
@@ -357,22 +582,21 @@ def _records_with_document_context(document: dict, records: dict) -> dict:
     if not isinstance(redacted, list):
         raise ValueError('Redacted ranking context must be a list.')
     combined = dict(records)
-    for position, record in enumerate(redacted, start=1):
-        if not isinstance(record, dict) or {'accession', 'id', 'representative_transcript'} & record.keys():
+    for position, row in enumerate(redacted, start=1):
+        if not isinstance(row, list) or len(row) != len(RECORD_FIELDS) or row[1] is not None:
             raise ValueError('Redacted ranking context must not contain gene identifiers.')
-        combined[f'__redacted_record_{position}'] = record
+        combined[f'__redacted_record_{position}'] = _decode_record(document, row)
     return combined
 
 
 def _validate_ranked(document: dict, records: dict, field: str, higher: bool,
-                     require_all: bool) -> None:
+                     eligibility_field: str) -> None:
     for metric in METRICS:
         eligible = [(a, r[metric][field]) for a, r in records.items()
-                    if require_all or r[metric].get('eligible')]
+                    if r[metric].get(eligibility_field)]
         expected = _ranking_stats(eligible, higher)
         cohorts = document['cohorts']
-        actual_count = (cohorts['global_gene_count'] if require_all else
-                        cohorts['global_eligible_gene_counts'][metric])
+        actual_count = cohorts['global_ranked_scope_counts'][metric]
         if actual_count != len(eligible):
             raise ValueError(f'{metric} global ranking denominator is stale.')
         for accession, _value in eligible:
@@ -381,8 +605,7 @@ def _validate_ranked(document: dict, records: dict, field: str, higher: bool,
         for chromosome in sorted({record['chromosome'] for record in records.values()}):
             arm = [(a, v) for a, v in eligible if records[a]['chromosome'] == chromosome]
             arm_expected = _ranking_stats(arm, higher)
-            arm_count = (cohorts['chromosome_gene_counts'][chromosome] if require_all else
-                         cohorts['chromosome_eligible_gene_counts'][metric][chromosome])
+            arm_count = cohorts['chromosome_ranked_scope_counts'][metric][chromosome]
             if arm_count != len(arm):
                 raise ValueError(f'{metric} {chromosome} ranking denominator is stale.')
             for accession, _value in arm:
@@ -391,18 +614,39 @@ def _validate_ranked(document: dict, records: dict, field: str, higher: bool,
 
 
 def validate_cs_rankings(document: dict, index: dict | None = None) -> None:
+    if document.get('ranking_type') != 'mean_cs':
+        raise ValueError('Unexpected Cs ranking type.')
     records = _validate_common(document, index, CS_RANKING_VERSION)
     ranking_records = _records_with_document_context(document, records)
-    chromosomes = Counter(record.get('chromosome') for record in ranking_records.values())
-    cohorts = document.get('cohorts', {})
-    if cohorts.get('global_gene_count') != len(ranking_records):
-        raise ValueError('Global Cs denominator does not match the records.')
-    if cohorts.get('chromosome_gene_counts') != dict(sorted(chromosomes.items())):
-        raise ValueError('Chromosome Cs denominators do not match the records.')
-    _validate_ranked(document, ranking_records, 'mean_cs', True, True)
+    for accession, record in ranking_records.items():
+        if not isinstance(record.get('chromosome'), str):
+            raise ValueError(f'{accession} has an invalid chromosome.')
+        for metric in METRICS:
+            summary = record[metric]
+            total = summary['total_bases']
+            assessed = summary['bases_assessed']
+            if total is None:
+                if assessed != 0 or summary['mean_cs'] is not None:
+                    raise ValueError(f'{accession} has inconsistent unavailable {metric} Cs evidence.')
+            elif not isinstance(total, int) or total < 0:
+                raise ValueError(f'{accession} has invalid {metric} total bases.')
+            elif not isinstance(assessed, int) or not 0 <= assessed <= total:
+                raise ValueError(f'{accession} has invalid {metric} assessed Cs bases.')
+            mean = summary['mean_cs']
+            if assessed == 0 and mean is not None:
+                raise ValueError(f'{accession} must keep unassessed {metric} Cs unknown.')
+            if assessed and not math.isfinite(mean if mean is not None else math.nan):
+                raise ValueError(f'{accession} has invalid {metric} Cs mean.')
+            if not summary['rankable'] and (
+                summary['global'] is not None or summary['chromosome'] is not None
+            ):
+                raise ValueError(f'{accession} has ranks without assessed {metric} Cs evidence.')
+    _validate_ranked(document, ranking_records, 'mean_cs', True, 'rankable')
 
 
 def validate_snp_rankings(document: dict, index: dict | None = None) -> None:
+    if document.get('ranking_type') != 'accessible_mean_snp_density':
+        raise ValueError('Unexpected SNP-density ranking type.')
     records = _validate_common(document, index, SNP_RANKING_VERSION)
     ranking_records = _records_with_document_context(document, records)
     threshold = document.get('minimum_accessible_fraction')
@@ -412,24 +656,42 @@ def validate_snp_rankings(document: dict, index: dict | None = None) -> None:
         for metric in METRICS:
             summary = record.get(metric, {})
             total, accessible = summary.get('total_bases'), summary.get('accessible_bases')
-            if not isinstance(total, int) or total < 1:
+            assessed = summary.get('bases_assessed')
+            if total is None:
+                if any(value is not None for value in (
+                    accessible, summary.get('accessible_fraction'), summary.get('mean_snp_density')
+                )) or assessed != 0:
+                    raise ValueError(f'{accession} has inconsistent unavailable {metric} SNP evidence.')
+                if summary.get('global') is not None or summary.get('chromosome') is not None:
+                    raise ValueError(f'{accession} has ranks for unavailable {metric} SNP evidence.')
+                continue
+            if not isinstance(total, int) or total < 0:
                 raise ValueError(f'{accession} has invalid {metric} total bases.')
             if not isinstance(accessible, int) or not 0 <= accessible <= total:
                 raise ValueError(f'{accession} has invalid {metric} accessible bases.')
-            fraction = accessible / total
-            if not math.isclose(summary.get('accessible_fraction', math.nan), fraction):
+            if not isinstance(assessed, int) or not 0 <= assessed <= accessible:
+                raise ValueError(f'{accession} has invalid {metric} assessed SNP bases.')
+            fraction = accessible / total if total else None
+            actual_fraction = summary.get('accessible_fraction')
+            if (fraction is None and actual_fraction is not None) or (
+                fraction is not None and not math.isclose(actual_fraction, fraction)
+            ):
                 raise ValueError(f'{accession} has stale {metric} accessibility fraction.')
-            if summary.get('eligible') != (fraction >= threshold):
+            expected_eligible = bool(
+                total and fraction >= threshold and assessed
+                and summary.get('mean_snp_density') is not None
+            )
+            if summary.get('eligible') != expected_eligible:
                 raise ValueError(f'{accession} has stale {metric} eligibility.')
             mean = summary.get('mean_snp_density')
-            if accessible == 0 and mean is not None:
+            if assessed == 0 and mean is not None:
                 raise ValueError(f'{accession} must keep unobserved {metric} SNP density unknown.')
-            if accessible and not math.isfinite(mean if mean is not None else math.nan):
+            if assessed and not math.isfinite(mean if mean is not None else math.nan):
                 raise ValueError(f'{accession} has invalid {metric} SNP-density mean.')
             if not summary['eligible'] and (summary.get('global') is not None or
                                              summary.get('chromosome') is not None):
                 raise ValueError(f'{accession} has ranks despite ineligible {metric} accessibility.')
-    _validate_ranked(document, ranking_records, 'mean_snp_density', False, False)
+    _validate_ranked(document, ranking_records, 'mean_snp_density', False, 'eligible')
 
 
 build_gene_rankings = build_cs_rankings

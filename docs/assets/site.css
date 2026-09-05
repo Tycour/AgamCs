@@ -229,6 +229,8 @@ input { width: 100%; height: 44px; padding: 0 12px; color: var(--ink); border: 1
 .summary-metric-pair > div { min-width: 0; padding: 12px 13px; }
 .summary-metric-pair > div + div { border-left: 1px solid var(--line); }
 .summary-metric-pair small { margin-top: 5px; }
+.summary-ranking-scopes { grid-template-columns: 1fr; }
+.summary-ranking-scopes > div + div { border-top: 1px solid var(--line); border-left: 0; }
 .summary-method { margin: 12px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 .ranking-section { margin: 24px 0; }
 .ranking-section > h3 { margin: 0 0 5px; }
@@ -376,6 +378,7 @@ input { width: 100%; height: 44px; padding: 0 12px; color: var(--ink); border: 1
   .plot-range-coordinate-controls { grid-column: 1; grid-template-columns: 1fr; }
   #plot-range-status { grid-column: 1; }
   .summary-metric-pair > div + div { border-left: 1px solid var(--line); }
+  .summary-ranking-scopes > div + div { border-left: 0; }
   .explain-grid { grid-template-columns: 1fr; gap: 4px; }
   .project-intro, .affiliation-grid, .site-footer { grid-template-columns: 1fr; }
   .project-intro .eyebrow, .footer-note { grid-column: 1; }

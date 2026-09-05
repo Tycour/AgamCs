@@ -180,9 +180,13 @@ def validate_page(page: Path) -> list[str]:
             'query-summary', 'query-summary-subject', 'query-summary-version',
             'query-summary-body', 'summary-method-note', 'ranking-section',
             'summary-cs-ranking-card', 'summary-cs-rank-span',
-            'summary-cs-rank-exons', 'summary-cs-ranking-note',
+            'summary-cs-rank-exons', 'summary-cs-rank-cds',
+            'summary-cs-rank-utr', 'summary-cs-rank-introns',
+            'summary-cs-ranking-note',
             'summary-snp-ranking-card', 'summary-snp-rank-span',
-            'summary-snp-rank-exons', 'summary-snp-ranking-note',
+            'summary-snp-rank-exons', 'summary-snp-rank-cds',
+            'summary-snp-rank-utr', 'summary-snp-rank-introns',
+            'summary-snp-ranking-note',
             'live-visuals', 'live-signals-heading', 'live-heatmap-heading',
             'live-signal-download', 'live-heatmap-download',
             'signal-resolution', 'heatmap-resolution', 'plot-resolution-status',
@@ -416,10 +420,23 @@ def validate_rankings() -> list[str]:
             errors.append(f'packaged gene-ranking asset is missing: {package.name}')
         elif package.read_bytes() != browser.read_bytes():
             errors.append(f'package and browser gene-ranking assets differ: {package.name}')
-    if cs['cohorts']['global_gene_count'] != EXPECTED_ACCESSION_RECORDS + 1:
+    expected_cs = {
+        'gene_span': 13097,
+        'representative_exons': 13097,
+        'representative_cds': 12614,
+        'representative_utr': 10874,
+        'representative_introns': 11532,
+    }
+    if cs['cohorts']['global_ranked_scope_counts'] != expected_cs:
         errors.append('Cs ranking denominator no longer preserves its reviewed source cohort')
-    expected_eligible = {'gene_span': 8305, 'representative_exons': 10165}
-    if snp['cohorts']['global_eligible_gene_counts'] != expected_eligible:
+    expected_eligible = {
+        'gene_span': 8305,
+        'representative_exons': 10165,
+        'representative_cds': 10498,
+        'representative_utr': 7514,
+        'representative_introns': 6052,
+    }
+    if snp['cohorts']['global_ranked_scope_counts'] != expected_eligible:
         errors.append('SNP ranking denominators no longer match the reviewed 80% QC cohorts')
     return errors
 

@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-09-05-query-summary-v1';
+const PAGES_RELEASE = '2026-09-05-partition-rankings-v2';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -783,44 +783,64 @@ function renderGeneRanking(rankingDocuments, accession) {
   snpElement.hidden = !card?.snpDensity;
   rankingSection.hidden = !card;
   if (!card) return;
-  const renderRankedMetric = (metric, valueId, detailId) => {
-    document.querySelector(valueId).textContent =
-      `${metric.global.percentile.toFixed(2)}th`;
-    document.querySelector(detailId).textContent =
-      `Global ${rankingPosition(metric.global)} · ${card.chromosome} `
-      + `${metric.chromosome.percentile.toFixed(2)}th percentile `
-      + `(${rankingPosition(metric.chromosome)})`;
+  const scopeTargets = {
+    gene_span: ['span'],
+    representative_exons: ['exons'],
+    representative_cds: ['cds'],
+    representative_utr: ['utr'],
+    representative_introns: ['introns'],
+  };
+  const renderRankedMetric = (metric, prefix, suffix, valueLabel) => {
+    const valueElement = document.querySelector(`#summary-${prefix}-rank-${suffix}`);
+    const detailElement = document.querySelector(`#summary-${prefix}-rank-${suffix}-detail`);
+    const transcript = metric.representativeTranscript || 'NA';
+    if (metric.state !== 'ranked') {
+      valueElement.textContent = metric.state === 'not_ranked_ineligible' ? 'Not ranked' : 'NA · Not ranked';
+      if (metric.state === 'not_ranked_zero_bases') {
+        detailElement.textContent = `Zero-base partition · 0 bases assessed · Representative transcript ${transcript}`;
+      } else if (metric.state === 'not_ranked_ineligible') {
+        const observed = metric.value != null && Number.isFinite(Number(metric.value))
+          ? `${valueLabel} ${displayNumber(Number(metric.value))} · ` : 'Mean NA · ';
+        detailElement.textContent = `${observed}${metric.basesAssessed.toLocaleString()} bases assessed · `
+          + `${(100 * metric.accessibleFraction).toFixed(1)}% accessible `
+          + `(${metric.accessibleBases.toLocaleString()}/${metric.totalBases.toLocaleString()}); `
+          + `80% required · Representative transcript ${transcript}`;
+      } else {
+        detailElement.textContent = `Evidence unavailable · ${metric.basesAssessed.toLocaleString()}/`
+          + `${(metric.totalBases || 0).toLocaleString()} bases assessed · Representative transcript ${transcript}`;
+      }
+      detailElement.textContent += ` · Eligible cohorts: global `
+        + `${metric.globalCohortDenominator.toLocaleString()} · ${card.chromosome} `
+        + `${metric.chromosomeCohortDenominator.toLocaleString()}`;
+      return;
+    }
+    valueElement.textContent = `${metric.global.percentile.toFixed(2)}th`;
+    const coverage = `${valueLabel} ${displayNumber(Number(metric.value))} · `
+      + `${metric.basesAssessed.toLocaleString()}/${metric.totalBases.toLocaleString()} bases assessed`;
+    const accessibility = prefix === 'snp'
+      ? ` · ${(100 * metric.accessibleFraction).toFixed(1)}% accessible `
+        + `(${metric.accessibleBases.toLocaleString()}/${metric.totalBases.toLocaleString()})`
+      : '';
+    detailElement.textContent = `${coverage}${accessibility} · Global ${rankingPosition(metric.global)} · `
+      + `${card.chromosome} ${metric.chromosome.percentile.toFixed(2)}th percentile `
+      + `(${rankingPosition(metric.chromosome)}) · Representative transcript ${transcript}`;
   };
   if (card.cs) {
-    renderRankedMetric(card.cs.metrics.gene_span, '#summary-cs-rank-span', '#summary-cs-rank-span-detail');
-    renderRankedMetric(
-      card.cs.metrics.representative_exons,
-      '#summary-cs-rank-exons', '#summary-cs-rank-exons-detail',
-    );
+    Object.entries(scopeTargets).forEach(([scope, [suffix]]) => {
+      renderRankedMetric(card.cs.metrics[scope], 'cs', suffix, 'Mean Cs');
+    });
     document.querySelector('#summary-cs-ranking-note').textContent =
       `Static ${card.accession} ranking; padding and selected non-representative isoforms do not `
-      + `change it. Exon ranking uses ${card.representativeTranscript}. ${card.cs.interpretation}`;
+      + `change it. All representative partitions use ${card.representativeTranscript}. `
+      + `${card.cs.interpretation}`;
   }
   if (card.snpDensity) {
-    const renderSnpMetric = (metric, valueId, detailId) => {
-      if (metric.eligible) {
-        renderRankedMetric(metric, valueId, detailId);
-      } else {
-        document.querySelector(valueId).textContent = 'Not ranked';
-        document.querySelector(detailId).textContent =
-          `${(100 * metric.accessibleFraction).toFixed(1)}% accessible `
-          + `(${metric.accessibleBases.toLocaleString()}/${metric.totalBases.toLocaleString()}); `
-          + '80% required';
-      }
-    };
-    renderSnpMetric(
-      card.snpDensity.metrics.gene_span,
-      '#summary-snp-rank-span', '#summary-snp-rank-span-detail',
-    );
-    renderSnpMetric(
-      card.snpDensity.metrics.representative_exons,
-      '#summary-snp-rank-exons', '#summary-snp-rank-exons-detail',
-    );
+    Object.entries(scopeTargets).forEach(([scope, [suffix]]) => {
+      renderRankedMetric(
+        card.snpDensity.metrics[scope], 'snp', suffix,
+        'Mean accessible-base SNP density',
+      );
+    });
     document.querySelector('#summary-snp-ranking-note').textContent =
       `Only accessible focal bases contribute; QC-failed bases remain unknown. `
       + `${card.snpDensity.interpretation}`;

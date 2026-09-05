@@ -186,32 +186,40 @@ transcript and whole-gene cohorts.
 ### Gene-level Cs and SNP-density rankings
 
 For every one of the 13,097 current genes in the pinned AgamP4.14 index,
-AgamCs precomputes two transparent summaries of the published per-base `Cs`
-array: the arithmetic mean over the complete annotated gene span, and the mean
-over the union of exons in its pinned representative transcript. Each is
-reported as an exact descending rank and a tie-aware percentile among all
-13,097 genes, alongside the corresponding rank within the gene's chromosome
-arm. The percentile is the percentage of other cohort genes with a lower mean,
-with half weight assigned to tied genes; higher values mean higher conservation.
+AgamCs precomputes versioned summaries of the published per-base `Cs` array for
+the complete annotated gene span and the exon, exonic CDS, exonic UTR, and intron
+unions of its pinned representative transcript. Each non-empty scope with finite
+evidence reports its bases assessed, exact descending global and chromosome-arm
+rank, tie-aware percentile, and scope-specific cohort denominator. The
+percentile is the percentage of other cohort genes with a lower mean, with half
+weight assigned to tied genes; higher values mean higher conservation.
 
-The two scopes answer different questions. Gene-span means include introns and
-can be affected by gene length and structure; representative-exon means focus
-on the annotated transcript but do not combine all isoforms. The published v1
+The scopes answer different questions. Gene-span means include introns and can
+be affected by gene length and structure; representative partitions focus on
+one pinned transcript and do not combine all isoforms. Non-coding representative
+transcripts have zero-base CDS and UTR partitions under the shared summary
+semantics. The published v1
 `Cs` values were MinMax-scaled separately on each chromosome arm, so the pooled
 genome-wide percentile is a descriptive rank, not a chromosome-independent
 biological calibration. The same-arm percentile is retained for that reason.
 AgamCs also reports a low-variation percentile from the archived `snp_density`
 array. Only focal bases passing status bit 0 in the companion Ag1000G Phase 2
-AR1 accessibility track contribute to a gene mean, and a scope is eligible only
-when at least 80% of its bases are accessible (inclusive). Higher percentiles
+AR1 accessibility track contribute to a gene mean, and each scope is independently
+eligible only when at least 80% of its bases are accessible (inclusive). Higher percentiles
 mean lower mean SNP density among the other eligible genes. QC-failed bases are
 unknown, never zero; the archived centered 20-base-window density is pooled
 PASS-position density, not allele frequency, invariant-site evidence, or an
 independent conservation score.
 
-The browser shows both static ranks as soon as it resolves a gene, independently
-of padding or the browser's query-length ceiling. An ineligible scope instead
-shows its accessible numerator, denominator, percentage, and the 80% threshold.
+The browser shows both static rank sets as soon as it resolves a gene,
+independently of padding or the browser's query-length ceiling. Zero-length,
+unavailable, or SNP-ineligible scopes show explicit `NA`/`Not ranked` states;
+ineligible SNP scopes retain their assessed and accessible numerators,
+denominators, percentage, and the 80% threshold. Unknown evidence is never ranked.
+Selecting an alternative isoform changes the query summaries only: static ranks
+remain explicitly labelled as representative-transcript rankings. These cohorts
+are global or chromosome-arm cohorts; no length-matched or exon-count-matched
+cohorts are included in this version.
 
 Method details are available in the
 [original paper](https://doi.org/10.3390/insects12020097) and the

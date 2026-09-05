@@ -1,4 +1,4 @@
-const WORKER_RELEASE = '2026-09-05-query-summary-v1';
+const WORKER_RELEASE = '2026-09-05-partition-rankings-v2';
 const SCORE_REFERENCE_URL = `data/score-reference.json?v=${WORKER_RELEASE}`;
 const ACCESSIBILITY_REFERENCE_URL = `data/accessibility-reference.json?v=${WORKER_RELEASE}`;
 const HASH_ARRAYS = ['Cs', 'snp_density', 'stack', 'status'];

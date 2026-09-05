@@ -16,17 +16,17 @@
   <title>AgamCs conservation explorer</title>
   <link rel="canonical" href="https://tycour.github.io/AgamCs/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/site.css?v=2026-09-05-query-summary-v1">
-  <script src="assets/plot-model.js?v=2026-09-05-query-summary-v1" defer></script>
-  <script src="assets/query-summary.js?v=2026-09-05-query-summary-v1" defer></script>
-  <script src="assets/live-plots.js?v=2026-09-05-query-summary-v1" defer></script>
-  <script src="assets/gene-search.js?v=2026-09-05-query-summary-v1" defer></script>
-  <script src="assets/gene-ranking.js?v=2026-09-05-query-summary-v1" defer></script>
-  <script src="assets/accession-lookup.js?v=2026-09-05-query-summary-v1" defer></script>
-  <script src="assets/query-contract.js?v=2026-09-05-query-summary-v1" defer></script>
-  <script src="assets/query-interaction.js?v=2026-09-05-query-summary-v1" defer></script>
-  <script src="assets/analytics.js?v=2026-09-05-query-summary-v1" data-measurement-id="G-25RC4QKPP9" defer></script>
-  <script src="assets/site.js?v=2026-09-05-query-summary-v1" defer></script>
+  <link rel="stylesheet" href="assets/site.css?v=2026-09-05-partition-rankings-v2">
+  <script src="assets/plot-model.js?v=2026-09-05-partition-rankings-v2" defer></script>
+  <script src="assets/query-summary.js?v=2026-09-05-partition-rankings-v2" defer></script>
+  <script src="assets/live-plots.js?v=2026-09-05-partition-rankings-v2" defer></script>
+  <script src="assets/gene-search.js?v=2026-09-05-partition-rankings-v2" defer></script>
+  <script src="assets/gene-ranking.js?v=2026-09-05-partition-rankings-v2" defer></script>
+  <script src="assets/accession-lookup.js?v=2026-09-05-partition-rankings-v2" defer></script>
+  <script src="assets/query-contract.js?v=2026-09-05-partition-rankings-v2" defer></script>
+  <script src="assets/query-interaction.js?v=2026-09-05-partition-rankings-v2" defer></script>
+  <script src="assets/analytics.js?v=2026-09-05-partition-rankings-v2" data-measurement-id="G-25RC4QKPP9" defer></script>
+  <script src="assets/site.js?v=2026-09-05-partition-rankings-v2" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -215,21 +215,27 @@
         </div>
         <section class="ranking-section" id="ranking-section" aria-labelledby="ranking-section-heading" hidden>
           <h3 id="ranking-section-heading">Representative-transcript gene rankings</h3>
-          <p>These static rankings retain the representative transcript and whole-gene cohorts. Selecting another isoform changes the query summaries, not these rankings.</p>
+          <p>These static, scope-specific global and chromosome-arm rankings use the pinned representative transcript. Selecting another isoform changes the query summaries, not these rankings.</p>
           <div class="ranking-grid">
             <section class="summary-scope-card summary-ranking-card" id="summary-cs-ranking-card" aria-labelledby="summary-cs-ranking-heading" hidden>
               <header><h4 id="summary-cs-ranking-heading">Cs percentile</h4><small>Higher Cs = more conserved</small></header>
-              <div class="summary-metric-pair">
+              <div class="summary-metric-pair summary-ranking-scopes">
                 <div><span>Whole gene span</span><strong id="summary-cs-rank-span">—</strong><small id="summary-cs-rank-span-detail">—</small></div>
                 <div><span>Representative exons</span><strong id="summary-cs-rank-exons">—</strong><small id="summary-cs-rank-exons-detail">—</small></div>
+                <div><span>Representative CDS</span><strong id="summary-cs-rank-cds">—</strong><small id="summary-cs-rank-cds-detail">—</small></div>
+                <div><span>Representative UTR</span><strong id="summary-cs-rank-utr">—</strong><small id="summary-cs-rank-utr-detail">—</small></div>
+                <div><span>Representative introns</span><strong id="summary-cs-rank-introns">—</strong><small id="summary-cs-rank-introns-detail">—</small></div>
               </div>
               <p class="summary-ranking-note" id="summary-cs-ranking-note"></p>
             </section>
             <section class="summary-scope-card summary-ranking-card" id="summary-snp-ranking-card" aria-labelledby="summary-snp-ranking-heading" hidden>
               <header><h4 id="summary-snp-ranking-heading">Low-variation percentile</h4><small>Higher = lower accessible-base SNP density</small></header>
-              <div class="summary-metric-pair">
+              <div class="summary-metric-pair summary-ranking-scopes">
                 <div><span>Whole gene span</span><strong id="summary-snp-rank-span">—</strong><small id="summary-snp-rank-span-detail">—</small></div>
                 <div><span>Representative exons</span><strong id="summary-snp-rank-exons">—</strong><small id="summary-snp-rank-exons-detail">—</small></div>
+                <div><span>Representative CDS</span><strong id="summary-snp-rank-cds">—</strong><small id="summary-snp-rank-cds-detail">—</small></div>
+                <div><span>Representative UTR</span><strong id="summary-snp-rank-utr">—</strong><small id="summary-snp-rank-utr-detail">—</small></div>
+                <div><span>Representative introns</span><strong id="summary-snp-rank-introns">—</strong><small id="summary-snp-rank-introns-detail">—</small></div>
               </div>
               <p class="summary-ranking-note" id="summary-snp-ranking-note"></p>
             </section>
