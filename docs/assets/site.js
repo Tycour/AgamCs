@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-09-05-partition-rankings-v2';
+const PAGES_RELEASE = '2026-09-05-notable-windows-v1';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -38,6 +38,12 @@ const querySummary = document.querySelector('#query-summary');
 const querySummaryBody = document.querySelector('#query-summary-body');
 const querySummarySubject = document.querySelector('#query-summary-subject');
 const querySummaryVersion = document.querySelector('#query-summary-version');
+const notableWindows = document.querySelector('#notable-windows');
+const notableWindowsSubject = document.querySelector('#notable-windows-subject');
+const notableWindowsVersion = document.querySelector('#notable-windows-version');
+const notableWindowsMethod = document.querySelector('#notable-windows-method');
+const highestCsWindowsBody = document.querySelector('#highest-cs-windows-body');
+const lowestSnpWindowsBody = document.querySelector('#lowest-snp-windows-body');
 const liveVisuals = document.querySelector('#live-visuals');
 const liveSignalPlot = document.querySelector('#live-signal-plot');
 const liveHeatmapPlot = document.querySelector('#live-heatmap-plot');
@@ -103,6 +109,7 @@ let plotRangeSelectionMode = false;
 let currentAccessionSuggestions = [];
 let activeAccessionSuggestion = -1;
 const figureDownloadUrls = new Map();
+const notableWindowDownloadUrls = new Map();
 
 function trackUsage(eventName, parameters) {
   try {
@@ -130,6 +137,11 @@ function clearFigureDownloads() {
     link.removeAttribute('href');
     link.removeAttribute('download');
   });
+}
+
+function clearNotableWindowDownloads() {
+  notableWindowDownloadUrls.forEach((url) => URL.revokeObjectURL(url));
+  notableWindowDownloadUrls.clear();
 }
 
 function configureFigureDownload(link, container, filename) {
@@ -734,7 +746,7 @@ function statusLabel(status, fields) {
   return failures.length ? failures.join(';') : 'UNKNOWN';
 }
 
-function buildTsv(data) {
+function buildTsv(data, range = null) {
   const headers = [
     'chromosome', 'pos', 'Cs_C', 'snp_density_s', 'is_accessible',
     'quality_status', 'accessibility_status_byte',
@@ -742,12 +754,15 @@ function buildTsv(data) {
   ];
   const lines = [headers.join('\t')];
   const width = data.values.Cs.length;
-  for (let index = 0; index < data.values.Cs.length; index += 1) {
+  const start = range?.start ?? data.start;
+  const end = range?.end ?? (data.start + width - 1);
+  for (let position = start; position <= end; position += 1) {
+    const index = position - data.start;
     const status = data.values.status[index];
     const stack = data.stackRows.map((_code, row) => data.values.stack[row * width + index]);
     lines.push([
       data.chromosome,
-      data.start + index,
+      position,
       data.values.Cs[index],
       data.values.snp_density[index],
       (status & 1) === 1,
@@ -911,6 +926,115 @@ function renderQuerySummary(result, annotation = null, transcriptAnnotations = [
     + summary.ranking_threshold_note
   );
   querySummary.hidden = false;
+}
+
+function windowCoordinates(window) {
+  return `${window.chromosome}:${window.start.toLocaleString()}–${window.end.toLocaleString()}`;
+}
+
+function configureNotableWindowDownload(link, result, window) {
+  const url = URL.createObjectURL(new Blob([buildTsv(result, window)], {
+    type: 'text/tab-separated-values',
+  }));
+  notableWindowDownloadUrls.set(link, url);
+  link.href = url;
+  link.download = `AgamCs_${window.chromosome}_${window.start}-${window.end}_window.tsv`;
+  link.addEventListener('click', () => trackUsage('file_download', { artifact_type: 'tsv' }));
+}
+
+function renderNotableWindows(result, annotation = null, transcriptAnnotations = []) {
+  const selectedAnnotation = globalThis.AgamCsQuerySummary.selectTranscriptAnnotation(
+    annotation, transcriptAnnotations,
+  );
+  const analysis = globalThis.AgamCsNotableWindows.analyzeNotableWindows(result, selectedAnnotation);
+  notableWindowsVersion.textContent = analysis.analysis_version;
+  notableWindowsSubject.textContent = analysis.selected_transcript
+    ? `Feature labels use selected transcript ${analysis.selected_transcript.transcript_id} on the ${analysis.selected_transcript.strand === -1 ? 'minus' : 'plus'} strand.`
+    : 'No selected transcript was supplied; feature labels therefore state that explicitly.';
+  notableWindowsMethod.textContent = (
+    `Windows are non-overlapping ${analysis.window_size.toLocaleString()}-base intervals anchored at the exact retained-query start; the final window may be shorter. `
+    + 'Cs rows are ordered by descending finite-base mean Cs, then ascending genomic coordinate. '
+    + `SNP rows include only windows with at least ${(100 * analysis.snp_accessibility_threshold).toFixed(0)}% accessible bases and are ordered by ascending accessible-base SNP-density mean, then coordinate. `
+    + 'QC-failed bases remain unknown. Each window TSV is the exact base-level subset for that inclusive window; the primary TSV remains the complete query.'
+  );
+  const rowForWindow = (window, metric) => {
+    const row = document.createElement('tr');
+    const label = windowCoordinates(window);
+    const cell = (primary, secondary = '') => {
+      const element = document.createElement('td');
+      const strong = document.createElement('strong');
+      strong.textContent = primary;
+      const small = document.createElement('small');
+      small.textContent = secondary;
+      element.append(strong, small);
+      return element;
+    };
+    const windowCell = document.createElement('th');
+    windowCell.scope = 'row';
+    const primary = document.createElement('strong');
+    primary.textContent = label;
+    const secondary = document.createElement('small');
+    secondary.textContent = 'inclusive coordinates';
+    windowCell.append(primary, secondary);
+    const accessibility = `${(100 * window.accessible_fraction).toFixed(1)}%`;
+    const metricCell = metric === 'cs'
+      ? cell(displayNumber(window.mean_cs), `${window.finite_cs_bases.toLocaleString()}/${window.total_bases.toLocaleString()} finite Cs bases`)
+      : cell(
+        displayNumber(window.mean_accessible_snp_density),
+        `${window.finite_accessible_snp_bases.toLocaleString()}/${window.accessible_bases.toLocaleString()} finite accessible SNP bases`,
+      );
+    const feature = cell(window.selected_transcript_feature, 'overlapping selected-transcript feature');
+    const actions = document.createElement('td');
+    const actionGroup = document.createElement('div');
+    actionGroup.className = 'notable-window-actions';
+    const zoom = document.createElement('button');
+    zoom.type = 'button';
+    zoom.className = 'button secondary';
+    zoom.textContent = 'Zoom to window';
+    zoom.setAttribute('aria-label', `Zoom plots to ${label}`);
+    zoom.addEventListener('click', () => zoomToPlotRange(window, 'notable-window'));
+    const download = document.createElement('a');
+    download.className = 'button secondary';
+    download.textContent = 'Exact window TSV';
+    download.setAttribute('aria-label', `Download exact TSV values for ${label}`);
+    configureNotableWindowDownload(download, result, window);
+    actionGroup.append(zoom, download);
+    actions.append(actionGroup);
+    row.append(
+      windowCell,
+      cell(window.total_bases.toLocaleString(), 'total bases'),
+      cell(
+        `${window.finite_cs_bases.toLocaleString()}/${window.total_bases.toLocaleString()}`,
+        'finite Cs bases',
+      ),
+      metricCell,
+      cell(accessibility, `${window.accessible_bases.toLocaleString()}/${window.total_bases.toLocaleString()} accessible bases`),
+      feature,
+      actions,
+    );
+    return row;
+  };
+  const renderRows = (body, windows, metric, emptyText) => {
+    if (windows.length) body.replaceChildren(...windows.map((window) => rowForWindow(window, metric)));
+    else {
+      const row = document.createElement('tr');
+      const cell = document.createElement('td');
+      cell.colSpan = 7;
+      cell.className = 'notable-window-empty';
+      cell.textContent = emptyText;
+      row.append(cell);
+      body.replaceChildren(row);
+    }
+  };
+  renderRows(
+    highestCsWindowsBody, analysis.highest_mean_cs_windows, 'cs',
+    'No window contains a finite Cs value.',
+  );
+  renderRows(
+    lowestSnpWindowsBody, analysis.lowest_mean_snp_density_windows, 'snp',
+    `No window meets the ${(100 * analysis.snp_accessibility_threshold).toFixed(0)}% accessibility requirement with a finite accessible-base SNP-density mean.`,
+  );
+  notableWindows.hidden = false;
 }
 
 function findPinnedAnnotation(chromosome, start, end) {
@@ -1468,6 +1592,12 @@ async function runLiveQuery() {
         ? 'Query complete; data retrieved, but browser hash validation is unavailable.'
         : `Query complete: ${querySubject}.`;
     renderQuerySummary(
+      result,
+      resolution ? annotation : null,
+      resolution ? transcriptAnnotations : [],
+    );
+    clearNotableWindowDownloads();
+    renderNotableWindows(
       result,
       resolution ? annotation : null,
       resolution ? transcriptAnnotations : [],
