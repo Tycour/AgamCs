@@ -217,6 +217,22 @@ input { width: 100%; height: 44px; padding: 0 12px; color: var(--ink); border: 1
 .query-summary-table span, .query-summary-table strong, .query-summary-table small { display: block; }
 .query-summary-table strong { font-size: 13px; white-space: nowrap; }
 .query-summary-table small { margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.35; }
+.species-display-controls { margin-top: 14px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: #f8fbfa; }
+.species-display-controls > summary { color: var(--teal-dark); cursor: pointer; font-size: 12px; font-weight: 800; }
+.species-display-controls > p { margin: 9px 0; color: var(--muted); font-size: 11px; line-height: 1.45; }
+.species-display-toolbar { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; margin: 14px 0; }
+.species-display-toolbar label { min-width: 190px; font-size: 11px; font-weight: 750; }
+.species-display-toolbar select { margin-top: 5px; }
+.species-display-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+.species-display-actions .button { min-height: 35px; padding: 0 10px; font-size: 11px; }
+.species-display-controls fieldset { margin: 12px 0 0; padding: 10px 12px 12px; border: 1px solid #ccd5d0; border-radius: 7px; }
+.species-display-controls legend { padding: 0 5px; color: var(--ink); font-size: 11px; font-weight: 800; }
+.species-checkbox-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 7px 12px; }
+.species-checkbox-grid label { display: flex; gap: 7px; align-items: flex-start; color: #344b44; font-size: 11px; line-height: 1.35; cursor: pointer; }
+.species-checkbox-grid input { width: auto; height: auto; margin: 2px 0 0; accent-color: var(--teal); }
+.species-context-table { min-width: 1120px; }
+.species-context-table tr.clade-row th { color: var(--teal-dark); }
+.species-context-table tr.clade-row { background: #f6faf8; }
 .notable-windows > .summary-method { margin: -2px 0 15px; }
 .notable-window-grid { display: grid; gap: 22px; }
 .notable-window-grid h4 { margin: 0 0 8px; font-size: 15px; }

@@ -1,0 +1,65 @@
+{
+  "analysis_version": "agamcs-species-context-v1",
+  "cases": [
+    {
+      "name": "complete partial and no detection with topology polytomy",
+      "chromosome": "2L",
+      "start": 1,
+      "end": 120,
+      "rows": ["sp1", "sp2", "sp3"],
+      "labels": ["Species one", "Species two", "Species three"],
+      "row_runs": [
+        [[120, 90]],
+        [[70, 80], [50, 0]],
+        [[120, 0]]
+      ],
+      "topology": {
+        "schema_version": 1,
+        "tree": {"name": "Root", "children": ["sp1", "sp2", "sp3"]}
+      },
+      "expect": {
+        "species_detected_bases": [120, 70, 0],
+        "species_longest_runs": [0, 50, 120],
+        "species_window_starts": [1, null, null],
+        "root_species_count": 3,
+        "root_possible_species_bases": 360,
+        "root_detected_bases": 190,
+        "root_is_polytomy": true
+      }
+    },
+    {
+      "name": "clade denominators and complete-window qualification",
+      "chromosome": "3R",
+      "start": 100,
+      "end": 304,
+      "rows": ["sp1", "sp2", "sp3"],
+      "labels": ["Species one", "Species two", "Species three"],
+      "row_runs": [
+        [[100, 90], [80, 50], [20, 0], [5, 40]],
+        [[100, 70], [80, 60], [25, 0]],
+        [[205, 0]]
+      ],
+      "topology": {
+        "schema_version": 1,
+        "tree": {
+          "name": "Root",
+          "children": [
+            {"name": "Pair", "children": ["sp1", "sp2"]},
+            "sp3"
+          ]
+        }
+      },
+      "expect": {
+        "species_detected_bases": [185, 180, 0],
+        "species_longest_runs": [20, 25, 205],
+        "species_window_starts": [200, 200, null],
+        "pair_species_count": 2,
+        "pair_possible_species_bases": 410,
+        "pair_detected_bases": 365,
+        "pair_window_start": 200,
+        "pair_longest_run": 20,
+        "root_is_polytomy": false
+      }
+    }
+  ]
+}

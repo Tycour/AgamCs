@@ -28,6 +28,8 @@
   if (!plotModel) throw new Error('AgamCsPlotModel must load before live-plots.js.');
   const querySummary = global.AgamCsQuerySummary;
   if (!querySummary) throw new Error('AgamCsQuerySummary must load before live-plots.js.');
+  const speciesContext = global.AgamCsSpeciesContext;
+  if (!speciesContext) throw new Error('AgamCsSpeciesContext must load before live-plots.js.');
   let plotContract = null;
 
   function configurePlotContract(contract) {
@@ -805,7 +807,7 @@
     draw(tree);
   }
 
-  function installHeatmapTooltip(container, svg, summary, result, plotLeft, plotWidth, rowTop, rowHeight) {
+  function installHeatmapTooltip(container, svg, summary, displayRows, plotLeft, plotWidth, rowTop, rowHeight) {
     const tooltip = document.createElement('div');
     tooltip.className = 'live-tooltip';
     tooltip.hidden = true;
@@ -816,12 +818,14 @@
       const viewY = (event.clientY - bounds.top) / bounds.height * Number(svg.getAttribute('viewBox').split(' ')[3]);
       const row = Math.floor((viewY - rowTop) / rowHeight);
       const bin = Math.floor((viewX - plotLeft) / plotWidth * summary.bins.length);
-      if (row < 0 || row >= result.stackRows.length || bin < 0 || bin >= summary.bins.length) {
+      if (row < 0 || row >= displayRows.length || bin < 0 || bin >= summary.bins.length) {
         tooltip.hidden = true;
         return;
       }
       const cell = summary.cells[row][bin];
-      tooltip.innerHTML = `<strong>${result.stackSpecies[row]}</strong><span>${cell.genomicStart.toLocaleString()}–${cell.genomicEnd.toLocaleString()}</span><span>${cell.detectedFraction ? `${cell.identity.toFixed(1)}% mean identity` : 'No detected CNEr interval'}</span><span>${(cell.detectedFraction * 100).toFixed(0)}% of display bin detected</span>`;
+      const displayRow = displayRows[row];
+      const denominator = displayRow.memberCodes.length * (cell.genomicEnd - cell.genomicStart + 1);
+      tooltip.innerHTML = `<strong>${displayRow.name}</strong><span>${cell.genomicStart.toLocaleString()}–${cell.genomicEnd.toLocaleString()}</span><span>${cell.detectedFraction ? `${cell.identity.toFixed(1)}% mean identity among detected bases` : 'No detected CNEr interval'}</span><span>${(cell.detectedFraction * 100).toFixed(0)}% detected (${displayRow.memberCodes.length === 1 ? 'bases' : `of ${denominator.toLocaleString()} species-bases`})</span>`;
       tooltip.hidden = false;
       tooltip.style.left = `${Math.min(bounds.width - 190, Math.max(8, event.clientX - bounds.left + 12))}px`;
       tooltip.style.top = `${Math.max(8, event.clientY - bounds.top - 64)}px`;
@@ -832,9 +836,18 @@
   function renderHeatmap(
     container, result, annotation = null, transcriptAnnotations = null,
     resolution = 'adaptive', displayRange = null, rangeSelection = null,
+    displayOptions = null,
   ) {
-    const summary = summarizeHeatmap(result, annotation, resolution, displayRange);
-    const speciesTree = validateSpeciesTopology(result.stackTopology, result.stackRows);
+    const baseSummary = summarizeHeatmap(result, annotation, resolution, displayRange);
+    validateSpeciesTopology(result.stackTopology, result.stackRows);
+    const displayedRows = speciesContext.displayRows(result, displayOptions || {});
+    if (!displayedRows.length) throw new Error('Select at least one comparison species for the heatmap.');
+    const summary = speciesContext.summarizeDisplayHeatmap(result, baseSummary, displayedRows);
+    summary.displayRows = displayedRows;
+    const topologyOrdered = (displayOptions?.order || 'topology') === 'topology';
+    const speciesTree = topologyOrdered
+      ? speciesContext.displayTree(result.stackTopology.tree, displayedRows.map((row) => row.id))
+      : null;
     const hasAnnotation = Boolean(summary.annotation);
     const displayAnnotation = summary.annotation || {
       id: `${result.chromosome}:${result.start}-${result.end}`,
@@ -855,7 +868,7 @@
     );
     const hasAnnotationTracks = annotationModels.length > 0;
     const geometry = plotModel.heatmapGeometry(
-      result.stackRows.length,
+      displayedRows.length,
       summary.bins.length,
       requirePlotContract(),
       hasAnnotationTracks ? annotationModels.length : 0,
@@ -872,7 +885,7 @@
     const accessibleTitle = svgElement('title', { id: 'agamcs-live-heatmap-title' });
     accessibleTitle.textContent = requirePlotContract().heatmap_layout.title;
     const accessibleDescription = svgElement('desc', { id: 'agamcs-live-heatmap-description' });
-    accessibleDescription.textContent = `AgamP4 ${result.chromosome}:${summary.displayStart}-${summary.displayEnd}; ${summary.bins.length} display bins. Zero means no detected CNEr interval, not measured zero percent identity. QC-failed SNP positions remain unknown.`;
+    accessibleDescription.textContent = `AgamP4 ${result.chromosome}:${summary.displayStart}-${summary.displayEnd}; ${displayedRows.length} visible heatmap rows representing ${new Set(displayedRows.flatMap((row) => row.memberCodes)).size} of ${result.stackRows.length} comparison species; ${summary.bins.length} display bins. Species selection, ordering, and clade collapse affect display only; the exact TSV retains all ${result.stackRows.length} species. Zero means no detected CNEr interval, not measured zero percent identity. Identity means include detected bases only. QC-failed SNP positions remain unknown.`;
     svg.append(accessibleTitle, accessibleDescription);
     const xScale = linearScale(summary.minimum, summary.maximum, plotLeft, plotRight);
     const cellWidth = plotWidth / summary.bins.length;
@@ -880,10 +893,10 @@
     addText(svg, requirePlotContract().heatmap_layout.title, plotLeft, 27, {
       fill: COLORS.ink, 'font-size': 18, 'font-weight': 700,
     });
-    addText(svg, `${result.chromosome}:${summary.displayStart.toLocaleString()}–${summary.displayEnd.toLocaleString()} · ${result.stackRows.length} comparison species · ${summary.bins.length} display bins`, plotLeft, 49, {
+    addText(svg, `${result.chromosome}:${summary.displayStart.toLocaleString()}–${summary.displayEnd.toLocaleString()} · ${displayedRows.length} visible rows (${new Set(displayedRows.flatMap((row) => row.memberCodes)).size}/${result.stackRows.length} species) · ${summary.bins.length} display bins`, plotLeft, 49, {
       fill: COLORS.muted, 'font-size': 12,
     });
-    addText(svg, 'Evidence-bounded cladogram', 22, 22, {
+    addText(svg, topologyOrdered ? 'Evidence-bounded cladogram' : 'Alphabetical display', 22, 22, {
       fill: COLORS.muted, 'font-size': 10, 'font-weight': 650,
     });
     CLADE_NAMES.forEach((name, index) => {
@@ -892,18 +905,24 @@
       svg.append(svgElement('rect', { x, y: y - 9, width: 9, height: 9, fill: CLADE_COLORS[index] }));
       addText(svg, name, x + 14, y, { fill: COLORS.muted, 'font-size': 9 });
     });
-    drawCladogram(svg, rowTop, rowHeight, speciesTree, result.stackRows);
+    if (speciesTree) drawCladogram(
+      svg, rowTop, rowHeight, speciesTree, displayedRows.map((row) => row.id),
+    );
 
     summary.cells.forEach((row, rowIndex) => {
       const y = rowTop + rowIndex * rowHeight;
-      const cladeIndex = CLADE_RANGES.findIndex(([start, end]) => rowIndex >= start && rowIndex <= end);
+      const firstMemberIndex = result.stackRows.indexOf(displayedRows[rowIndex].memberCodes[0]);
+      const cladeIndex = CLADE_RANGES.findIndex(([start, end]) => firstMemberIndex >= start && firstMemberIndex <= end);
       svg.append(svgElement('rect', {
         x: 72, y: y + 2, width: 4, height: rowHeight - 4,
         fill: CLADE_COLORS[cladeIndex],
       }));
-      addText(svg, abbreviatedSpeciesName(result.stackSpecies[rowIndex]), plotLeft - 12, y + rowHeight * 0.68, {
+      addText(svg, displayedRows[rowIndex].kind === 'species'
+        ? abbreviatedSpeciesName(displayedRows[rowIndex].name)
+        : displayedRows[rowIndex].name, plotLeft - 12, y + rowHeight * 0.68, {
         'text-anchor': 'end', fill: COLORS.ink, 'font-size': 11,
-        'font-style': 'italic', 'font-weight': 600,
+        'font-style': displayedRows[rowIndex].kind === 'species' ? 'italic' : 'normal',
+        'font-weight': displayedRows[rowIndex].kind === 'species' ? 600 : 750,
       });
       row.forEach((cell, binIndex) => {
         svg.append(svgElement('rect', {
@@ -1003,7 +1022,7 @@
     }
 
     container.replaceChildren(svg);
-    installHeatmapTooltip(container, svg, summary, result, plotLeft, plotWidth, rowTop, rowHeight);
+    installHeatmapTooltip(container, svg, summary, displayedRows, plotLeft, plotWidth, rowTop, rowHeight);
     installPlotRangeSelector(
       svg, summary, plotLeft, plotWidth, rowTop, rowTop + plotHeight, rangeSelection,
     );

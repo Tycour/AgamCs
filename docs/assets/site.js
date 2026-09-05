@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-09-05-notable-windows-v1';
+const PAGES_RELEASE = '2026-09-05-species-context-v1';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -44,6 +44,16 @@ const notableWindowsVersion = document.querySelector('#notable-windows-version')
 const notableWindowsMethod = document.querySelector('#notable-windows-method');
 const highestCsWindowsBody = document.querySelector('#highest-cs-windows-body');
 const lowestSnpWindowsBody = document.querySelector('#lowest-snp-windows-body');
+const speciesContextPanel = document.querySelector('#species-context');
+const speciesContextSubject = document.querySelector('#species-context-subject');
+const speciesContextVersion = document.querySelector('#species-context-version');
+const speciesContextBody = document.querySelector('#species-context-body');
+const speciesDisplayOrder = document.querySelector('#species-display-order');
+const speciesSelectAll = document.querySelector('#species-select-all');
+const speciesClearAll = document.querySelector('#species-clear-all');
+const speciesCheckboxGrid = document.querySelector('#species-checkbox-grid');
+const cladeCollapseGrid = document.querySelector('#clade-collapse-grid');
+const speciesDisplayStatus = document.querySelector('#species-display-status');
 const liveVisuals = document.querySelector('#live-visuals');
 const liveSignalPlot = document.querySelector('#live-signal-plot');
 const liveHeatmapPlot = document.querySelector('#live-heatmap-plot');
@@ -108,6 +118,7 @@ let plotZoomHistory = [];
 let plotRangeSelectionMode = false;
 let currentAccessionSuggestions = [];
 let activeAccessionSuggestion = -1;
+let speciesDisplayState = { selectedCodes: null, order: 'topology', collapsedClades: [] };
 const figureDownloadUrls = new Map();
 const notableWindowDownloadUrls = new Map();
 
@@ -928,6 +939,136 @@ function renderQuerySummary(result, annotation = null, transcriptAnnotations = [
   querySummary.hidden = false;
 }
 
+function speciesDisplayOptions() {
+  return {
+    selectedCodes: speciesDisplayState.selectedCodes,
+    order: speciesDisplayState.order,
+    collapsedClades: speciesDisplayState.collapsedClades,
+  };
+}
+
+function updateSpeciesDisplayStatus(result) {
+  const selectedCount = speciesDisplayState.selectedCodes?.length || 0;
+  const rows = selectedCount
+    ? globalThis.AgamCsSpeciesContext.displayRows(result, speciesDisplayOptions())
+    : [];
+  const orderLabel = speciesDisplayState.order === 'topology'
+    ? 'versioned-topology order' : 'alphabetical order';
+  const collapseLabel = speciesDisplayState.collapsedClades.length
+    ? `; ${speciesDisplayState.collapsedClades.length} encoded clade${speciesDisplayState.collapsedClades.length === 1 ? '' : 's'} collapsed`
+    : '';
+  speciesDisplayStatus.textContent = selectedCount
+    ? `${rows.length} visible heatmap row${rows.length === 1 ? '' : 's'} represent ${selectedCount}/${result.stackRows.length} species in ${orderLabel}${collapseLabel}. Full TSV and context-table data are unchanged.`
+    : `No species selected. Select at least one species to update Figure 2; full TSV and context-table data are unchanged.`;
+}
+
+function readSpeciesDisplayControls(result) {
+  speciesDisplayState = {
+    selectedCodes: [...speciesCheckboxGrid.querySelectorAll('input[data-species-code]:checked')]
+      .map((input) => input.dataset.speciesCode),
+    order: speciesDisplayOrder.value,
+    collapsedClades: [...cladeCollapseGrid.querySelectorAll('input[data-clade-id]:checked')]
+      .map((input) => input.dataset.cladeId),
+  };
+  updateSpeciesDisplayStatus(result);
+  rerenderRetainedPlots();
+}
+
+function initializeSpeciesDisplayControls(result) {
+  speciesDisplayState = {
+    selectedCodes: [...result.stackRows], order: 'topology', collapsedClades: [],
+  };
+  speciesDisplayOrder.value = 'topology';
+  const speciesInputs = result.stackRows.map((code, index) => {
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.checked = true;
+    input.dataset.speciesCode = code;
+    const text = document.createElement('span');
+    text.textContent = `${result.stackSpecies[index]} (${code})`;
+    label.append(input, text);
+    input.addEventListener('change', () => readSpeciesDisplayControls(result));
+    return label;
+  });
+  speciesCheckboxGrid.replaceChildren(...speciesInputs);
+  const clades = globalThis.AgamCsSpeciesContext.cladeRecords(result.stackTopology.tree);
+  const cladeInputs = clades.map((clade) => {
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.dataset.cladeId = clade.id;
+    const text = document.createElement('span');
+    text.textContent = `${clade.name} (${clade.member_codes.length} species${clade.is_polytomy ? '; polytomy' : ''})`;
+    label.append(input, text);
+    input.addEventListener('change', () => readSpeciesDisplayControls(result));
+    return label;
+  });
+  cladeCollapseGrid.replaceChildren(...cladeInputs);
+  updateSpeciesDisplayStatus(result);
+}
+
+function renderSpeciesContext(result) {
+  const analysis = globalThis.AgamCsSpeciesContext.analyzeSpeciesContext(result);
+  speciesContextVersion.textContent = analysis.analysis_version;
+  speciesContextSubject.textContent = (
+    `${analysis.species_count} comparison species across ${analysis.query.bases.toLocaleString()} exact query bases; `
+    + `${analysis.clades.length} summaries come only from named nodes in the versioned topology.`
+  );
+  const cell = (primary, secondary = '') => {
+    const element = document.createElement('td');
+    const strong = document.createElement('strong');
+    strong.textContent = primary;
+    const small = document.createElement('small');
+    small.textContent = secondary;
+    element.append(strong, small);
+    return element;
+  };
+  const rowElement = (summary) => {
+    const row = document.createElement('tr');
+    if (summary.kind === 'clade') row.className = 'clade-row';
+    const heading = document.createElement('th');
+    heading.scope = 'row';
+    const label = document.createElement('span');
+    label.textContent = summary.name;
+    const detail = document.createElement('small');
+    detail.textContent = summary.kind === 'species'
+      ? summary.id
+      : `${summary.species_count} species · encoded ${summary.is_polytomy ? 'polytomy' : 'clade'} · ${summary.path.join(' › ')}`;
+    heading.append(label, detail);
+    const longest = summary.longest_undetected_run;
+    const window = summary.lowest_qualifying_identity_window;
+    row.append(
+      heading,
+      cell(
+        `${summary.detected_bases.toLocaleString()}/${summary.possible_species_bases.toLocaleString()}`,
+        summary.kind === 'species' ? 'detected/query bases' : 'detected/species × query bases',
+      ),
+      cell(`${(100 * summary.detected_fraction).toFixed(1)}%`, `${summary.detected_bases.toLocaleString()} detected species-bases`),
+      cell(
+        summary.mean_identity_detected == null ? 'NA' : `${summary.mean_identity_detected.toFixed(1)}%`,
+        summary.mean_identity_detected == null ? 'no detected bases' : `among ${summary.detected_bases.toLocaleString()} detected bases only`,
+      ),
+      cell(
+        longest.bases ? `${longest.bases.toLocaleString()} bp` : '0 bp',
+        longest.bases ? `${longest.start.toLocaleString()}–${longest.end.toLocaleString()}${summary.kind === 'clade' ? '; no member detected' : ''}` : 'no fully undetected run',
+      ),
+      cell(
+        window ? `${window.start.toLocaleString()}–${window.end.toLocaleString()}` : 'NA',
+        window
+          ? `${window.mean_identity_detected.toFixed(1)}% mean · ${window.detected_bases.toLocaleString()}/${window.possible_species_bases.toLocaleString()} detected species-bases`
+          : 'no complete 100-bp window reached 80% detection',
+      ),
+    );
+    return row;
+  };
+  speciesContextBody.replaceChildren(
+    ...analysis.species.map(rowElement), ...analysis.clades.map(rowElement),
+  );
+  speciesContextPanel.hidden = false;
+  return analysis;
+}
+
 function windowCoordinates(window) {
   return `${window.chromosome}:${window.start.toLocaleString()}–${window.end.toLocaleString()}`;
 }
@@ -1280,7 +1421,7 @@ function renderLivePlots(
   );
   const heatmapSummary = globalThis.AgamCsPlots.renderHeatmap(
     liveHeatmapPlot, result, annotation, displayedAnnotations.models,
-    heatmapChoice, activeRange, rangeSelection,
+    heatmapChoice, activeRange, rangeSelection, speciesDisplayOptions(),
   );
   const annotationSubject = accession === annotation?.transcript_id
     ? `${annotation.id} isoform ${annotation.transcript_id}`
@@ -1304,7 +1445,7 @@ function renderLivePlots(
   plotResolutionStatus.textContent = (
     `Signal: ${signalSummary.binCount.toLocaleString()} bins `
     + `(~${formatBasesPerBin(baseCount, signalSummary.binCount)} bases/bin); `
-    + `heatmap: ${heatmapSummary.binCount.toLocaleString()} bins `
+    + `heatmap: ${heatmapSummary.binCount.toLocaleString()} bins across ${heatmapSummary.displayRows.length} visible rows `
     + `(~${formatBasesPerBin(baseCount, heatmapSummary.binCount)} bases/bin).`
   );
   retainedPlotState = {
@@ -1356,6 +1497,19 @@ function rerenderRetainedPlots() {
 signalResolution.addEventListener('change', rerenderRetainedPlots);
 heatmapResolution.addEventListener('change', rerenderRetainedPlots);
 showOverlappingAnnotations.addEventListener('change', rerenderRetainedPlots);
+speciesDisplayOrder.addEventListener('change', () => {
+  if (retainedPlotState) readSpeciesDisplayControls(retainedPlotState.result);
+});
+speciesSelectAll.addEventListener('click', () => {
+  if (!retainedPlotState) return;
+  speciesCheckboxGrid.querySelectorAll('input[data-species-code]').forEach((input) => { input.checked = true; });
+  readSpeciesDisplayControls(retainedPlotState.result);
+});
+speciesClearAll.addEventListener('click', () => {
+  if (!retainedPlotState) return;
+  speciesCheckboxGrid.querySelectorAll('input[data-species-code]').forEach((input) => { input.checked = false; });
+  readSpeciesDisplayControls(retainedPlotState.result);
+});
 plotRangeSelect.addEventListener('click', () => {
   const enable = !plotRangeSelectionMode;
   setPlotRangeSelectionMode(enable);
@@ -1602,6 +1756,8 @@ async function runLiveQuery() {
       resolution ? annotation : null,
       resolution ? transcriptAnnotations : [],
     );
+    initializeSpeciesDisplayControls(result);
+    renderSpeciesContext(result);
     if (resolution) renderResolvedAccession(resolution, accessionIndex, paddingDetails);
     const figureStem = resolution
       ? `AgamCs_${resolution.accession}_${chromosome}_${start}-${end}`

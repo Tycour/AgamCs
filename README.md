@@ -183,6 +183,27 @@ described below. Selecting an alternative isoform changes these query summaries,
 while the existing rankings continue to use their pinned representative
 transcript and whole-gene cohorts.
 
+### Species and clade context
+
+The browser reports `agamcs-species-context-v1` summaries from the exact
+per-base species stack. For every comparison species these include detected
+CNEr bases/query bases, detected fraction, mean identity among detected bases,
+the longest undetected run, and the lowest query-anchored complete 100-bp
+identity window with at least 80% detected bases. Zero-coded positions mean no
+detected CNEr interval and are never averaged as measured zero-percent identity.
+
+Clade rows are generated only for named groups already encoded in
+`AgamCs/data/species_topology.json`. Their detection denominators are explicit
+species × query-base counts; a clade is undetected at a genomic position only
+when none of its members has a detected interval. Encoded polytomies remain
+polytomies. The matching Python implementation is in `AgamCs.species_context`,
+and shared fixtures check browser/Python parity.
+
+Species selection, alphabetical versus topology ordering, and clade collapse
+are display-only heatmap controls. They do not modify the retained exact query,
+the complete species/clade table, or the full TSV download with all 21 species
+columns.
+
 ### Gene-level Cs and SNP-density rankings
 
 For every one of the 13,097 current genes in the pinned AgamP4.14 index,
