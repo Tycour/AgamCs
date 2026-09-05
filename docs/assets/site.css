@@ -217,6 +217,14 @@ input { width: 100%; height: 44px; padding: 0 12px; color: var(--ink); border: 1
 .query-summary-table span, .query-summary-table strong, .query-summary-table small { display: block; }
 .query-summary-table strong { font-size: 13px; white-space: nowrap; }
 .query-summary-table small { margin-top: 3px; color: var(--muted); font-size: 10px; line-height: 1.35; }
+.notable-windows > .summary-method { margin: -2px 0 15px; }
+.notable-window-grid { display: grid; gap: 22px; }
+.notable-window-grid h4 { margin: 0 0 8px; font-size: 15px; }
+.notable-window-table { min-width: 1100px; }
+.notable-window-table tbody th { min-width: 120px; }
+.notable-window-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.notable-window-actions .button { min-height: 33px; padding: 0 9px; font-size: 11px; }
+.notable-window-empty { color: var(--muted); }
 .summary-scope-card { border: 1px solid var(--line); border-radius: 8px; }
 .summary-metric-pair span, .summary-metric-pair strong, .summary-metric-pair small { display: block; }
 .summary-metric-pair strong { margin-top: 4px; font-size: 17px; }

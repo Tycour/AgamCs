@@ -574,6 +574,44 @@ for (const width of [50_000, 150_000, 200_000]) test(`exact ${width.toLocaleStri
   }
 });
 
+test('exact window TSV is a bounded subset while the primary TSV remains complete', () => {
+  const { buildTsv } = siteExportHelpers();
+  const data = {
+    chromosome: '3R', start: 100, stackRows: ['one'], statusFields: ['is_accessible'],
+    values: {
+      Cs: Float32Array.from([0.1, 0.2, 0.3, 0.4, 0.5]),
+      snp_density: Float32Array.from([1, 2, 3, 4, 5]),
+      status: Uint8Array.from([1, 0, 1, 1, 1]),
+      stack: Float32Array.from([10, 20, 30, 40, 50]),
+    },
+  };
+  const complete = buildTsv(data).trim().split('\n');
+  const window = buildTsv(data, { start: 101, end: 103 }).trim().split('\n');
+  assert.equal(complete.length, 6);
+  assert.equal(window.length, 4);
+  assert.deepEqual(window.slice(1).map((line) => Number(line.split('\t')[1])), [101, 102, 103]);
+  assert.match(fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8'), /primary TSV remains the complete query/);
+});
+
+test('notable windows are exact-query analysis with native zoom and TSV actions', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '../docs/index.html'), 'utf8');
+  const start = source.indexOf('function renderNotableWindows');
+  const end = source.indexOf('function findPinnedAnnotation', start);
+  const renderer = source.slice(start, end);
+  assert.match(renderer, /AgamCsNotableWindows\.analyzeNotableWindows/);
+  assert.match(renderer, /zoomToPlotRange\(window, 'notable-window'\)/);
+  assert.match(renderer, /configureNotableWindowDownload/);
+  assert.doesNotMatch(renderer, /workerQuery|selectedPlotResolution|displayRange/);
+  assert.match(html, /Five highest mean-Cs windows/);
+  assert.match(html, /Five lowest mean-SNP-density windows/);
+  assert.match(renderer, /Zoom to window/);
+  assert.match(renderer, /Exact window TSV/);
+  const plotStart = source.indexOf('function renderLivePlots');
+  const plotEnd = source.indexOf('function valuesMatch', plotStart);
+  assert.doesNotMatch(source.slice(plotStart, plotEnd), /clearNotableWindowDownloads/);
+});
+
 test('rejected and failed replacement queries preserve previous figures and downloads', () => {
   const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
   const submitStart = source.indexOf('async function runLiveQuery');

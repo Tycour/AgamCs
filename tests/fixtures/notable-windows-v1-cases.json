@@ -1,0 +1,91 @@
+{
+  "analysis_version": "agamcs-notable-windows-v1",
+  "cases": [
+    {
+      "name": "short-query-ties-and-partial-final-window",
+      "window_size": 5,
+      "top_windows": 3,
+      "result": {
+        "chromosome": "2L", "start": 100, "end": 111,
+        "values": {
+          "Cs": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0.5, null],
+          "snp_density": [0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.1, 0.1],
+          "status": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        }
+      },
+      "annotation": null,
+      "expect": {
+        "windows": [[100, 104, 5], [105, 109, 5], [110, 111, 2]],
+        "highest_mean_cs": [[100, 104], [105, 109], [110, 111]],
+        "lowest_mean_snp_density": [[110, 111], [100, 104], [105, 109]]
+      }
+    },
+    {
+      "name": "padding-and-plus-strand-selected-transcript-features",
+      "window_size": 4,
+      "top_windows": 5,
+      "result": {
+        "chromosome": "3R", "start": 95, "end": 106,
+        "values": {
+          "Cs": [0.1, 0.1, 0.1, 0.1, 0.5, 0.5, 0.9, 0.9, 0.4, 0.4, 0.8, 0.8],
+          "snp_density": [0.9, 0.9, 0.9, 0.9, 0.5, 0.5, 0.1, 0.1, 0.4, 0.4, 0.2, 0.2],
+          "status": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+        }
+      },
+      "annotation": {
+        "id": "AGAPPLUS", "transcript_id": "AGAPPLUS-RA", "chromosome": "3R", "start": 99, "end": 104, "strand": 1,
+        "exons": [{"start": 99, "end": 102}, {"start": 104, "end": 104}], "cds_start": 101, "cds_end": 104
+      },
+      "expect": {
+        "features": ["Outside selected transcript", "5′ UTR (exon 1); CDS (exon 1)", "Intron; CDS (exon 2)"],
+        "highest_mean_cs": [[99, 102], [103, 106], [95, 98]]
+      }
+    },
+    {
+      "name": "minus-strand-annotation",
+      "window_size": 3,
+      "top_windows": 5,
+      "result": {
+        "chromosome": "X", "start": 200, "end": 208,
+        "values": {
+          "Cs": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+          "snp_density": [0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1],
+          "status": [1, 1, 1, 1, 1, 1, 1, 1, 1]
+        }
+      },
+      "annotation": {
+        "id": "AGAPMINUS", "transcript_id": "AGAPMINUS-RA", "chromosome": "X", "start": 201, "end": 207, "strand": -1,
+        "exons": [{"start": 201, "end": 203}, {"start": 205, "end": 207}], "cds_start": 202, "cds_end": 206
+      },
+      "expect": {
+        "features": ["3′ UTR (exon 2); CDS (exon 2)", "CDS (exon 2); Intron; CDS (exon 1)", "CDS (exon 1); 5′ UTR (exon 1)"]
+      }
+    },
+    {
+      "name": "inaccessible-window-is-ineligible-for-snp-ranking",
+      "window_size": 3,
+      "top_windows": 5,
+      "result": {
+        "chromosome": "2R", "start": 300, "end": 305,
+        "values": {
+          "Cs": [0.1, 0.1, 0.1, 0.2, 0.2, 0.2], "snp_density": [0.01, 0.01, 0.01, 0.5, 0.5, 0.5], "status": [1, 1, 0, 1, 1, 1]
+        }
+      },
+      "annotation": null,
+      "expect": {"lowest_mean_snp_density": [[303, 305]]}
+    },
+    {
+      "name": "all-qc-failed-data-remains-unknown",
+      "window_size": 3,
+      "top_windows": 5,
+      "result": {
+        "chromosome": "3L", "start": 700, "end": 705,
+        "values": {
+          "Cs": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6], "snp_density": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6], "status": [0, 2, 4, 8, 16, 32]
+        }
+      },
+      "annotation": null,
+      "expect": {"lowest_mean_snp_density": [], "accessible_bases": [0, 0]}
+    }
+  ]
+}
