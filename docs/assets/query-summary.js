@@ -244,6 +244,23 @@
     };
   }
 
+  function summarizeInterval(sourceResult, start, end, label = 'Named interval') {
+    const result = normaliseResult(sourceResult);
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end)
+        || start < result.start || end > result.end || start > end) {
+      throw new Error('Named interval must be contained within the exact retained query.');
+    }
+    const scope = scopeSummary('named-interval', 'named_interval', label, [[start, end]], result);
+    return {
+      schema_version: SCHEMA_VERSION,
+      summary_version: SUMMARY_VERSION,
+      coordinate_convention: COORDINATE_CONVENTION,
+      query: { chromosome: result.chromosome, start: result.start, end: result.end },
+      interval: { start, end },
+      scope,
+    };
+  }
+
   return {
     COORDINATE_CONVENTION,
     RANKING_ACCESSIBILITY_THRESHOLD,
@@ -251,6 +268,7 @@
     SCHEMA_VERSION,
     SUMMARY_VERSION,
     selectTranscriptAnnotation,
+    summarizeInterval,
     summarizeQuery,
   };
 }));

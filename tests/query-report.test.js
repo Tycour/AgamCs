@@ -16,6 +16,7 @@ test('report v1 preserves selected isoform, unknown QC, and explicit unavailable
     annotation: item.annotation, transcriptAnnotations: item.transcript_annotations,
     ranking: item.ranking, queryState: item.query_state,
     provenance: item.provenance, display: item.display,
+    contractVersion: 1,
   });
   assert.equal(document.report_version, fixture.report_version);
   assert.equal(document.selected_annotation.transcript_id, 'AGAPTEST-RB');

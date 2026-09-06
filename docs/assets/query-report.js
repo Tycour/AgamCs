@@ -3,8 +3,9 @@
   root.AgamCsQueryReport = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 }(globalThis, () => {
-  const REPORT_VERSION = 'agamcs-query-report-v1';
-  const SCHEMA_VERSION = 1;
+  const REPORT_VERSION = 'agamcs-query-report-v2';
+  const SCHEMA_VERSION = 2;
+  const LEGACY_REPORT_VERSION = 'agamcs-query-report-v1';
   const COORDINATE_CONVENTION = '1-based inclusive';
 
   function availability(value, reason) {
@@ -26,7 +27,8 @@
     const query = report.query_state.coordinates;
     const shown = report.display;
     const transcript = report.selected_annotation?.transcript_id || 'no selected transcript';
-    return `AgamCs report ${report.report_version} used ${report.provenance.assembly} ${report.coordinate_convention} coordinates for ${query.chromosome}:${query.start}-${query.end} with ${transcript}. Query partitions use ${report.calculation_methods.query_summary}; notable windows use ${report.calculation_methods.notable_windows}; species/clade summaries use ${report.calculation_methods.species_context}. SNP-density means use accessible focal bases only and retain QC-failed positions as unknown. Displayed range was ${shown.displayed_range.start}-${shown.displayed_range.end} with ${shown.signal_resolution_bins ?? 'unavailable'} signal bins and ${shown.heatmap_resolution_bins ?? 'unavailable'} heatmap bins.`;
+    const intervalNote = report.named_intervals ? ` Named interval summaries include ${report.named_intervals.length} browser-local interval${report.named_intervals.length === 1 ? '' : 's'}.` : '';
+    return `AgamCs report ${report.report_version} used ${report.provenance.assembly} ${report.coordinate_convention} coordinates for ${query.chromosome}:${query.start}-${query.end} with ${transcript}. Query partitions use ${report.calculation_methods.query_summary}; notable windows use ${report.calculation_methods.notable_windows}; species/clade summaries use ${report.calculation_methods.species_context}. SNP-density means use accessible focal bases only and retain QC-failed positions as unknown.${intervalNote} Displayed range was ${shown.displayed_range.start}-${shown.displayed_range.end} with ${shown.signal_resolution_bins ?? 'unavailable'} signal bins and ${shown.heatmap_resolution_bins ?? 'unavailable'} heatmap bins.`;
   }
 
   function figureCaption(report) {
@@ -54,9 +56,10 @@
     } catch (error) {
       species = availability(null, error.message);
     }
+    const legacy = options.contractVersion === 1;
     const report = {
-      schema_version: SCHEMA_VERSION,
-      report_version: REPORT_VERSION,
+      schema_version: legacy ? 1 : SCHEMA_VERSION,
+      report_version: legacy ? LEGACY_REPORT_VERSION : REPORT_VERSION,
       coordinate_convention: COORDINATE_CONVENTION,
       query_state: queryState,
       selected_annotation: summary.selected_transcript || {
@@ -65,6 +68,13 @@
       display: display(summary.query, options.display),
       provenance: options.provenance || {},
       query_partitions: summary,
+      ...(legacy ? {} : { named_intervals: (options.intervals || []).map((interval) => ({
+        id: interval.id,
+        name: interval.name,
+        start: interval.start,
+        end: interval.end,
+        summary: interval.summary || globalThis.AgamCsQueryIntervals?.summarise(interval, sourceResult).summary,
+      })) }),
       accessibility_audit: {
         availability: 'available',
         ranking_accessibility_threshold: summary.ranking_accessibility_threshold,
@@ -109,9 +119,12 @@
     ];
     const missing = required.filter((key) => !(key in (report || {})));
     if (missing.length) throw new Error(`Report is missing required fields: ${missing.join(', ')}.`);
-    if (report.schema_version !== SCHEMA_VERSION || report.report_version !== REPORT_VERSION) {
+    const current = report.schema_version === SCHEMA_VERSION && report.report_version === REPORT_VERSION;
+    const legacy = report.schema_version === 1 && report.report_version === LEGACY_REPORT_VERSION;
+    if (!current && !legacy) {
       throw new Error('Unsupported AgamCs report schema/version.');
     }
+    if (current && !Array.isArray(report.named_intervals)) throw new Error('Report named intervals are invalid.');
     const coordinates = report.query_state?.coordinates || {};
     if (!Number.isSafeInteger(coordinates.start) || !Number.isSafeInteger(coordinates.end)) {
       throw new Error('Report query coordinates must be integer inclusive bounds.');
@@ -122,5 +135,5 @@
     return true;
   }
 
-  return { REPORT_VERSION, SCHEMA_VERSION, COORDINATE_CONVENTION, buildReport, methodsText, figureCaption, validateReport };
+  return { REPORT_VERSION, SCHEMA_VERSION, LEGACY_REPORT_VERSION, COORDINATE_CONVENTION, buildReport, methodsText, figureCaption, validateReport };
 }));

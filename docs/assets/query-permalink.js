@@ -4,7 +4,7 @@
   if (typeof module === 'object' && module.exports) module.exports = api;
 }(globalThis, () => {
   const FRAGMENT_KEY = 'agamcs-query';
-  const VERSION = 1;
+  const VERSION = 2;
   const VERSION_PREFIX = `v${VERSION}.`;
   const MAX_FRAGMENT_LENGTH = 12_000;
   const ACCESSION_PATTERN = /^AGAP[0-9]{6,}(?:[-.][A-Z0-9]+)?$/i;
@@ -67,13 +67,39 @@
     return [...value];
   }
 
+  const MAX_INTERVALS = 100;
+  const MAX_INTERVAL_NAME_LENGTH = 80;
+
+  function optionalIntervals(value) {
+    if (value == null) return [];
+    if (!Array.isArray(value) || value.length > MAX_INTERVALS) {
+      throw new PermalinkValidationError('malformed', 'Invalid named intervals.');
+    }
+    const names = new Set();
+    return value.map((item) => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)
+          || !hasExactKeys(item, ['id', 'name', 'start', 'end'])) {
+        throw new PermalinkValidationError('malformed', 'Invalid named interval.');
+      }
+      const name = typeof item.name === 'string' ? item.name.trim() : '';
+      if (!name || name.length > MAX_INTERVAL_NAME_LENGTH || names.has(name.toLocaleLowerCase())) {
+        throw new PermalinkValidationError('malformed', 'Invalid named interval name.');
+      }
+      names.add(name.toLocaleLowerCase());
+      const start = integer(item.start, 'interval start', { minimum: 1 });
+      const end = integer(item.end, 'interval end', { minimum: 1 });
+      if (end < start) throw new PermalinkValidationError('malformed', 'Invalid named interval bounds.');
+      return { id: typeof item.id === 'string' && item.id ? item.id : `interval-${names.size}`, name, start, end };
+    });
+  }
+
   function validateState(raw) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
       throw new PermalinkValidationError('malformed', 'The permalink state is malformed.');
     }
     const expected = new Set([
       'mode', 'accession', 'transcript', 'coordinates', 'padding', 'signal_resolution',
-      'heatmap_resolution', 'display_range', 'show_overlapping_annotations', 'species',
+      'heatmap_resolution', 'display_range', 'show_overlapping_annotations', 'species', 'intervals',
     ]);
     if (Object.keys(raw).some((key) => !expected.has(key))) {
       throw new PermalinkValidationError('malformed', 'The permalink state is not recognized.');
@@ -89,6 +115,7 @@
       heatmap_resolution: resolution(raw.heatmap_resolution, 'heatmap resolution'),
       display_range: optionalRange(raw.display_range),
       show_overlapping_annotations: raw.show_overlapping_annotations,
+      intervals: optionalIntervals(raw.intervals),
       species: null,
     };
     if (typeof state.show_overlapping_annotations !== 'boolean') {
@@ -149,7 +176,7 @@
     const match = /^v([0-9]+)\.(.*)$/.exec(encoded);
     if (!match) return { kind: 'invalid', code: 'malformed' };
     const requestedVersion = Number(match[1]);
-    if (requestedVersion < VERSION) return { kind: 'invalid', code: 'obsolete-version' };
+    if (requestedVersion < VERSION && requestedVersion !== 1) return { kind: 'invalid', code: 'obsolete-version' };
     if (requestedVersion > VERSION) return { kind: 'invalid', code: 'unknown-version' };
     try {
       return { kind: 'valid', state: validateState(JSON.parse(decodeURIComponent(match[2]))) };
@@ -165,6 +192,7 @@
       signal_resolution: validated.signal_resolution,
       heatmap_resolution: validated.heatmap_resolution,
       has_display_range: Boolean(validated.display_range),
+      named_interval_count: validated.intervals.length,
       show_overlapping_annotations: validated.show_overlapping_annotations,
       species_order: validated.species.order,
       visible_species_count: validated.species.selected_codes.length,
@@ -221,6 +249,10 @@
         || expected.start > expected.end || (state.display_range
           && (state.display_range.start < expected.start || state.display_range.end > expected.end))) {
       throw new PermalinkValidationError('out-of-range', 'Displayed range is unavailable.');
+    }
+    if (state.intervals.some((interval) => interval.start < expected.start
+      || interval.end > expected.end)) {
+      throw new PermalinkValidationError('out-of-range', 'Named interval is unavailable.');
     }
     return { state, expected: { chromosome: expected.chromosome, start: expected.start, end: expected.end } };
   }

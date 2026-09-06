@@ -77,6 +77,12 @@ Every Pages release must bump the shared version in `index.html`, `site.js`,
 and `query-worker.js`. These query-string versions prevent an older cached
 worker or manifest from surviving a normal deployment refresh.
 
+Named query intervals are ephemeral, browser-local, 1-based inclusive regions
+within the exact retained query. Their summaries reuse the query-summary-v1
+semantics, including explicit Cs/SNP/accessibility denominators and unknown
+QC-failed positions. Names and bounds are included only in deliberately copied
+private permalinks or downloaded v2 reports; analytics never receives them.
+
 ## Refresh the versioned accession index
 
 The live browser form uses a committed index containing all 13,097 AGAP genes
