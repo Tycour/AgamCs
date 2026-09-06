@@ -204,19 +204,6 @@
             </details>
             <a class="download-link figure-download" id="live-heatmap-download" hidden download>Download species heatmap (SVG)</a>
           </section>
-          <div class="plot-resolution-controls" aria-labelledby="plot-resolution-heading">
-            <div class="plot-resolution-intro">
-              <h4 id="plot-resolution-heading">Plot resolution</h4>
-              <p>Adaptive preserves per-base detail for loci through 1,000 bases and otherwise uses the highest bounded display resolution.</p>
-            </div>
-            <label for="signal-resolution">Cs/SNP signal
-              <select id="signal-resolution"><option value="adaptive">Adaptive</option></select>
-            </label>
-            <label for="heatmap-resolution">Species heatmap
-              <select id="heatmap-resolution"><option value="adaptive">Adaptive</option></select>
-            </label>
-            <p id="plot-resolution-status" aria-live="polite">Effective resolution will appear after a query.</p>
-          </div>
           <section class="plot-range-controls" aria-labelledby="plot-range-heading">
             <div class="plot-range-intro">
               <h4 id="plot-range-heading">Displayed range</h4>
@@ -238,8 +225,24 @@
             </div>
             <p id="plot-range-status" aria-live="polite">Select range enables horizontal dragging on either plot. Plot selections expand outward to the displayed bin boundaries; the exact TSV remains the full query.</p>
           </section>
-          <p class="plot-method-note" id="plot-method-note">Adaptive uses one display bin per base through 1,000 bases, then the bounded maximum of 1,000 bins, preserving the strongest available detail without unbounded SVG growth. Cs itself is per-base; SNP density remains the archived centred 20-bp rolling statistic, and CNEr evidence remains derived from 30/50-bp source windows. Finer display subdivision does not add biological resolution. Hover for query values; range zoom and the optional overlapping-gene tracks re-render retained full-query data without another genomic request. Additional loci use one representative transcript per overlapping gene; the queried gene retains its selected or complete isoform display. Transcript labels link to the matching VectorBase gene record in a new tab. The exact TSV retains every queried base and species row, while SVG downloads use the active displayed range, annotation choice, and resolution.</p>
         </div>
+        <details class="supplementary-results" id="supplementary-results">
+          <summary>Show additional query details</summary>
+          <div class="supplementary-results-content">
+            <div class="plot-resolution-controls" aria-labelledby="plot-resolution-heading">
+              <div class="plot-resolution-intro">
+                <h4 id="plot-resolution-heading">Plot resolution</h4>
+                <p>Adaptive preserves per-base detail for loci through 1,000 bases and otherwise uses the highest bounded display resolution.</p>
+              </div>
+              <label for="signal-resolution">Cs/SNP signal
+                <select id="signal-resolution"><option value="adaptive">Adaptive</option></select>
+              </label>
+              <label for="heatmap-resolution">Species heatmap
+                <select id="heatmap-resolution"><option value="adaptive">Adaptive</option></select>
+              </label>
+              <p id="plot-resolution-status" aria-live="polite">Effective resolution will appear after a query.</p>
+            </div>
+            <p class="plot-method-note" id="plot-method-note">Adaptive uses one display bin per base through 1,000 bases, then the bounded maximum of 1,000 bins, preserving the strongest available detail without unbounded SVG growth. Cs itself is per-base; SNP density remains the archived centred 20-bp rolling statistic, and CNEr evidence remains derived from 30/50-bp source windows. Finer display subdivision does not add biological resolution. Hover for query values; range zoom and the optional overlapping-gene tracks re-render retained full-query data without another genomic request. Additional loci use one representative transcript per overlapping gene; the queried gene retains its selected or complete isoform display. Transcript labels link to the matching VectorBase gene record in a new tab. The exact TSV retains every queried base and species row, while SVG downloads use the active displayed range, annotation choice, and resolution.</p>
         <section class="ranking-section" id="ranking-section" aria-labelledby="ranking-section-heading" hidden>
           <h3 id="ranking-section-heading">Representative-transcript gene rankings</h3>
           <p>These static, scope-specific global and chromosome-arm rankings use the pinned representative transcript. Selecting another isoform changes the query summaries, not these rankings.</p>
@@ -357,6 +360,8 @@
             </section>
           </div>
         </section>
+          </div>
+        </details>
         <a class="download-link" id="benchmark-download" hidden download="AgamCs-browser-query.tsv">Download exact TSV values</a>
       </div>
     </section>

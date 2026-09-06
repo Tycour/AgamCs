@@ -518,6 +518,19 @@ test('focus-first layout keeps the primary query visible and secondary controls 
   assert.match(html, /id="benchmark-start"[^>]+value="6928858"/);
   assert.match(html, /id="benchmark-end"[^>]+value="6930547"/);
   assert.match(html, /<details class="query-details">/);
+  assert.match(html, /<details class="supplementary-results" id="supplementary-results">/);
+  assert.match(html, /<summary>Show additional query details<\/summary>/);
+  assert.doesNotMatch(html, /<details class="supplementary-results" id="supplementary-results" open>/);
+  const supplementaryDetails = html.slice(
+    html.indexOf('id="supplementary-results"'), html.indexOf('id="benchmark-download"'),
+  );
+  for (const heading of [
+    'Plot resolution',
+    'Representative-transcript gene rankings',
+    'Exact query and selected-transcript summaries',
+    'Species and encoded-clade context',
+    'Notable 100-base windows',
+  ]) assert.match(supplementaryDetails, new RegExp(heading));
   assert.match(html, /class="ranking-grid"/);
   assert.match(html, /Representative-transcript gene rankings/);
   assert.match(html, /agamcs-query-summary-v1/);
@@ -537,7 +550,8 @@ test('figure-first results expose both plots before rankings and supporting deta
   const summaryIndex = html.indexOf('id="resolved-accession"');
   const figuresIndex = html.indexOf('id="live-visuals"');
   const rankingsIndex = html.indexOf('class="ranking-grid"');
-  assert.ok(summaryIndex >= 0 && figuresIndex > summaryIndex && rankingsIndex > figuresIndex);
+  const detailsIndex = html.indexOf('id="supplementary-results"');
+  assert.ok(summaryIndex >= 0 && figuresIndex > summaryIndex && detailsIndex > figuresIndex && rankingsIndex > detailsIndex);
   assert.match(html, /<h4 id="live-signals-heading">Conservation and SNP density<\/h4>/);
   assert.match(html, /<h4 id="live-heatmap-heading">Species identity heatmap<\/h4>/);
   assert.doesNotMatch(html, /aria-label="Query figures"/);
