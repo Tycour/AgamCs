@@ -16,22 +16,23 @@
   <title>AgamCs conservation explorer</title>
   <link rel="canonical" href="https://tycour.github.io/AgamCs/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/site.css?v=2026-09-06-named-query-intervals-v1">
-  <script src="assets/plot-model.js?v=2026-09-06-named-query-intervals-v1" defer></script>
-  <script src="assets/query-summary.js?v=2026-09-06-named-query-intervals-v1" defer></script>
-  <script src="assets/query-intervals.js?v=2026-09-06-named-query-intervals-v1" defer></script>
-  <script src="assets/notable-windows.js?v=2026-09-06-named-query-intervals-v1" defer></script>
-  <script src="assets/species-context.js?v=2026-09-06-named-query-intervals-v1" defer></script>
-  <script src="assets/query-report.js?v=2026-09-06-named-query-intervals-v1" defer></script>
-  <script src="assets/live-plots.js?v=2026-09-06-named-query-intervals-v1" defer></script>
-  <script src="assets/gene-search.js?v=2026-09-06-named-query-intervals-v1" defer></script>
-  <script src="assets/gene-ranking.js?v=2026-09-06-named-query-intervals-v1" defer></script>
-  <script src="assets/accession-lookup.js?v=2026-09-06-named-query-intervals-v1" defer></script>
-  <script src="assets/query-contract.js?v=2026-09-06-named-query-intervals-v1" defer></script>
-  <script src="assets/query-interaction.js?v=2026-09-06-named-query-intervals-v1" defer></script>
-  <script src="assets/query-permalink.js?v=2026-09-06-named-query-intervals-v1" defer></script>
-  <script src="assets/analytics.js?v=2026-09-06-named-query-intervals-v1" data-measurement-id="G-25RC4QKPP9" defer></script>
-  <script src="assets/site.js?v=2026-09-06-named-query-intervals-v1" defer></script>
+  <link rel="stylesheet" href="assets/site.css?v=2026-09-06-two-gene-comparison-v2">
+  <script src="assets/plot-model.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
+  <script src="assets/query-summary.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
+  <script src="assets/query-intervals.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
+  <script src="assets/notable-windows.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
+  <script src="assets/species-context.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
+  <script src="assets/query-report.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
+  <script src="assets/two-gene-comparison.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
+  <script src="assets/live-plots.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
+  <script src="assets/gene-search.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
+  <script src="assets/gene-ranking.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
+  <script src="assets/accession-lookup.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
+  <script src="assets/query-contract.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
+  <script src="assets/query-interaction.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
+  <script src="assets/query-permalink.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
+  <script src="assets/analytics.js?v=2026-09-06-two-gene-comparison-v2" data-measurement-id="G-25RC4QKPP9" defer></script>
+  <script src="assets/site.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -143,6 +144,45 @@
           <p class="field-help" id="query-permalink-status" aria-live="polite">Run a query to prepare a private permalink. Its fragment is kept out of HTTP requests and referrers.</p>
         </div>
       </form>
+
+      <details class="comparison-disclosure" id="two-gene-comparison">
+        <summary>Compare two genes</summary>
+      <section class="two-gene-comparison" aria-labelledby="two-gene-comparison-heading">
+        <div class="query-summary-heading">
+          <div>
+            <h2 id="two-gene-comparison-heading">Compare two genes in context</h2>
+            <p>See standardized conservation and variation context for two genes. Each locus keeps its own genomic coordinates.</p>
+          </div>
+        </div>
+        <form id="comparison-form" class="comparison-form">
+          <label for="comparison-left-accession">Gene or transcript accession / symbol
+            <input id="comparison-left-accession" required autocomplete="off" spellcheck="false" value="AGAP008212">
+          </label>
+          <label for="comparison-right-accession">Compare with
+            <input id="comparison-right-accession" required autocomplete="off" spellcheck="false" value="AGAP006241">
+          </label>
+          <div class="comparison-actions">
+            <button class="button primary" id="comparison-submit" type="submit">Compare genes</button>
+            <button class="button secondary" id="comparison-cancel" type="button" hidden>Cancel replacement</button>
+          </div>
+        </form>
+        <p class="field-help" id="comparison-status" aria-live="polite">Enter two distinct indexed genes.</p>
+        <div class="comparison-results" id="comparison-results" hidden>
+          <div class="comparison-locus-grid" id="comparison-locus-grid"></div>
+          <div class="query-summary-table-scroll"><table class="query-summary-table comparison-table"><thead><tr><th scope="col">Summary</th><th scope="col" id="comparison-left-heading">Gene</th><th scope="col" id="comparison-right-heading">Gene</th></tr></thead><tbody id="comparison-table-body"></tbody></table></div>
+          <details class="comparison-partitions" id="comparison-partitions">
+            <summary>Representative-transcript partition percentiles</summary>
+            <p>These static rankings use the pinned representative transcript shown above.</p>
+            <div class="query-summary-table-scroll"><table class="query-summary-table comparison-table"><thead><tr><th scope="col">Partition</th><th scope="col" id="comparison-left-partition-heading">Gene</th><th scope="col" id="comparison-right-partition-heading">Gene</th></tr></thead><tbody id="comparison-partition-table-body"></tbody></table></div>
+          </details>
+          <div class="report-actions comparison-downloads">
+            <a class="button secondary" id="comparison-left-tsv" hidden download>Download exact TSV</a>
+            <a class="button secondary" id="comparison-right-tsv" hidden download>Download exact TSV</a>
+            <a class="button secondary" id="comparison-export" hidden download>Download comparison TSV</a>
+          </div>
+        </div>
+      </section>
+      </details>
 
       <div class="results-panel" id="results-portal" aria-live="polite">
         <div class="result-heading">

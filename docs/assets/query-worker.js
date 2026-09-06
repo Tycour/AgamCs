@@ -1,4 +1,4 @@
-const WORKER_RELEASE = '2026-09-06-named-query-intervals-v1';
+const WORKER_RELEASE = '2026-09-06-two-gene-comparison-v2';
 const SCORE_REFERENCE_URL = `data/score-reference.json?v=${WORKER_RELEASE}`;
 const ACCESSIBILITY_REFERENCE_URL = `data/accessibility-reference.json?v=${WORKER_RELEASE}`;
 const HASH_ARRAYS = ['Cs', 'snp_density', 'stack', 'status'];
@@ -12,6 +12,7 @@ const rangeQueue = [];
 let cacheBytes = 0;
 let activeRangeRequests = 0;
 let rangeCooldownUntil = 0;
+const activeQueries = new Map();
 
 function queryFailure(context) {
   return context.error || new Error('The browser query was cancelled after another range failed.');
@@ -407,6 +408,13 @@ async function digest(values) {
 }
 
 self.addEventListener('message', async ({ data }) => {
+  if (data.action === 'cancel') {
+    const context = activeQueries.get(data.requestId);
+    if (context && !context.signal.aborted) {
+      failQuery(context, new Error('The browser query was cancelled.'));
+    }
+    return;
+  }
   if (data.action === 'clear-cache') {
     cache.clear();
     cacheBytes = 0;
@@ -415,6 +423,7 @@ self.addEventListener('message', async ({ data }) => {
   }
   if (!['query', 'benchmark'].includes(data.action)) return;
   const context = createQueryContext();
+  activeQueries.set(data.requestId, context);
   try {
     if (data.action === 'benchmark') {
       cache.clear();
@@ -458,5 +467,7 @@ self.addEventListener('message', async ({ data }) => {
       requestId: data.requestId,
       message: failure.message,
     });
+  } finally {
+    activeQueries.delete(data.requestId);
   }
 });

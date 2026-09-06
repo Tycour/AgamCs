@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-09-06-named-query-intervals-v1';
+const PAGES_RELEASE = '2026-09-06-two-gene-comparison-v2';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -114,6 +114,23 @@ const featuredExampleStrip = document.querySelector('#featured-example-strip');
 const featuredExampleActions = document.querySelector('#featured-example-actions');
 const resultTitle = document.querySelector('#result-title');
 const resultStatus = document.querySelector('#result-status');
+const comparisonForm = document.querySelector('#comparison-form');
+const comparisonLeftAccession = document.querySelector('#comparison-left-accession');
+const comparisonRightAccession = document.querySelector('#comparison-right-accession');
+const comparisonSubmit = document.querySelector('#comparison-submit');
+const comparisonCancel = document.querySelector('#comparison-cancel');
+const comparisonStatus = document.querySelector('#comparison-status');
+const comparisonResults = document.querySelector('#comparison-results');
+const comparisonLocusGrid = document.querySelector('#comparison-locus-grid');
+const comparisonTableBody = document.querySelector('#comparison-table-body');
+const comparisonPartitionTableBody = document.querySelector('#comparison-partition-table-body');
+const comparisonLeftHeading = document.querySelector('#comparison-left-heading');
+const comparisonRightHeading = document.querySelector('#comparison-right-heading');
+const comparisonLeftPartitionHeading = document.querySelector('#comparison-left-partition-heading');
+const comparisonRightPartitionHeading = document.querySelector('#comparison-right-partition-heading');
+const comparisonLeftTsv = document.querySelector('#comparison-left-tsv');
+const comparisonRightTsv = document.querySelector('#comparison-right-tsv');
+const comparisonExport = document.querySelector('#comparison-export');
 const localFilePreview = window.location.protocol === 'file:';
 const queryWorker = localFilePreview
   ? null
@@ -142,6 +159,10 @@ let activeAccessionSuggestion = -1;
 let speciesDisplayState = { selectedCodes: null, order: 'topology', collapsedClades: [] };
 let namedIntervalState = [];
 let editingIntervalId = null;
+let comparisonState = null;
+let comparisonGeneration = 0;
+let comparisonAbortController = null;
+const comparisonDownloadUrls = new Map();
 const parsedInitialPermalink = globalThis.AgamCsQueryPermalinks.parse(window.location.hash);
 let pendingPermalinkState = null;
 const figureDownloadUrls = new Map();
@@ -927,12 +948,24 @@ async function loadQueryManifest() {
   return queryManifestPromise;
 }
 
-function workerQuery(chromosome, start, end) {
+function workerQuery(chromosome, start, end, { signal } = {}) {
   if (!queryWorker) return Promise.reject(new Error(LOCAL_FILE_PREVIEW_MESSAGE));
   queryRequestId += 1;
   const requestId = queryRequestId;
   return new Promise((resolve, reject) => {
-    pendingQueries.set(requestId, { resolve, reject });
+    const cancel = () => {
+      const pending = pendingQueries.get(requestId);
+      if (!pending) return;
+      pendingQueries.delete(requestId);
+      queryWorker.postMessage({ action: 'cancel', requestId });
+      reject(signal?.reason || new Error('The browser query was cancelled.'));
+    };
+    if (signal?.aborted) {
+      reject(signal.reason || new Error('The browser query was cancelled.'));
+      return;
+    }
+    pendingQueries.set(requestId, { resolve, reject, signal, cancel });
+    signal?.addEventListener('abort', cancel, { once: true });
     queryWorker.postMessage({ action: 'query', requestId, chromosome, start, end });
   });
 }
@@ -941,6 +974,7 @@ queryWorker?.addEventListener('message', ({ data }) => {
   const pending = pendingQueries.get(data.requestId);
   if (!pending) return;
   pendingQueries.delete(data.requestId);
+  pending.signal?.removeEventListener('abort', pending.cancel);
   if (data.ok) pending.resolve(data);
   else pending.reject(new Error(data.message));
 });
@@ -982,6 +1016,169 @@ function buildTsv(data, range = null) {
     ].join('\t'));
   }
   return `${lines.join('\n')}\n`;
+}
+
+function clearComparisonDownloads() {
+  comparisonDownloadUrls.forEach((url) => URL.revokeObjectURL(url));
+  comparisonDownloadUrls.clear();
+  [comparisonLeftTsv, comparisonRightTsv, comparisonExport].forEach((link) => {
+    link.hidden = true;
+    link.removeAttribute('href');
+    link.removeAttribute('download');
+  });
+}
+
+function comparisonCell(primary, secondary = '') {
+  const cell = document.createElement('td');
+  const strong = document.createElement('strong'); strong.textContent = primary;
+  const small = document.createElement('small'); small.textContent = secondary;
+  cell.append(strong, small);
+  return cell;
+}
+
+function comparisonMetricText(record, kind) {
+  if (record.availability !== 'available') {
+    return { primary: 'Not ranked', detail: '' };
+  }
+  const metric = record.value;
+  const percentile = metric.global.percentile.toFixed(2);
+  return { primary: `${percentile}th`, detail: `rank ${metric.global.first.toLocaleString()} of ${metric.global.cohortDenominator.toLocaleString()}` };
+}
+
+function comparisonSummaryText(scope, metric) {
+  const value = metric === 'cs' ? scope.mean_cs : scope.mean_accessible_snp_density;
+  return { primary: displayNumber(value), detail: '' };
+}
+
+function comparisonRow(label, left, right) {
+  const row = document.createElement('tr');
+  const heading = document.createElement('th'); heading.scope = 'row'; heading.textContent = label;
+  row.append(heading, comparisonCell(left.primary, left.detail), comparisonCell(right.primary, right.detail));
+  return row;
+}
+
+function renderComparison(comparison, sources) {
+  const { left, right } = comparison.sides;
+  [comparisonLeftHeading, comparisonLeftPartitionHeading].forEach((heading) => { heading.textContent = left.gene_accession; });
+  [comparisonRightHeading, comparisonRightPartitionHeading].forEach((heading) => { heading.textContent = right.gene_accession; });
+  comparisonLocusGrid.replaceChildren(...Object.values(comparison.sides).map((side) => {
+    const card = document.createElement('article'); card.className = 'comparison-locus-card';
+    const heading = document.createElement('h3'); heading.textContent = side.gene_accession;
+    const axis = document.createElement('p'); axis.className = 'comparison-locus-axis';
+    axis.textContent = `${side.chromosome}:${side.query_coordinates.start.toLocaleString()}–${side.query_coordinates.end.toLocaleString()}`;
+    const live = document.createElement('p'); live.textContent = `Query transcript: ${side.live_query_transcript.transcript_id || 'unavailable'}.`;
+    const pinned = document.createElement('p'); pinned.textContent = `Ranking transcript: ${side.pinned_ranking_transcript.transcript_id || 'unavailable'}.`;
+    card.append(heading, axis, live, pinned);
+    return card;
+  }));
+  comparisonTableBody.replaceChildren(
+    comparisonRow('Mean Cs across gene span', comparisonSummaryText(left.query_summary.scopes.query, 'cs'), comparisonSummaryText(right.query_summary.scopes.query, 'cs')),
+    comparisonRow('Mean SNP density across accessible bases', comparisonSummaryText(left.query_summary.scopes.query, 'snp'), comparisonSummaryText(right.query_summary.scopes.query, 'snp')),
+    comparisonRow('Cs percentile', comparisonMetricText(left.static_rankings.gene_span.cs, 'cs'), comparisonMetricText(right.static_rankings.gene_span.cs, 'cs')),
+    comparisonRow('Low SNP density percentile', comparisonMetricText(left.static_rankings.gene_span.low_snp_density, 'low_snp_density'), comparisonMetricText(right.static_rankings.gene_span.low_snp_density, 'low_snp_density')),
+  );
+  const partitionRows = [];
+  for (const scope of ['representative_exons', 'representative_cds', 'representative_utr', 'representative_introns']) {
+    const label = scope.replace('representative_', '').replace(/(^|_)([a-z])/g, (_match, _prefix, letter) => ` ${letter.toUpperCase()}`).trim();
+    partitionRows.push(comparisonRow(`${label} · Cs percentile`, comparisonMetricText(left.static_rankings[scope].cs, 'cs'), comparisonMetricText(right.static_rankings[scope].cs, 'cs')));
+    partitionRows.push(comparisonRow(`${label} · Low SNP density percentile`, comparisonMetricText(left.static_rankings[scope].low_snp_density, 'low_snp_density'), comparisonMetricText(right.static_rankings[scope].low_snp_density, 'low_snp_density')));
+  }
+  comparisonPartitionTableBody.replaceChildren(...partitionRows);
+  clearComparisonDownloads();
+  const bindDownload = (link, source, text, filename) => {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/tab-separated-values' }));
+    comparisonDownloadUrls.set(link, url);
+    link.href = url; link.download = filename; link.hidden = false;
+  };
+  bindDownload(comparisonLeftTsv, sources.left.result, buildTsv(sources.left.result),
+    `AgamCs_${sources.left.geneAccession}_${sources.left.result.chromosome}_${sources.left.result.start}-${sources.left.result.end}.tsv`);
+  bindDownload(comparisonRightTsv, sources.right.result, buildTsv(sources.right.result),
+    `AgamCs_${sources.right.geneAccession}_${sources.right.result.chromosome}_${sources.right.result.start}-${sources.right.result.end}.tsv`);
+  bindDownload(comparisonExport, null, globalThis.AgamCsTwoGeneComparison.toTsv(comparison),
+    `AgamCs_${sources.left.geneAccession}_vs_${sources.right.geneAccession}_comparison.tsv`);
+  comparisonResults.hidden = false;
+  comparisonLeftTsv.textContent = `Download ${left.gene_accession} exact TSV`;
+  comparisonRightTsv.textContent = `Download ${right.gene_accession} exact TSV`;
+}
+
+async function resolveComparisonSide(raw, index, manifest, rankings, signal) {
+  const namingIndex = geneSearchSnapshot || await loadGeneSearch().catch(() => ({ names: {} }));
+  const canonical = globalThis.AgamCsGeneSearch.canonicalize(index, namingIndex, raw);
+  const resolution = globalThis.AgamCsAccessions.resolve(index, canonical.value);
+  const { chromosome, start, end } = globalThis.AgamCsQueryContract.validateCoordinates(
+    manifest, resolution.annotation.chromosome, resolution.annotation.start, resolution.annotation.end,
+  );
+  const result = await workerQuery(chromosome, start, end, { signal });
+  const ranking = globalThis.AgamCsGeneRankings.lookup(
+    rankings.cs, rankings.snpDensity, resolution.geneAccession,
+  );
+  return {
+    result,
+    annotation: resolution.annotation,
+    geneAccession: resolution.geneAccession,
+    ranking,
+  };
+}
+
+async function runTwoGeneComparison() {
+  if (localFilePreview) {
+    comparisonStatus.textContent = LOCAL_FILE_PREVIEW_MESSAGE;
+    return;
+  }
+  const generation = ++comparisonGeneration;
+  if (comparisonAbortController) comparisonAbortController.abort(new Error('Superseded by a new comparison.'));
+  const controller = new AbortController();
+  comparisonAbortController = controller;
+  comparisonSubmit.disabled = true;
+  comparisonCancel.hidden = false;
+  comparisonStatus.textContent = 'Resolving both genes and loading the first detailed query…';
+  try {
+    const [index, manifest, rankings] = await Promise.all([
+      loadAccessionIndex(), loadQueryManifest(), loadGeneRankings(),
+    ]);
+    if (generation !== comparisonGeneration) return;
+    const left = await resolveComparisonSide(
+      comparisonLeftAccession.value, index, manifest, rankings, controller.signal,
+    );
+    if (generation !== comparisonGeneration) return;
+    comparisonStatus.textContent = 'First locus retained locally; loading the second detailed query sequentially…';
+    const right = await resolveComparisonSide(
+      comparisonRightAccession.value, index, manifest, rankings, controller.signal,
+    );
+    if (generation !== comparisonGeneration) return;
+    const comparison = globalThis.AgamCsTwoGeneComparison.buildComparison({
+      left, right,
+      provenance: browserReportProvenance(manifest, index),
+    });
+    comparisonState = { comparison, sources: { left, right } };
+    renderComparison(comparison, comparisonState.sources);
+    comparisonStatus.textContent = 'Comparison complete. Exports preserve unavailable states explicitly.';
+  } catch (error) {
+    if (generation !== comparisonGeneration) return;
+    const preserved = comparisonState ? ' The previous completed comparison remains available.' : '';
+    comparisonStatus.textContent = `Comparison replacement failed: ${error.message}.${preserved}`;
+  } finally {
+    if (generation === comparisonGeneration) {
+      comparisonAbortController = null;
+      comparisonSubmit.disabled = false;
+      comparisonCancel.hidden = true;
+    }
+  }
+}
+
+if (typeof comparisonForm !== 'undefined') {
+  comparisonForm.addEventListener('submit', (event) => { event.preventDefault(); runTwoGeneComparison(); });
+  comparisonCancel.addEventListener('click', () => {
+    if (!comparisonAbortController) return;
+    comparisonAbortController.abort(new Error('Comparison replacement cancelled.'));
+    comparisonGeneration += 1;
+    comparisonAbortController = null;
+    comparisonSubmit.disabled = false;
+    comparisonCancel.hidden = true;
+    comparisonStatus.textContent = comparisonState
+      ? 'Comparison replacement cancelled. The previous completed comparison remains available.'
+      : 'Comparison cancelled before completion.';
+  });
 }
 
 function displayNumber(value) {
