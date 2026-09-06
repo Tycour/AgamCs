@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-09-06-two-gene-comparison-v1';
+const PAGES_RELEASE = '2026-09-06-two-gene-comparison-v2';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -123,6 +123,11 @@ const comparisonStatus = document.querySelector('#comparison-status');
 const comparisonResults = document.querySelector('#comparison-results');
 const comparisonLocusGrid = document.querySelector('#comparison-locus-grid');
 const comparisonTableBody = document.querySelector('#comparison-table-body');
+const comparisonPartitionTableBody = document.querySelector('#comparison-partition-table-body');
+const comparisonLeftHeading = document.querySelector('#comparison-left-heading');
+const comparisonRightHeading = document.querySelector('#comparison-right-heading');
+const comparisonLeftPartitionHeading = document.querySelector('#comparison-left-partition-heading');
+const comparisonRightPartitionHeading = document.querySelector('#comparison-right-partition-heading');
 const comparisonLeftTsv = document.querySelector('#comparison-left-tsv');
 const comparisonRightTsv = document.querySelector('#comparison-right-tsv');
 const comparisonExport = document.querySelector('#comparison-export');
@@ -1033,82 +1038,52 @@ function comparisonCell(primary, secondary = '') {
 
 function comparisonMetricText(record, kind) {
   if (record.availability !== 'available') {
-    return { primary: 'Unavailable', detail: record.reason };
+    return { primary: 'Not ranked', detail: '' };
   }
   const metric = record.value;
   const percentile = metric.global.percentile.toFixed(2);
-  const rank = rankingPosition(metric.global);
-  const label = kind === 'cs' ? 'Cs percentile' : 'Low-SNP-density percentile';
-  return { primary: `${percentile}th`, detail: `${label} · ${rank}` };
+  return { primary: `${percentile}th`, detail: `rank ${metric.global.first.toLocaleString()} of ${metric.global.cohortDenominator.toLocaleString()}` };
 }
 
-function comparisonEvidence(record, kind) {
-  const metric = record.value || record;
-  const total = metric.total_bases ?? 'NA';
-  const assessed = metric.assessed_bases ?? 'NA';
-  const accessible = metric.accessible_bases;
-  const coverage = kind === 'low_snp_density'
-    ? ` · ${accessible ?? 'NA'}/${total} accessible (${metric.accessible_fraction == null ? 'NA' : `${(100 * metric.accessible_fraction).toFixed(1)}%`})`
-    : '';
-  const cohorts = `Global cohort ${metric.global_cohort_denominator ?? 'NA'} · arm cohort ${metric.chromosome_cohort_denominator ?? 'NA'}`;
-  return `${assessed}/${total} assessed${coverage} · ${cohorts}`;
+function comparisonSummaryText(scope, metric) {
+  const value = metric === 'cs' ? scope.mean_cs : scope.mean_accessible_snp_density;
+  return { primary: displayNumber(value), detail: '' };
+}
+
+function comparisonRow(label, left, right) {
+  const row = document.createElement('tr');
+  const heading = document.createElement('th'); heading.scope = 'row'; heading.textContent = label;
+  row.append(heading, comparisonCell(left.primary, left.detail), comparisonCell(right.primary, right.detail));
+  return row;
 }
 
 function renderComparison(comparison, sources) {
-  comparisonLocusGrid.replaceChildren(...Object.entries(comparison.sides).map(([name, side]) => {
+  const { left, right } = comparison.sides;
+  [comparisonLeftHeading, comparisonLeftPartitionHeading].forEach((heading) => { heading.textContent = left.gene_accession; });
+  [comparisonRightHeading, comparisonRightPartitionHeading].forEach((heading) => { heading.textContent = right.gene_accession; });
+  comparisonLocusGrid.replaceChildren(...Object.values(comparison.sides).map((side) => {
     const card = document.createElement('article'); card.className = 'comparison-locus-card';
-    const heading = document.createElement('h3'); heading.textContent = `${name === 'left' ? 'First' : 'Second'}: ${side.gene_accession}`;
+    const heading = document.createElement('h3'); heading.textContent = side.gene_accession;
     const axis = document.createElement('p'); axis.className = 'comparison-locus-axis';
-    axis.textContent = `${side.chromosome}:${side.query_coordinates.start.toLocaleString()}–${side.query_coordinates.end.toLocaleString()} (independent axis)`;
-    const live = document.createElement('p'); live.textContent = `Live selected transcript: ${side.live_query_transcript.transcript_id || 'unavailable'}.`;
-    const pinned = document.createElement('p'); pinned.textContent = `Static ranking representative transcript: ${side.pinned_ranking_transcript.transcript_id || 'unavailable'}.`;
+    axis.textContent = `${side.chromosome}:${side.query_coordinates.start.toLocaleString()}–${side.query_coordinates.end.toLocaleString()}`;
+    const live = document.createElement('p'); live.textContent = `Query transcript: ${side.live_query_transcript.transcript_id || 'unavailable'}.`;
+    const pinned = document.createElement('p'); pinned.textContent = `Ranking transcript: ${side.pinned_ranking_transcript.transcript_id || 'unavailable'}.`;
     card.append(heading, axis, live, pinned);
     return card;
   }));
-  const rows = [];
-  for (const [sideName, side] of Object.entries(comparison.sides)) {
-    for (const scope of ['query', 'cds', 'utr', 'introns']) {
-      const summary = side.query_summary.scopes[scope];
-      if (!summary) continue;
-      const scopeLabel = summary.label || scope;
-      const eligible = summary.meets_ranking_accessibility_threshold == null
-        ? 'Unavailable (zero-base partition)'
-        : summary.meets_ranking_accessibility_threshold ? 'Meets 80% reference' : 'Below 80% reference';
-      for (const [metricLabel, value, assessed] of [
-        ['Mean Cs', summary.mean_cs, summary.finite_cs_bases],
-        ['Accessible-base SNP mean', summary.mean_accessible_snp_density, summary.finite_accessible_snp_bases],
-      ]) {
-        const row = document.createElement('tr');
-        row.append(
-          comparisonCell(sideName === 'left' ? 'First gene' : 'Second gene', side.gene_accession),
-          comparisonCell(scopeLabel), comparisonCell(metricLabel),
-          comparisonCell(displayNumber(value), `${assessed.toLocaleString()}/${summary.total_bases.toLocaleString()} finite assessed bases`),
-          comparisonCell(`${summary.accessible_bases.toLocaleString()}/${summary.total_bases.toLocaleString()} accessible (${summary.accessible_fraction == null ? 'NA' : `${(100 * summary.accessible_fraction).toFixed(1)}%`})`),
-          comparisonCell('Live selected-transcript summary', eligible),
-        );
-        rows.push(row);
-      }
-    }
-    for (const [scope, metrics] of Object.entries(side.static_rankings)) {
-      for (const [kind, record] of Object.entries(metrics)) {
-        const row = document.createElement('tr');
-        const scopeLabel = scope.replace('representative_', 'Representative ').replace('_', ' ');
-        const metricLabel = kind === 'cs' ? 'Cs' : 'QC-aware low SNP density';
-        const rank = comparisonMetricText(record, kind);
-        const state = record.availability === 'available' ? 'Ranked' : 'Unavailable';
-        row.append(
-          comparisonCell(sideName === 'left' ? 'First gene' : 'Second gene', side.gene_accession),
-          comparisonCell(scopeLabel), comparisonCell(metricLabel),
-          comparisonCell(rank.primary, rank.detail), comparisonCell(comparisonEvidence(record, kind)),
-          comparisonCell(state, record.availability === 'available'
-            ? `Pinned ${side.pinned_ranking_transcript.transcript_id || 'representative transcript'}`
-            : record.reason),
-        );
-        rows.push(row);
-      }
-    }
+  comparisonTableBody.replaceChildren(
+    comparisonRow('Mean Cs across gene span', comparisonSummaryText(left.query_summary.scopes.query, 'cs'), comparisonSummaryText(right.query_summary.scopes.query, 'cs')),
+    comparisonRow('Mean SNP density across accessible bases', comparisonSummaryText(left.query_summary.scopes.query, 'snp'), comparisonSummaryText(right.query_summary.scopes.query, 'snp')),
+    comparisonRow('Cs percentile', comparisonMetricText(left.static_rankings.gene_span.cs, 'cs'), comparisonMetricText(right.static_rankings.gene_span.cs, 'cs')),
+    comparisonRow('Low SNP density percentile', comparisonMetricText(left.static_rankings.gene_span.low_snp_density, 'low_snp_density'), comparisonMetricText(right.static_rankings.gene_span.low_snp_density, 'low_snp_density')),
+  );
+  const partitionRows = [];
+  for (const scope of ['representative_exons', 'representative_cds', 'representative_utr', 'representative_introns']) {
+    const label = scope.replace('representative_', '').replace(/(^|_)([a-z])/g, (_match, _prefix, letter) => ` ${letter.toUpperCase()}`).trim();
+    partitionRows.push(comparisonRow(`${label} · Cs percentile`, comparisonMetricText(left.static_rankings[scope].cs, 'cs'), comparisonMetricText(right.static_rankings[scope].cs, 'cs')));
+    partitionRows.push(comparisonRow(`${label} · Low SNP density percentile`, comparisonMetricText(left.static_rankings[scope].low_snp_density, 'low_snp_density'), comparisonMetricText(right.static_rankings[scope].low_snp_density, 'low_snp_density')));
   }
-  comparisonTableBody.replaceChildren(...rows);
+  comparisonPartitionTableBody.replaceChildren(...partitionRows);
   clearComparisonDownloads();
   const bindDownload = (link, source, text, filename) => {
     const url = URL.createObjectURL(new Blob([text], { type: 'text/tab-separated-values' }));
@@ -1122,6 +1097,8 @@ function renderComparison(comparison, sources) {
   bindDownload(comparisonExport, null, globalThis.AgamCsTwoGeneComparison.toTsv(comparison),
     `AgamCs_${sources.left.geneAccession}_vs_${sources.right.geneAccession}_comparison.tsv`);
   comparisonResults.hidden = false;
+  comparisonLeftTsv.textContent = `Download ${left.gene_accession} exact TSV`;
+  comparisonRightTsv.textContent = `Download ${right.gene_accession} exact TSV`;
 }
 
 async function resolveComparisonSide(raw, index, manifest, rankings, signal) {
@@ -1175,7 +1152,7 @@ async function runTwoGeneComparison() {
     });
     comparisonState = { comparison, sources: { left, right } };
     renderComparison(comparison, comparisonState.sources);
-    comparisonStatus.textContent = 'Comparison complete. Both loci remain browser-local; exports preserve unavailable states explicitly.';
+    comparisonStatus.textContent = 'Comparison complete. Exports preserve unavailable states explicitly.';
   } catch (error) {
     if (generation !== comparisonGeneration) return;
     const preserved = comparisonState ? ' The previous completed comparison remains available.' : '';

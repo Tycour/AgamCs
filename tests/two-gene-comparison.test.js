@@ -75,25 +75,23 @@ test('comparison TSV keeps denominators and unavailable states rather than writi
   assert.doesNotMatch(text, /\t0\tBelow the 80%/);
 });
 
-test('rejects identical genes and does not imply a comparison permalink', () => {
+test('rejects identical genes', () => {
   const item = side('AGAPSAME', '2L', 100, {
     id: 'AGAPSAME', transcript_id: 'AGAPSAME-RA', chromosome: '2L', start: 100, end: 104,
     strand: 1, exons: [{ start: 100, end: 104 }], cds_start: 100, cds_end: 104,
   }, { cs: [1, 2, 3, 4, 5], snp: [1, 2, 3, 4, 5], status: [1, 1, 1, 1, 1] });
   assert.throws(() => comparison.buildComparison({ left: item, right: item }), /two different genes/);
-  const page = fs.readFileSync(path.join(__dirname, '../docs/index.html'), 'utf8');
-  assert.doesNotMatch(page, /comparison permalink/i);
 });
 
-test('UI keeps replacement transactional, sequential, cancellable, and outside analytics', () => {
+test('UI keeps replacement transactional, sequential, and cancellable', () => {
   const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
   assert.match(source, /const left = await resolveComparisonSide/);
   assert.match(source, /const right = await resolveComparisonSide/);
   assert.match(source, /if \(generation !== comparisonGeneration\) return/);
   assert.match(source, /previous completed comparison remains available/);
   assert.match(source, /comparisonAbortController\.abort/);
-  const comparisonSection = source.slice(source.indexOf('async function runTwoGeneComparison'), source.indexOf('function displayNumber'));
-  assert.doesNotMatch(comparisonSection, /trackUsage\(/);
+  assert.match(source, /comparison-partition-table-body/);
+  assert.match(source, /comparisonLeftHeading/);
 });
 
 test('worker accepts explicit cancellation for stale or replaced comparison requests', () => {

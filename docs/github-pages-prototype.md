@@ -83,16 +83,14 @@ semantics, including explicit Cs/SNP/accessibility denominators and unknown
 QC-failed positions. Names and bounds are included only in deliberately copied
 private permalinks or downloaded v2 reports; analytics never receives them.
 
-The private two-gene comparison is similarly browser-local and accepts exactly
-two distinct indexed genes. It retrieves full loci sequentially with the
+The two-gene comparison accepts exactly two distinct indexed genes. It retrieves full loci sequentially with the
 existing query worker safeguards and transactionally retains the prior complete
 comparison if a replacement fails, is cancelled, or becomes stale. It compares
 contextual standardized summaries and static rankings only: no alignment,
 coordinate synchronization, statistical test, selection inference, external
 annotation, or comparison permalink is provided. Each locus is kept on its own
 AgamP4 axis. Its export retains provenance, rank-cohort denominators, assessed
-and accessible-base denominators, eligibility, and explicit unavailable states;
-accessions, coordinates, and comparison state never enter analytics.
+and accessible-base denominators, eligibility, and explicit unavailable states.
 
 ## Refresh the versioned accession index
 

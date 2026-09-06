@@ -242,9 +242,9 @@ remain explicitly labelled as representative-transcript rankings. These cohorts
 are global or chromosome-arm cohorts; no length-matched or exon-count-matched
 cohorts are included in this version.
 
-### Private two-gene comparison
+### Two-gene comparison
 
-The browser can compare exactly two distinct indexed genes using
+AgamCs can compare exactly two distinct indexed genes using
 `agamcs-two-gene-comparison-v1`. It loads detailed loci sequentially through
 the same range-request, cooldown, cancellation, and 200,000-base safeguards as
 an ordinary query. A replacement is transactional: if either side fails or is
@@ -265,7 +265,7 @@ coordinates; it includes no sequence alignment, selection inference, external
 annotations, or comparison permalink. Per-locus exact TSVs are unchanged. The
 browser-local comparison TSV records standardized summaries, provenance,
 denominators, and `UNAVAILABLE` states without converting unknown evidence to
-zero. Neither accession nor comparison state is sent to analytics.
+zero.
 
 Method details are available in the
 [original paper](https://doi.org/10.3390/insects12020097) and the
