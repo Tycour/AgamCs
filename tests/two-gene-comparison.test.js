@@ -94,6 +94,17 @@ test('UI keeps replacement transactional, sequential, and cancellable', () => {
   assert.match(source, /comparisonLeftHeading/);
 });
 
+test('comparison inputs use the versioned accession, transcript, and symbol autocomplete', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
+  const page = fs.readFileSync(path.join(__dirname, '../docs/index.html'), 'utf8');
+  assert.match(page, /id="comparison-left-accession"[^>]*role="combobox"/);
+  assert.match(page, /id="comparison-right-accession"[^>]*role="combobox"/);
+  assert.match(source, /installComparisonAutocomplete|comparisonAutocompleteControls/);
+  assert.match(source, /AgamCsGeneSearch\.search/);
+  assert.match(source, /match\.name/);
+  assert.match(source, /match\.kind === 'transcript'/);
+});
+
 test('worker accepts explicit cancellation for stale or replaced comparison requests', () => {
   const source = fs.readFileSync(path.join(__dirname, '../docs/assets/query-worker.js'), 'utf8');
   assert.match(source, /const activeQueries = new Map\(\)/);
