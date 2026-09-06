@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-09-06-two-gene-comparison-v2';
+const PAGES_RELEASE = '2026-09-06-two-gene-comparison-v3';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -117,6 +117,14 @@ const resultStatus = document.querySelector('#result-status');
 const comparisonForm = document.querySelector('#comparison-form');
 const comparisonLeftAccession = document.querySelector('#comparison-left-accession');
 const comparisonRightAccession = document.querySelector('#comparison-right-accession');
+const comparisonLeftSuggestionsPanel = document.querySelector('#comparison-left-suggestions-panel');
+const comparisonRightSuggestionsPanel = document.querySelector('#comparison-right-suggestions-panel');
+const comparisonLeftSuggestions = document.querySelector('#comparison-left-suggestions');
+const comparisonRightSuggestions = document.querySelector('#comparison-right-suggestions');
+const comparisonLeftSuggestionsNote = document.querySelector('#comparison-left-suggestions-note');
+const comparisonRightSuggestionsNote = document.querySelector('#comparison-right-suggestions-note');
+const comparisonLeftSearchStatus = document.querySelector('#comparison-left-search-status');
+const comparisonRightSearchStatus = document.querySelector('#comparison-right-search-status');
 const comparisonSubmit = document.querySelector('#comparison-submit');
 const comparisonCancel = document.querySelector('#comparison-cancel');
 const comparisonStatus = document.querySelector('#comparison-status');
@@ -751,6 +759,127 @@ liveAccession.addEventListener('keydown', (event) => {
 
 document.addEventListener('pointerdown', (event) => {
   if (!accessionCombobox.contains(event.target)) closeAccessionSuggestions();
+});
+
+const comparisonAutocompleteControls = [
+  {
+    input: comparisonLeftAccession, panel: comparisonLeftSuggestionsPanel,
+    list: comparisonLeftSuggestions, note: comparisonLeftSuggestionsNote,
+    status: comparisonLeftSearchStatus, optionPrefix: 'comparison-left-suggestion',
+  },
+  {
+    input: comparisonRightAccession, panel: comparisonRightSuggestionsPanel,
+    list: comparisonRightSuggestions, note: comparisonRightSuggestionsNote,
+    status: comparisonRightSearchStatus, optionPrefix: 'comparison-right-suggestion',
+  },
+].map((control) => ({ ...control, matches: [], activeIndex: -1, container: control.input.closest('.comparison-combobox') }));
+
+function closeComparisonSuggestions(control) {
+  control.panel.hidden = true;
+  control.input.setAttribute('aria-expanded', 'false');
+  control.input.removeAttribute('aria-activedescendant');
+  control.matches = [];
+  control.activeIndex = -1;
+}
+
+function setActiveComparisonSuggestion(control, index) {
+  if (!control.matches.length) return;
+  const bounded = (index + control.matches.length) % control.matches.length;
+  control.activeIndex = bounded;
+  [...control.list.children].forEach((option, optionIndex) => {
+    const selected = optionIndex === bounded;
+    option.setAttribute('aria-selected', String(selected));
+    if (selected) option.scrollIntoView({ block: 'nearest' });
+  });
+  control.input.setAttribute('aria-activedescendant', `${control.optionPrefix}-${bounded}`);
+}
+
+function comparisonSuggestionElement(control, match, index) {
+  const option = document.createElement('li');
+  option.id = `${control.optionPrefix}-${index}`;
+  option.className = 'accession-suggestion';
+  option.setAttribute('role', 'option');
+  option.setAttribute('aria-selected', 'false');
+  const heading = document.createElement('div'); heading.className = 'accession-suggestion-heading';
+  const primary = document.createElement('strong');
+  primary.textContent = match.kind === 'transcript' ? match.accession : (match.name || match.accession);
+  heading.append(primary);
+  const accession = document.createElement('span'); accession.className = 'accession-suggestion-accession';
+  accession.textContent = match.kind === 'transcript'
+    ? (match.name ? `${match.name} · ${match.geneAccession}` : match.geneAccession)
+    : match.name ? match.accession : '';
+  if (accession.textContent) heading.append(accession);
+  const metadata = document.createElement('span'); metadata.className = 'accession-suggestion-metadata';
+  metadata.textContent = [match.region, match.kind === 'transcript' ? 'transcript' : null]
+    .filter(Boolean).join(' · ');
+  option.append(heading, metadata);
+  option.addEventListener('mousedown', (event) => event.preventDefault());
+  option.addEventListener('click', () => {
+    control.input.value = match.value;
+    closeComparisonSuggestions(control);
+    const subject = match.name ? `${match.name} (${match.accession})` : match.accession;
+    control.status.textContent = `${subject} selected.`;
+  });
+  return option;
+}
+
+async function renderComparisonSuggestions(control) {
+  const value = control.input.value;
+  if (!String(value).trim()) {
+    closeComparisonSuggestions(control);
+    return;
+  }
+  try {
+    const index = accessionIndexSnapshot || await loadAccessionIndex();
+    const names = geneSearchSnapshot || await loadGeneSearch().catch(() => ({ names: {} }));
+    if (control.input.value !== value) return;
+    const result = globalThis.AgamCsGeneSearch.search(index, names, value);
+    control.matches = result.matches;
+    control.activeIndex = -1;
+    control.list.replaceChildren(...result.matches.map((match, matchIndex) => (
+      comparisonSuggestionElement(control, match, matchIndex)
+    )));
+    control.input.removeAttribute('aria-activedescendant');
+    control.input.setAttribute('aria-expanded', 'true');
+    control.panel.hidden = false;
+    control.note.textContent = result.total === 0
+      ? 'No indexed accession or official gene symbol matches this text.'
+      : result.total > result.matches.length
+        ? `Showing ${result.matches.length.toLocaleString()} of ${result.total.toLocaleString()} matches. Type more to narrow the list.`
+        : `${result.total.toLocaleString()} match${result.total === 1 ? '' : 'es'}. Use arrow keys and Enter, or click a choice.`;
+    control.status.textContent = result.total ? `${result.total.toLocaleString()} matches available.` : 'No matching genes or transcripts.';
+  } catch (error) {
+    closeComparisonSuggestions(control);
+    control.status.textContent = `Comparison lookup is unavailable: ${error.message}`;
+  }
+}
+
+comparisonAutocompleteControls.forEach((control) => {
+  control.input.addEventListener('input', () => { renderComparisonSuggestions(control); });
+  control.input.addEventListener('focus', () => { renderComparisonSuggestions(control); });
+  control.input.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (control.panel.hidden) renderComparisonSuggestions(control);
+      if (control.matches.length) {
+        const direction = event.key === 'ArrowDown' ? 1 : -1;
+        setActiveComparisonSuggestion(control, control.activeIndex < 0
+          ? (direction > 0 ? 0 : control.matches.length - 1)
+          : control.activeIndex + direction);
+      }
+    } else if (event.key === 'Enter' && !control.panel.hidden && control.activeIndex >= 0) {
+      event.preventDefault();
+      const match = control.matches[control.activeIndex];
+      control.input.value = match.value;
+      closeComparisonSuggestions(control);
+      control.status.textContent = `${match.name ? `${match.name} (${match.accession})` : match.accession} selected.`;
+    } else if (event.key === 'Escape' || event.key === 'Tab') {
+      closeComparisonSuggestions(control);
+    }
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (!control.container?.contains(event.target)) closeComparisonSuggestions(control);
+  });
 });
 
 isoformSelect.addEventListener('change', () => {

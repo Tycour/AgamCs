@@ -16,23 +16,23 @@
   <title>AgamCs conservation explorer</title>
   <link rel="canonical" href="https://tycour.github.io/AgamCs/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/site.css?v=2026-09-06-two-gene-comparison-v2">
-  <script src="assets/plot-model.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
-  <script src="assets/query-summary.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
-  <script src="assets/query-intervals.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
-  <script src="assets/notable-windows.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
-  <script src="assets/species-context.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
-  <script src="assets/query-report.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
-  <script src="assets/two-gene-comparison.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
-  <script src="assets/live-plots.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
-  <script src="assets/gene-search.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
-  <script src="assets/gene-ranking.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
-  <script src="assets/accession-lookup.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
-  <script src="assets/query-contract.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
-  <script src="assets/query-interaction.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
-  <script src="assets/query-permalink.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
-  <script src="assets/analytics.js?v=2026-09-06-two-gene-comparison-v2" data-measurement-id="G-25RC4QKPP9" defer></script>
-  <script src="assets/site.js?v=2026-09-06-two-gene-comparison-v2" defer></script>
+  <link rel="stylesheet" href="assets/site.css?v=2026-09-06-two-gene-comparison-v3">
+  <script src="assets/plot-model.js?v=2026-09-06-two-gene-comparison-v3" defer></script>
+  <script src="assets/query-summary.js?v=2026-09-06-two-gene-comparison-v3" defer></script>
+  <script src="assets/query-intervals.js?v=2026-09-06-two-gene-comparison-v3" defer></script>
+  <script src="assets/notable-windows.js?v=2026-09-06-two-gene-comparison-v3" defer></script>
+  <script src="assets/species-context.js?v=2026-09-06-two-gene-comparison-v3" defer></script>
+  <script src="assets/query-report.js?v=2026-09-06-two-gene-comparison-v3" defer></script>
+  <script src="assets/two-gene-comparison.js?v=2026-09-06-two-gene-comparison-v3" defer></script>
+  <script src="assets/live-plots.js?v=2026-09-06-two-gene-comparison-v3" defer></script>
+  <script src="assets/gene-search.js?v=2026-09-06-two-gene-comparison-v3" defer></script>
+  <script src="assets/gene-ranking.js?v=2026-09-06-two-gene-comparison-v3" defer></script>
+  <script src="assets/accession-lookup.js?v=2026-09-06-two-gene-comparison-v3" defer></script>
+  <script src="assets/query-contract.js?v=2026-09-06-two-gene-comparison-v3" defer></script>
+  <script src="assets/query-interaction.js?v=2026-09-06-two-gene-comparison-v3" defer></script>
+  <script src="assets/query-permalink.js?v=2026-09-06-two-gene-comparison-v3" defer></script>
+  <script src="assets/analytics.js?v=2026-09-06-two-gene-comparison-v3" data-measurement-id="G-25RC4QKPP9" defer></script>
+  <script src="assets/site.js?v=2026-09-06-two-gene-comparison-v3" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -156,10 +156,24 @@
         </div>
         <form id="comparison-form" class="comparison-form">
           <label for="comparison-left-accession">Gene or transcript accession / symbol
-            <input id="comparison-left-accession" required autocomplete="off" spellcheck="false" value="AGAP008212">
+            <div class="accession-combobox comparison-combobox">
+              <input id="comparison-left-accession" required autocomplete="off" spellcheck="false" value="AGAP008212" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="comparison-left-suggestions" aria-describedby="comparison-left-search-status">
+              <div class="accession-suggestions-panel" id="comparison-left-suggestions-panel" hidden>
+                <ul class="accession-suggestions" id="comparison-left-suggestions" role="listbox" aria-label="Matching genes and transcripts for the comparison"></ul>
+                <p class="accession-suggestions-note" id="comparison-left-suggestions-note"></p>
+              </div>
+            </div>
+            <span class="visually-hidden" id="comparison-left-search-status" role="status" aria-live="polite"></span>
           </label>
           <label for="comparison-right-accession">Compare with
-            <input id="comparison-right-accession" required autocomplete="off" spellcheck="false" value="AGAP006241">
+            <div class="accession-combobox comparison-combobox">
+              <input id="comparison-right-accession" required autocomplete="off" spellcheck="false" value="AGAP006241" role="combobox" aria-autocomplete="list" aria-haspopup="listbox" aria-expanded="false" aria-controls="comparison-right-suggestions" aria-describedby="comparison-right-search-status">
+              <div class="accession-suggestions-panel" id="comparison-right-suggestions-panel" hidden>
+                <ul class="accession-suggestions" id="comparison-right-suggestions" role="listbox" aria-label="Matching genes and transcripts for the comparison"></ul>
+                <p class="accession-suggestions-note" id="comparison-right-suggestions-note"></p>
+              </div>
+            </div>
+            <span class="visually-hidden" id="comparison-right-search-status" role="status" aria-live="polite"></span>
           </label>
           <div class="comparison-actions">
             <button class="button primary" id="comparison-submit" type="submit">Compare genes</button>
