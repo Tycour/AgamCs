@@ -167,3 +167,25 @@ test('placeholder IDs are disabled and page locations omit query strings and fra
     'https://example.test/source',
   );
 });
+
+test('private permalink fragments never enter analytics page fields or allowed events', () => {
+  const privateFragment = '#agamcs-query=v1.%7B%22accession%22%3A%22AGAP006241%22%2C%22coordinates%22%3A%223L%3A1-100%22%7D';
+  const fixture = controllerFixture({
+    document: {
+      referrer: `https://example.test/source?query=private${privateFragment}`,
+      get cookie() { return ''; },
+      set cookie(_value) {},
+    },
+    location: {
+      origin: 'https://tycour.github.io', pathname: '/AgamCs/',
+      hash: privateFragment, hostname: 'tycour.github.io',
+    },
+  });
+  fixture.controller.setConsent(analytics.CONSENT_GRANTED);
+  fixture.controller.track('query_success', {
+    query_mode: 'accession', query_kind: 'gene', fragment: privateFragment,
+  });
+  const serialized = JSON.stringify(commandValues(fixture.dataLayer));
+  assert.doesNotMatch(serialized, /AGAP006241|3L%3A1-100|agamcs-query|private/);
+  assert.match(serialized, /https:\/\/tycour\.github\.io\/AgamCs\//);
+});

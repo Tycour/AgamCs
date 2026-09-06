@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-09-06-reproducible-query-report-v1';
+const PAGES_RELEASE = '2026-09-06-private-query-permalinks-v2';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -79,6 +79,8 @@ const plotRangeApply = document.querySelector('#plot-range-apply');
 const plotRangeStatus = document.querySelector('#plot-range-status');
 const showOverlappingAnnotations = document.querySelector('#show-overlapping-annotations');
 const overlapAnnotationHelp = document.querySelector('#overlap-annotation-help');
+const copyQueryPermalink = document.querySelector('#copy-query-permalink');
+const queryPermalinkStatus = document.querySelector('#query-permalink-status');
 const accessionQueryPanel = document.querySelector('#accession-query-panel');
 const accessionQueryOptions = document.querySelector('#accession-query-options');
 const coordinateQueryPanel = document.querySelector('#coordinate-query-panel');
@@ -128,6 +130,8 @@ let plotRangeSelectionMode = false;
 let currentAccessionSuggestions = [];
 let activeAccessionSuggestion = -1;
 let speciesDisplayState = { selectedCodes: null, order: 'topology', collapsedClades: [] };
+const parsedInitialPermalink = globalThis.AgamCsQueryPermalinks.parse(window.location.hash);
+let pendingPermalinkState = null;
 const figureDownloadUrls = new Map();
 const notableWindowDownloadUrls = new Map();
 
@@ -138,6 +142,79 @@ function trackUsage(eventName, parameters) {
     // Usage measurement must never affect scientific queries or downloads.
   }
 }
+
+function setPermalinkStatus(message) {
+  queryPermalinkStatus.textContent = message;
+}
+
+function permalinkRestoreMessage(code) {
+  if (code === 'obsolete-version') {
+    return 'This private permalink uses an obsolete format and was not restored. You can still enter a query normally.';
+  }
+  if (code === 'unknown-version') {
+    return 'This private permalink uses a newer, unsupported format and was not restored. You can still enter a query normally.';
+  }
+  return 'This private permalink is malformed or no longer valid and was not restored. You can still enter a query normally.';
+}
+
+function permalinkStateFromControls() {
+  const mode = document.querySelector('input[name="live-query-mode"]:checked').value;
+  const displayRange = retainedPlotState ? { ...retainedPlotState.displayRange } : null;
+  const state = {
+    mode,
+    accession: null,
+    transcript: null,
+    coordinates: null,
+    padding: undefined,
+    signal_resolution: selectedPlotResolution(signalResolution),
+    heatmap_resolution: selectedPlotResolution(heatmapResolution),
+    display_range: displayRange,
+    show_overlapping_annotations: showOverlappingAnnotations.checked,
+    species: {
+      order: speciesDisplayState.order,
+      selected_codes: speciesDisplayState.selectedCodes || [],
+      collapsed_clades: speciesDisplayState.collapsedClades,
+    },
+  };
+  if (mode === 'accession') {
+    const resolution = globalThis.AgamCsAccessions.resolve(accessionIndexSnapshot, liveAccession.value);
+    state.accession = resolution.geneAccession;
+    state.transcript = resolution.accession === resolution.geneAccession ? null : resolution.accession;
+    state.padding = Number(document.querySelector('#accession-padding').value);
+    state.coordinates = null;
+  } else {
+    state.coordinates = {
+      chromosome: document.querySelector('#benchmark-chromosome').value,
+      start: Number(document.querySelector('#benchmark-start').value),
+      end: Number(document.querySelector('#benchmark-end').value),
+    };
+    delete state.accession;
+    delete state.transcript;
+    delete state.padding;
+  }
+  return state;
+}
+
+async function copyPrivatePermalink() {
+  if (!retainedPlotState) return;
+  const confirmed = globalThis.confirm(
+    'Private-locus warning: this permalink fragment can reveal the selected accession or genomic coordinates to anyone you share it with. Copy it?',
+  );
+  if (!confirmed) {
+    setPermalinkStatus('Private permalink was not copied.');
+    return;
+  }
+  try {
+    const fragment = globalThis.AgamCsQueryPermalinks.serialize(permalinkStateFromControls());
+    const link = `${window.location.origin}${window.location.pathname}${fragment}`;
+    await navigator.clipboard.writeText(link);
+    setPermalinkStatus('Private permalink copied. Its fragment is not sent in HTTP requests or referrers.');
+  } catch (_error) {
+    setPermalinkStatus('Private permalink could not be copied. Your query remains available locally.');
+  }
+}
+
+copyQueryPermalink.addEventListener('click', copyPrivatePermalink);
 
 benchmarkDownload.addEventListener('click', () => {
   trackUsage('file_download', { artifact_type: 'tsv' });
@@ -727,7 +804,9 @@ async function loadCatalogue() {
       button.addEventListener('click', () => selectFeaturedExample(example.accession));
       return button;
     }));
-    selectFeaturedExample(quickExamples[0].accession, { focusSubmit: false });
+    if (parsedInitialPermalink.kind !== 'valid') {
+      selectFeaturedExample(quickExamples[0].accession, { focusSubmit: false });
+    }
   } catch (error) {
     featuredExampleActions.textContent = 'Examples unavailable';
     catalogueHelp.textContent = 'Featured examples could not be loaded; accession and coordinate queries still work.';
@@ -1691,10 +1770,137 @@ function configureQueryMetadata(manifest) {
   updatePaddingHelp();
 }
 
+function permalinkResolutionIsAvailable(value, select, contract) {
+  globalThis.AgamCsPlotModel.validatePlotResolution(value, contract);
+  return [...select.options].some((option) => option.value === String(value));
+}
+
+async function restoreInitialPermalink() {
+  if (parsedInitialPermalink.kind === 'absent') return;
+  if (parsedInitialPermalink.kind !== 'valid') {
+    setPermalinkStatus(permalinkRestoreMessage(parsedInitialPermalink.code));
+    return;
+  }
+
+  const state = parsedInitialPermalink.state;
+  try {
+    const [manifest, contract] = await Promise.all([loadQueryManifest(), loadPlotContract()]);
+    if (!permalinkResolutionIsAvailable(state.signal_resolution, signalResolution, contract)
+        || !permalinkResolutionIsAvailable(state.heatmap_resolution, heatmapResolution, contract)) {
+      throw new Error('Unsupported display setting.');
+    }
+    const index = state.mode === 'accession' ? await loadAccessionIndex() : null;
+    const restore = globalThis.AgamCsQueryPermalinks.validateForRestore(state, {
+      allowedResolutions: [...signalResolution.options].map((option) => option.value),
+      speciesCodes: manifest.stack.rows,
+      cladeIds: globalThis.AgamCsSpeciesContext.cladeRecords(manifest.stack.topology.tree)
+        .map((clade) => clade.id),
+      resolveAccession(value) {
+        return globalThis.AgamCsAccessions.resolve(index, value);
+      },
+      padAccession(annotation, padding) {
+        return globalThis.AgamCsQueryContract.padCoordinates(
+          manifest, annotation.chromosome, annotation.start, annotation.end, padding,
+        );
+      },
+      validateCoordinates(chromosome, start, end) {
+        return globalThis.AgamCsQueryContract.validateCoordinates(manifest, chromosome, start, end);
+      },
+    });
+    const expected = restore.expected;
+    if (state.mode === 'accession') {
+      const selected = state.transcript || state.accession;
+      const accessionMode = document.querySelector('input[name="live-query-mode"][value="accession"]');
+      accessionMode.checked = true;
+      setLiveQueryMode('accession');
+      liveAccession.value = selected;
+      configureIsoformControl(selected);
+      document.querySelector('#accession-padding').value = String(state.padding);
+      updatePaddingHelp();
+    } else {
+      const coordinateMode = document.querySelector('input[name="live-query-mode"][value="coordinates"]');
+      coordinateMode.checked = true;
+      setLiveQueryMode('coordinates');
+      document.querySelector('#benchmark-chromosome').value = expected.chromosome;
+      document.querySelector('#benchmark-start').value = String(expected.start);
+      document.querySelector('#benchmark-end').value = String(expected.end);
+    }
+    signalResolution.value = String(state.signal_resolution);
+    heatmapResolution.value = String(state.heatmap_resolution);
+    showOverlappingAnnotations.checked = state.show_overlapping_annotations;
+    pendingPermalinkState = { state, expected };
+    setPermalinkStatus(
+      'Private permalink restored and validated. Review the controls, then choose Run query; no genomic query has been started.',
+    );
+  } catch (_error) {
+    pendingPermalinkState = null;
+    setPermalinkStatus(
+      'This private permalink refers to unavailable or out-of-range current data and was not restored. You can still enter a query normally.',
+    );
+  }
+}
+
+function applyPendingPermalinkDisplayState(
+  result, annotation, annotationAccession, transcriptAnnotations, figureStem,
+) {
+  const pending = pendingPermalinkState;
+  if (!pending) return false;
+  pendingPermalinkState = null;
+  const { state, expected } = pending;
+  if (result.chromosome !== expected.chromosome || result.start !== expected.start
+      || result.end !== expected.end) {
+    setPermalinkStatus(
+      'The restored display settings were not applied because the query controls changed. The completed query remains available.',
+    );
+    return false;
+  }
+  try {
+    const speciesCodes = new Set(result.stackRows);
+    const clades = new Set(
+      globalThis.AgamCsSpeciesContext.cladeRecords(result.stackTopology.tree).map((clade) => clade.id),
+    );
+    if (!state.species.selected_codes.every((code) => speciesCodes.has(code))
+        || !state.species.collapsed_clades.every((clade) => clades.has(clade))) {
+      throw new Error('Species display no longer matches the query.');
+    }
+    signalResolution.value = String(state.signal_resolution);
+    heatmapResolution.value = String(state.heatmap_resolution);
+    showOverlappingAnnotations.checked = state.show_overlapping_annotations;
+    speciesDisplayOrder.value = state.species.order;
+    speciesCheckboxGrid.querySelectorAll('input[data-species-code]').forEach((input) => {
+      input.checked = state.species.selected_codes.includes(input.dataset.speciesCode);
+    });
+    cladeCollapseGrid.querySelectorAll('input[data-clade-id]').forEach((input) => {
+      input.checked = state.species.collapsed_clades.includes(input.dataset.cladeId);
+    });
+    speciesDisplayState = {
+      selectedCodes: [...state.species.selected_codes],
+      order: state.species.order,
+      collapsedClades: [...state.species.collapsed_clades],
+    };
+    updateSpeciesDisplayStatus(result);
+    plotZoomHistory = state.display_range && !plotRangesEqual(
+      state.display_range, { start: result.start, end: result.end },
+    ) ? [{ start: result.start, end: result.end }] : [];
+    renderLivePlots(
+      result, annotation, annotationAccession, transcriptAnnotations, figureStem,
+      false, state.display_range,
+    );
+    setPermalinkStatus('Private permalink display settings applied to this manually started query.');
+    return true;
+  } catch (_error) {
+    setPermalinkStatus(
+      'The restored display settings are no longer supported. The completed query remains available with current defaults.',
+    );
+    return false;
+  }
+}
+
 if (!localFilePreview) {
   loadQueryManifest().then(configureQueryMetadata).catch((error) => {
     benchmarkStatus.textContent = `Query unavailable: ${error.message}`;
   });
+  restoreInitialPermalink();
 }
 
 async function runLiveQuery() {
@@ -1879,6 +2085,9 @@ async function runLiveQuery() {
       result, annotation, annotationAccession, transcriptAnnotations,
       figureStem, true,
     );
+    applyPendingPermalinkDisplayState(
+      result, annotation, annotationAccession, transcriptAnnotations, figureStem,
+    );
 
     const reportRanking = resolution && rankingDocuments
       ? globalThis.AgamCsGeneRankings.lookup(
@@ -1908,6 +2117,10 @@ async function runLiveQuery() {
       ? `AgamCs_${resolution.accession}_${chromosome}_${start}-${end}.tsv`
       : `AgamCs_${chromosome}_${start}-${end}.tsv`;
     benchmarkDownload.hidden = false;
+    copyQueryPermalink.disabled = false;
+    if (!queryPermalinkStatus.textContent.includes('permalink display settings')) {
+      setPermalinkStatus('Ready to copy a private permalink. Its fragment is kept out of HTTP requests and referrers.');
+    }
     trackUsage('query_success', {
       query_mode: mode,
       query_kind: resolution
