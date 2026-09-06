@@ -214,6 +214,11 @@ input { width: 100%; height: 44px; padding: 0 12px; color: var(--ink); border: 1
 .query-summary-heading p { margin: 0; color: var(--muted); font-size: 12px; }
 .query-summary-heading code { padding: 5px 7px; border: 1px solid var(--line); border-radius: 5px; color: var(--teal-dark); background: #f3f7f5; font-size: 11px; white-space: nowrap; }
 .report-actions { display: flex; flex-wrap: wrap; gap: 9px; }
+.interval-editor { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-bottom: 10px; }
+.interval-editor label { display: grid; gap: 5px; color: var(--muted); font-size: 11px; font-weight: 700; }
+.interval-editor input { min-width: 130px; }
+.interval-table { min-width: 1120px; }
+.interval-table .notable-window-actions { flex-wrap: wrap; }
 .query-summary-table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
 .query-summary-table { width: 100%; min-width: 1040px; border-collapse: collapse; font-size: 12px; }
 .query-summary-table th, .query-summary-table td { padding: 10px 11px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }

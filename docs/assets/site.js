@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-09-06-private-query-permalinks-v2';
+const PAGES_RELEASE = '2026-09-06-named-query-intervals-v1';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -44,6 +44,16 @@ const querySummary = document.querySelector('#query-summary');
 const querySummaryBody = document.querySelector('#query-summary-body');
 const querySummarySubject = document.querySelector('#query-summary-subject');
 const querySummaryVersion = document.querySelector('#query-summary-version');
+const namedIntervals = document.querySelector('#named-intervals');
+const namedIntervalsSubject = document.querySelector('#named-intervals-subject');
+const intervalEditor = document.querySelector('#interval-editor');
+const intervalName = document.querySelector('#interval-name');
+const intervalStart = document.querySelector('#interval-start');
+const intervalEnd = document.querySelector('#interval-end');
+const intervalSave = document.querySelector('#interval-save');
+const intervalCancel = document.querySelector('#interval-cancel');
+const intervalStatus = document.querySelector('#interval-status');
+const namedIntervalsBody = document.querySelector('#named-intervals-body');
 const notableWindows = document.querySelector('#notable-windows');
 const notableWindowsSubject = document.querySelector('#notable-windows-subject');
 const notableWindowsVersion = document.querySelector('#notable-windows-version');
@@ -130,6 +140,8 @@ let plotRangeSelectionMode = false;
 let currentAccessionSuggestions = [];
 let activeAccessionSuggestion = -1;
 let speciesDisplayState = { selectedCodes: null, order: 'topology', collapsedClades: [] };
+let namedIntervalState = [];
+let editingIntervalId = null;
 const parsedInitialPermalink = globalThis.AgamCsQueryPermalinks.parse(window.location.hash);
 let pendingPermalinkState = null;
 const figureDownloadUrls = new Map();
@@ -169,6 +181,7 @@ function permalinkStateFromControls() {
     signal_resolution: selectedPlotResolution(signalResolution),
     heatmap_resolution: selectedPlotResolution(heatmapResolution),
     display_range: displayRange,
+    intervals: namedIntervalState.map(({ id, name, start, end }) => ({ id, name, start, end })),
     show_overlapping_annotations: showOverlappingAnnotations.checked,
     species: {
       order: speciesDisplayState.order,
@@ -198,7 +211,7 @@ function permalinkStateFromControls() {
 async function copyPrivatePermalink() {
   if (!retainedPlotState) return;
   const confirmed = globalThis.confirm(
-    'Private-locus warning: this permalink fragment can reveal the selected accession or genomic coordinates to anyone you share it with. Copy it?',
+    'Private-locus warning: this permalink fragment can reveal the selected accession or genomic coordinates, including named interval names and bounds, to anyone you share it with. Copy it?',
   );
   if (!confirmed) {
     setPermalinkStatus('Private permalink was not copied.');
@@ -293,6 +306,7 @@ function renderQueryReport(result, { annotation, transcriptAnnotations, ranking,
       signal_resolution_bins: state.signalResolutionBins,
       heatmap_resolution_bins: state.heatmapResolutionBins,
     },
+    intervals: namedIntervalState,
   });
   globalThis.AgamCsQueryReport.validateReport(report);
   if (queryReportDownloadUrl) URL.revokeObjectURL(queryReportDownloadUrl);
@@ -1124,6 +1138,64 @@ function renderQuerySummary(result, annotation = null, transcriptAnnotations = [
   querySummary.hidden = false;
 }
 
+function renderNamedIntervals(result) {
+  namedIntervalsSubject.textContent = `All intervals are validated against the exact retained query ${result.chromosome}:${result.start.toLocaleString()}–${result.end.toLocaleString()} (inclusive), never the current plot zoom.`;
+  const cell = (primary, secondary = '') => {
+    const element = document.createElement('td');
+    const strong = document.createElement('strong');
+    strong.textContent = primary;
+    const small = document.createElement('small');
+    small.textContent = secondary;
+    element.append(strong, small);
+    return element;
+  };
+  const rows = namedIntervalState.map((interval) => {
+    const row = document.createElement('tr');
+    const heading = document.createElement('th');
+    heading.scope = 'row';
+    const summary = globalThis.AgamCsQueryIntervals.summarise(interval, result).summary;
+    const scope = `${result.chromosome}:${interval.start.toLocaleString()}–${interval.end.toLocaleString()} inclusive`;
+    const label = document.createElement('span'); label.textContent = interval.name;
+    const detail = document.createElement('small'); detail.textContent = scope;
+    heading.append(label, detail);
+    const actions = document.createElement('td');
+    const group = document.createElement('div'); group.className = 'notable-window-actions';
+    const button = (text, handler) => { const element = document.createElement('button'); element.type = 'button'; element.className = 'button secondary'; element.textContent = text; element.addEventListener('click', handler); return element; };
+    group.append(
+      button('Zoom', () => zoomToPlotRange(interval, 'named interval')),
+      button('Edit', () => { editingIntervalId = interval.id; intervalName.value = interval.name; intervalStart.value = interval.start; intervalEnd.value = interval.end; intervalSave.textContent = 'Save interval'; intervalCancel.hidden = false; intervalName.focus(); }),
+      button('Delete', () => { namedIntervalState = globalThis.AgamCsQueryIntervals.remove(namedIntervalState, interval.id); renderNamedIntervals(result); refreshReport(); }),
+      (() => { const link = document.createElement('a'); link.className = 'button secondary'; link.textContent = 'Interval TSV'; link.href = URL.createObjectURL(new Blob([buildTsv(result, interval)], { type: 'text/tab-separated-values' })); link.download = `AgamCs_${result.chromosome}_${interval.start}-${interval.end}_${interval.name.replace(/[^A-Za-z0-9_-]+/g, '_')}.tsv`; link.addEventListener('click', () => trackUsage('file_download', { artifact_type: 'tsv' })); return link; })(),
+    );
+    actions.append(group);
+    row.append(heading, cell(summary.total_bases.toLocaleString(), 'total bases'), cell(displayNumber(summary.mean_cs), `${summary.finite_cs_bases}/${summary.total_bases} finite Cs bases`), cell(summary.total_bases ? `${(100 * summary.accessible_fraction).toFixed(1)}%` : 'NA', `${summary.accessible_bases}/${summary.total_bases} accessible bases`), cell(displayNumber(summary.mean_accessible_snp_density), `${summary.finite_accessible_snp_bases}/${summary.accessible_bases} finite accessible SNP bases`), actions);
+    return row;
+  });
+  namedIntervalsBody.replaceChildren(...rows);
+  namedIntervals.hidden = false;
+  refreshReport();
+}
+
+function refreshReport() {
+  if (queryReportContext) renderQueryReport(queryReportContext.result, queryReportContext);
+}
+
+function saveNamedInterval() {
+  if (!retainedPlotState) return;
+  try {
+    const raw = { name: intervalName.value, start: Number(intervalStart.value), end: Number(intervalEnd.value) };
+    namedIntervalState = editingIntervalId
+      ? globalThis.AgamCsQueryIntervals.edit(namedIntervalState, editingIntervalId, raw, retainedPlotState.result)
+      : globalThis.AgamCsQueryIntervals.add(namedIntervalState, raw, retainedPlotState.result);
+    editingIntervalId = null; intervalName.value = ''; intervalStart.value = ''; intervalEnd.value = ''; intervalSave.textContent = 'Add interval'; intervalCancel.hidden = true;
+    intervalStatus.textContent = 'Interval saved locally; it will be included if you deliberately copy a permalink or report.';
+    renderNamedIntervals(retainedPlotState.result); refreshReport();
+  } catch (error) { intervalStatus.textContent = `Interval was not saved: ${error.message}`; }
+}
+intervalSave.addEventListener('click', saveNamedInterval);
+intervalEditor.addEventListener('keydown', (event) => { if (event.key === 'Enter') { event.preventDefault(); saveNamedInterval(); } });
+intervalCancel.addEventListener('click', () => { editingIntervalId = null; intervalName.value = ''; intervalStart.value = ''; intervalEnd.value = ''; intervalSave.textContent = 'Add interval'; intervalCancel.hidden = true; intervalName.focus(); });
+
 function speciesDisplayOptions() {
   return {
     selectedCodes: speciesDisplayState.selectedCodes,
@@ -1855,6 +1927,7 @@ function applyPendingPermalinkDisplayState(
     return false;
   }
   try {
+    namedIntervalState = globalThis.AgamCsQueryIntervals.validateState(state.intervals, result);
     const speciesCodes = new Set(result.stackRows);
     const clades = new Set(
       globalThis.AgamCsSpeciesContext.cladeRecords(result.stackTopology.tree).map((clade) => clade.id),
@@ -1886,6 +1959,7 @@ function applyPendingPermalinkDisplayState(
       result, annotation, annotationAccession, transcriptAnnotations, figureStem,
       false, state.display_range,
     );
+    renderNamedIntervals(result);
     setPermalinkStatus('Private permalink display settings applied to this manually started query.');
     return true;
   } catch (_error) {
@@ -2069,6 +2143,8 @@ async function runLiveQuery() {
       resolution ? annotation : null,
       resolution ? transcriptAnnotations : [],
     );
+    namedIntervalState = [];
+    renderNamedIntervals(result);
     clearNotableWindowDownloads();
     renderNotableWindows(
       result,

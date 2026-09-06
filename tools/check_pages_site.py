@@ -33,6 +33,7 @@ QUERY_ASSETS = (
     ROOT / 'assets/query-worker.js',
     ROOT / 'assets/plot-model.js',
     ROOT / 'assets/query-summary.js',
+    ROOT / 'assets/query-intervals.js',
     ROOT / 'assets/notable-windows.js',
     ROOT / 'assets/species-context.js',
     ROOT / 'assets/query-report.js',
@@ -229,7 +230,7 @@ def validate_page(page: Path) -> list[str]:
             'agamcs-query-summary-v1', 'Accessibility', 'Cs percentile',
             'Low-variation percentile',
             'Species and encoded-clade context', 'agamcs-species-context-v1',
-            'Reproducible query report', 'agamcs-query-report-v1',
+            'Reproducible query report', 'agamcs-query-report-v2',
             'species × query-base denominators',
             'Find a gene or genomic region.',
             'Options and featured examples',
@@ -237,7 +238,7 @@ def validate_page(page: Path) -> list[str]:
             'Gene accession, symbol, or transcript accession',
             'Transcript isoform', 'Thomas Courty', 'Windbichler Lab',
             'Imperial College London', 'Query processing runs in your browser',
-            'only if you accept them', 'accessions, coordinates, results, filenames, and errors',
+            'only if you accept them', 'accessions, coordinates, interval names and bounds, results, filenames, and errors',
         ):
             if required_summary_text not in page_text:
                 errors.append(

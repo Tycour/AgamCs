@@ -13,6 +13,7 @@ function state(overrides = {}) {
     signal_resolution: 'adaptive',
     heatmap_resolution: 500,
     display_range: { start: 100, end: 200 },
+    intervals: [],
     show_overlapping_annotations: true,
     species: {
       order: 'alphabetical',
@@ -26,7 +27,7 @@ function state(overrides = {}) {
 test('versioned accession permalink round trips every private query/display choice', () => {
   const original = state();
   const fragment = permalinks.serialize(original);
-  assert.match(fragment, /^#agamcs-query=v1\./);
+  assert.match(fragment, /^#agamcs-query=v2\./);
   assert.deepEqual(permalinks.parse(fragment), {
     kind: 'valid', state: permalinks.validateState(original),
   });
@@ -52,7 +53,9 @@ test('old, future, unrelated, and malformed fragments fail closed', () => {
   assert.deepEqual(permalinks.parse('#agamcs-query=v0.%7B%7D'), {
     kind: 'invalid', code: 'obsolete-version',
   });
-  assert.deepEqual(permalinks.parse('#agamcs-query=v2.%7B%7D'), {
+  const legacy = encodeURIComponent(JSON.stringify({ ...state(), intervals: undefined }));
+  assert.equal(permalinks.parse(`#agamcs-query=v1.${legacy}`).kind, 'valid');
+  assert.deepEqual(permalinks.parse('#agamcs-query=v3.%7B%7D'), {
     kind: 'invalid', code: 'unknown-version',
   });
   assert.deepEqual(permalinks.parse('#agamcs-query=v1.%7Bnot-json'), {
@@ -135,6 +138,7 @@ test('the analytics-safe view contains no accession, coordinates, transcript, pa
   assert.deepEqual(safe, {
     mode: 'accession', signal_resolution: 'adaptive', heatmap_resolution: 500,
     has_display_range: true, show_overlapping_annotations: true,
+    named_interval_count: 0,
     species_order: 'alphabetical', visible_species_count: 2, collapsed_clade_count: 1,
   });
 });

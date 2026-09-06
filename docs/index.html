@@ -16,21 +16,22 @@
   <title>AgamCs conservation explorer</title>
   <link rel="canonical" href="https://tycour.github.io/AgamCs/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/site.css?v=2026-09-06-private-query-permalinks-v2">
-  <script src="assets/plot-model.js?v=2026-09-06-private-query-permalinks-v2" defer></script>
-  <script src="assets/query-summary.js?v=2026-09-06-private-query-permalinks-v2" defer></script>
-  <script src="assets/notable-windows.js?v=2026-09-06-private-query-permalinks-v2" defer></script>
-  <script src="assets/species-context.js?v=2026-09-06-private-query-permalinks-v2" defer></script>
-  <script src="assets/query-report.js?v=2026-09-06-private-query-permalinks-v2" defer></script>
-  <script src="assets/live-plots.js?v=2026-09-06-private-query-permalinks-v2" defer></script>
-  <script src="assets/gene-search.js?v=2026-09-06-private-query-permalinks-v2" defer></script>
-  <script src="assets/gene-ranking.js?v=2026-09-06-private-query-permalinks-v2" defer></script>
-  <script src="assets/accession-lookup.js?v=2026-09-06-private-query-permalinks-v2" defer></script>
-  <script src="assets/query-contract.js?v=2026-09-06-private-query-permalinks-v2" defer></script>
-  <script src="assets/query-interaction.js?v=2026-09-06-private-query-permalinks-v2" defer></script>
-  <script src="assets/query-permalink.js?v=2026-09-06-private-query-permalinks-v2" defer></script>
-  <script src="assets/analytics.js?v=2026-09-06-private-query-permalinks-v2" data-measurement-id="G-25RC4QKPP9" defer></script>
-  <script src="assets/site.js?v=2026-09-06-private-query-permalinks-v2" defer></script>
+  <link rel="stylesheet" href="assets/site.css?v=2026-09-06-named-query-intervals-v1">
+  <script src="assets/plot-model.js?v=2026-09-06-named-query-intervals-v1" defer></script>
+  <script src="assets/query-summary.js?v=2026-09-06-named-query-intervals-v1" defer></script>
+  <script src="assets/query-intervals.js?v=2026-09-06-named-query-intervals-v1" defer></script>
+  <script src="assets/notable-windows.js?v=2026-09-06-named-query-intervals-v1" defer></script>
+  <script src="assets/species-context.js?v=2026-09-06-named-query-intervals-v1" defer></script>
+  <script src="assets/query-report.js?v=2026-09-06-named-query-intervals-v1" defer></script>
+  <script src="assets/live-plots.js?v=2026-09-06-named-query-intervals-v1" defer></script>
+  <script src="assets/gene-search.js?v=2026-09-06-named-query-intervals-v1" defer></script>
+  <script src="assets/gene-ranking.js?v=2026-09-06-named-query-intervals-v1" defer></script>
+  <script src="assets/accession-lookup.js?v=2026-09-06-named-query-intervals-v1" defer></script>
+  <script src="assets/query-contract.js?v=2026-09-06-named-query-intervals-v1" defer></script>
+  <script src="assets/query-interaction.js?v=2026-09-06-named-query-intervals-v1" defer></script>
+  <script src="assets/query-permalink.js?v=2026-09-06-named-query-intervals-v1" defer></script>
+  <script src="assets/analytics.js?v=2026-09-06-named-query-intervals-v1" data-measurement-id="G-25RC4QKPP9" defer></script>
+  <script src="assets/site.js?v=2026-09-06-named-query-intervals-v1" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -136,7 +137,7 @@
             </div>
           </div>
         </details>
-        <p class="privacy-note">Query processing runs in your browser. Optional aggregate usage statistics are sent to Google Analytics only if you accept them; accessions, coordinates, results, filenames, and errors are never included.</p>
+        <p class="privacy-note">Query processing runs in your browser. Optional aggregate usage statistics are sent to Google Analytics only if you accept them; accessions, coordinates, interval names and bounds, results, filenames, and errors are never included.</p>
         <div class="permalink-actions">
           <button class="button secondary" id="copy-query-permalink" type="button" disabled>Copy private permalink…</button>
           <p class="field-help" id="query-permalink-status" aria-live="polite">Run a query to prepare a private permalink. Its fragment is kept out of HTTP requests and referrers.</p>
@@ -311,6 +312,21 @@
           </div>
           <p class="summary-method" id="summary-method-note"></p>
         </div>
+        <section class="query-summary named-intervals" id="named-intervals" aria-labelledby="named-intervals-heading" hidden>
+          <div class="query-summary-heading">
+            <div><h3 id="named-intervals-heading">Named query intervals</h3><p id="named-intervals-subject">Define private, inclusive subregions within the exact retained query.</p></div>
+            <code>agamcs-named-query-intervals-v1</code>
+          </div>
+          <div class="interval-editor" id="interval-editor">
+            <label for="interval-name">Name<input id="interval-name" maxlength="80" required></label>
+            <label for="interval-start">Start (1-based)<input id="interval-start" type="number" min="1" required></label>
+            <label for="interval-end">End (inclusive)<input id="interval-end" type="number" min="1" required></label>
+            <button class="button secondary" id="interval-save" type="submit">Add interval</button>
+            <button class="button secondary" id="interval-cancel" type="button" hidden>Cancel edit</button>
+          </div>
+          <p class="field-help" id="interval-status" aria-live="polite">Intervals are browser-local until deliberately included in a permalink or report.</p>
+          <div class="query-summary-table-scroll"><table class="query-summary-table interval-table"><thead><tr><th scope="col">Name and scope</th><th scope="col">Bases</th><th scope="col">Mean Cs</th><th scope="col">Accessibility</th><th scope="col">Accessible-base SNP mean</th><th scope="col">Actions</th></tr></thead><tbody id="named-intervals-body"></tbody></table></div>
+        </section>
         <section class="query-summary species-context" id="species-context" aria-labelledby="species-context-heading" hidden>
           <div class="query-summary-heading">
             <div>
@@ -372,14 +388,14 @@
               <h3 id="query-report-heading">Reproducible query report</h3>
               <p id="query-report-status">Run a query to create a versioned report.</p>
             </div>
-            <code id="query-report-version">agamcs-query-report-v1</code>
+            <code id="query-report-version">agamcs-query-report-v2</code>
           </div>
           <div class="report-actions">
             <a class="button secondary" id="query-report-download" hidden download>Download JSON report</a>
             <button class="button secondary" id="copy-methods" type="button">Copy methods</button>
             <button class="button secondary" id="copy-figure-caption" type="button">Copy figure caption</button>
           </div>
-          <p class="summary-method">The report records query state, provenance, partitions, QC-aware summaries, rankings, notable windows, species/clade context, display settings, and deterministic methods/caption text. It contains no base-level arrays; use the exact TSV for those values.</p>
+          <p class="summary-method">The report records query state, provenance, partitions, named-interval summaries, QC-aware summaries, rankings, notable windows, species/clade context, display settings, and deterministic methods/caption text. It contains no base-level arrays; use the exact TSV for those values.</p>
         </section>
           </div>
         </details>
