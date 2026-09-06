@@ -33,6 +33,9 @@ QUERY_ASSETS = (
     ROOT / 'assets/query-worker.js',
     ROOT / 'assets/plot-model.js',
     ROOT / 'assets/query-summary.js',
+    ROOT / 'assets/notable-windows.js',
+    ROOT / 'assets/species-context.js',
+    ROOT / 'assets/query-report.js',
     ROOT / 'assets/live-plots.js',
     ROOT / 'assets/query-contract.js',
     ROOT / 'assets/query-interaction.js',
@@ -198,6 +201,8 @@ def validate_page(page: Path) -> list[str]:
             'clade-collapse-grid', 'species-display-status',
             'species-context', 'species-context-subject', 'species-context-version',
             'species-context-body', 'species-context-method',
+            'query-report-actions', 'query-report-status', 'query-report-version',
+            'query-report-download', 'copy-methods', 'copy-figure-caption',
             'show-overlapping-annotations', 'overlap-annotation-help',
             'analytics-settings', 'analytics-consent', 'analytics-consent-title',
             'analytics-consent-description', 'analytics-consent-status',
@@ -222,6 +227,7 @@ def validate_page(page: Path) -> list[str]:
             'agamcs-query-summary-v1', 'Accessibility', 'Cs percentile',
             'Low-variation percentile',
             'Species and encoded-clade context', 'agamcs-species-context-v1',
+            'Reproducible query report', 'agamcs-query-report-v1',
             'species × query-base denominators',
             'Find a gene or genomic region.',
             'Options and featured examples',
@@ -286,6 +292,7 @@ def validate_analytics() -> list[str]:
         "trackUsage('file_download', { artifact_type: 'tsv' })",
         "trackUsage('file_download', { artifact_type: 'signal_svg' })",
         "trackUsage('file_download', { artifact_type: 'heatmap_svg' })",
+        "trackUsage('file_download', { artifact_type: 'report_json' })",
     ):
         if required_hook not in site_text:
             errors.append(f'site analytics integration is missing {required_hook!r}')

@@ -1,4 +1,4 @@
-const WORKER_RELEASE = '2026-09-05-species-context-v1';
+const WORKER_RELEASE = '2026-09-06-reproducible-query-report-v1';
 const SCORE_REFERENCE_URL = `data/score-reference.json?v=${WORKER_RELEASE}`;
 const ACCESSIBILITY_REFERENCE_URL = `data/accessibility-reference.json?v=${WORKER_RELEASE}`;
 const HASH_ARRAYS = ['Cs', 'snp_density', 'stack', 'status'];

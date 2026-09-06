@@ -40,6 +40,8 @@ def process_region(
     signal_bins='adaptive',
     heatmap_bins='adaptive',
     gene_ranking=None,
+    report_json=False,
+    padding=0,
 ):
     from .create_heatmap import create_heatmap, plot_cs_snp_density
     from .fetch_score import fetch_scores
@@ -49,7 +51,7 @@ def process_region(
     os.makedirs(results_dir, exist_ok=True)
 
     tsv_filename = os.path.join(results_dir, 'temp_scores.tsv')
-    fetch_scores(
+    score_frame = fetch_scores(
         region,
         'Cs,score,snp_density,stack,stack_norm,phyloP',
         tsv_filename,
@@ -109,6 +111,39 @@ def process_region(
         )
         print(format_gene_ranking(gene_ranking))
         print(f'Gene ranking saved as {ranking_path}')
+
+    if report_json:
+        from .plot_model import dataframe_to_result, resolve_bin_count
+        from .query_report import build_report, validate_report
+        from .species_topology import load_species_topology
+
+        if score_frame is None:
+            raise ValueError('Report JSON requires fetch_scores to return the exact query table.')
+        report_result = dataframe_to_result(score_frame)
+        report_result['stackTopology'] = load_species_topology()
+        query_start, query_end = report_result['start'], report_result['end']
+        width = query_end - query_start + 1
+        report = build_report(
+            report_result,
+            annotation=gene_annotation,
+            transcript_annotations=transcript_annotations or (),
+            ranking=gene_ranking,
+            query_state={
+                'mode': 'accession' if gene_annotation else 'coordinates',
+                'accession': gene_annotation.get('id') if gene_annotation else None,
+                'padding_bases_per_side': padding if gene_annotation else 0,
+            },
+            display={
+                'start': query_start,
+                'end': query_end,
+                'signal_resolution_bins': resolve_bin_count(width, 'signal', signal_bins),
+                'heatmap_resolution_bins': resolve_bin_count(width, 'heatmap', heatmap_bins),
+            },
+        )
+        validate_report(report)
+        report_path = os.path.join(results_dir, f'{output_name}_report.json')
+        Path(report_path).write_text(json.dumps(report, indent=2) + '\n', encoding='utf-8')
+        print(f'Reproducible report saved as {report_path}')
 
     if not keep_tsv:
         os.remove(tsv_filename)
@@ -180,6 +215,10 @@ def main():
     parser.add_argument('--output', default='AgamCs', help='Output name for single runs or the batch directory name')
     parser.add_argument('--keep-tsv', action='store_true', default=True,
                         help='Keep the intermediate TSV file with the same name as the output image')
+    parser.add_argument(
+        '--report-json', action='store_true',
+        help='Write an additive versioned reproducible JSON report beside each output.',
+    )
     parser.add_argument(
         '--data-source',
         choices=('auto', 'local', 'remote'),
@@ -271,6 +310,8 @@ def main():
             remote_url=args.remote_url,
             accessibility_file=args.accessibility_file,
             gene_ranking=gene_ranking,
+            report_json=args.report_json,
+            padding=args.padding,
         )
 
 

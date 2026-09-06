@@ -35,7 +35,7 @@
       query_kind: new Set(['gene', 'transcript', 'coordinates']),
     }),
     file_download: Object.freeze({
-      artifact_type: new Set(['tsv', 'signal_svg', 'heatmap_svg']),
+      artifact_type: new Set(['tsv', 'signal_svg', 'heatmap_svg', 'report_json']),
     }),
   });
   let activeController = null;

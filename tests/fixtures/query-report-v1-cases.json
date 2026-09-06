@@ -1,0 +1,28 @@
+{
+  "report_version": "agamcs-query-report-v1",
+  "cases": [
+    {
+      "name": "alternative isoform with unknown QC and detected species context",
+      "result": {
+        "chromosome": "2L",
+        "start": 100,
+        "end": 103,
+        "stackRows": ["sp1", "sp2"],
+        "stackSpecies": ["Species one", "Species two"],
+        "stackTopology": {"schema_version": 1, "title": "Test topology", "representation": "test", "sources": [], "tree": {"name": "Root", "children": ["sp1", "sp2"]}},
+        "values": {
+          "Cs": [0.2, null, 0.7, 0.4],
+          "snp_density": [0.5, 0.9, null, 0.1],
+          "status": [1, 0, 1, 0],
+          "stack": [90, 0, 80, 0, 70, 60, 0, 50]
+        }
+      },
+      "annotation": {"id": "AGAPTEST", "transcript_id": "AGAPTEST-RB", "chromosome": "2L", "start": 100, "end": 103, "strand": -1, "exons": [], "cds_start": null, "cds_end": null},
+      "transcript_annotations": [{"id": "AGAPTEST", "transcript_id": "AGAPTEST-RB", "chromosome": "2L", "start": 100, "end": 103, "strand": -1, "exons": [{"start": 100, "end": 101}, {"start": 103, "end": 103}], "cds_start": null, "cds_end": null}],
+      "ranking": null,
+      "query_state": {"mode": "accession", "accession": "AGAPTEST", "padding_bases_per_side": 25},
+      "provenance": {"assembly": "AgamP4"},
+      "display": {"start": 100, "end": 102, "signal_resolution_bins": 3, "heatmap_resolution_bins": 2}
+    }
+  ]
+}
