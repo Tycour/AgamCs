@@ -11,6 +11,7 @@ import pandas as pd
 import pytest
 
 from AgamCs.create_heatmap import SPECIES_GENOME_CODES, SPECIES_LABELS
+from AgamCs.fetch_score import get_dataset_path
 from AgamCs.heatmap_renderer import render_heatmap
 from AgamCs.plot_model import (
     blended_identity_rgb,
@@ -247,7 +248,7 @@ def _landing_result_and_annotation():
     example = json.loads((ROOT / 'docs/examples.json').read_text())['examples'][0]
     chromosome, coordinates = example['region'].split(':')
     start, end = map(int, coordinates.split('-'))
-    with h5py.File(ROOT / 'data/AgamP4_conservation.h5', 'r') as scores:
+    with h5py.File(get_dataset_path(), 'r') as scores:
         cs = np.asarray(scores[chromosome]['Cs'][0, start - 1:end], dtype='<f4')
         snp = np.asarray(scores[chromosome]['snp_density'][0, start - 1:end], dtype='<f4')
         stack = np.asarray(scores[chromosome]['stack'][:, start - 1:end], dtype='<f4')

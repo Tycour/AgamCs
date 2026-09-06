@@ -1,6 +1,7 @@
 """Read AgamP4 conservation scores from local HDF5 or remote byte ranges."""
 
 from contextlib import contextmanager
+import os
 from pathlib import Path
 
 import h5py
@@ -10,6 +11,7 @@ from .accessibility import accessibility_dataframe, open_accessibility_store
 
 
 DATASET_FILENAME = 'AgamP4_conservation.h5'
+DATASET_PATH_ENVIRONMENT_VARIABLE = 'AGAMCS_DATASET_PATH'
 REFERENCE_FILENAME = 'AgamP4_conservation.kerchunk.json'
 DEFAULT_REMOTE_URL = (
     'https://zenodo.org/api/records/4304586/files/'
@@ -19,7 +21,16 @@ DATA_SOURCES = ('auto', 'local', 'remote')
 
 
 def get_dataset_path():
-    """Return the local HDF5 path, preferring the project data directory."""
+    """Return the local HDF5 path, honoring an explicit user-local override first."""
+    configured_path = os.environ.get(DATASET_PATH_ENVIRONMENT_VARIABLE)
+    if configured_path:
+        path = Path(configured_path).expanduser()
+        if path.is_file():
+            return path
+        raise FileNotFoundError(
+            f'{DATASET_PATH_ENVIRONMENT_VARIABLE} points to a missing or non-file path: {path}'
+        )
+
     project_data_path = Path(__file__).resolve().parents[1] / 'data' / DATASET_FILENAME
     cwd_data_path = Path.cwd() / 'data' / DATASET_FILENAME
 
@@ -30,7 +41,8 @@ def get_dataset_path():
     checked_paths = f'{project_data_path} or {cwd_data_path}'
     raise FileNotFoundError(
         f'Dataset file does not exist. Download {DATASET_FILENAME} from the README link '
-        f'and place it at {project_data_path}. Checked: {checked_paths}'
+        f'and place it at {project_data_path}, or set {DATASET_PATH_ENVIRONMENT_VARIABLE}. '
+        f'Checked: {checked_paths}'
     )
 
 

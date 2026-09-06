@@ -299,6 +299,15 @@ For fully offline use, download
 [`AgamP4_conservation.h5`](https://zenodo.org/record/4304586/files/AgamP4_conservation.h5)
 to the `data` directory and use `--data-source local`.
 
+For an ignored local dataset held outside a Git worktree, set
+`AGAMCS_DATASET_PATH` to the HDF5 file. The CLI and the optional
+full-data plot-parity test use this explicit path without copying the file:
+
+```bash
+AGAMCS_DATASET_PATH=/absolute/path/to/AgamP4_conservation.h5 \
+  .venv/bin/python -m pytest -q
+```
+
 Every new query also carries the published Ag1000G Phase 2 AR1 accessibility
 status. AgamCs never changes the archived SNP-density values: it masks failed
 QC positions only in the figure and shades them grey. Older TSVs without QC

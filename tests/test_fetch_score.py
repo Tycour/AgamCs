@@ -37,6 +37,22 @@ def test_parse_region_accepts_commas_and_rejects_invalid_coordinates():
         fetch_score.parse_region('not-a-region')
 
 
+def test_dataset_path_honors_explicit_user_local_environment_override(tmp_path, monkeypatch):
+    dataset = tmp_path / 'AgamP4_conservation.h5'
+    dataset.touch()
+    monkeypatch.setenv(fetch_score.DATASET_PATH_ENVIRONMENT_VARIABLE, str(dataset))
+
+    assert fetch_score.get_dataset_path() == dataset
+
+
+def test_dataset_path_rejects_an_invalid_explicit_environment_override(tmp_path, monkeypatch):
+    missing = tmp_path / 'missing.h5'
+    monkeypatch.setenv(fetch_score.DATASET_PATH_ENVIRONMENT_VARIABLE, str(missing))
+
+    with pytest.raises(FileNotFoundError, match=fetch_score.DATASET_PATH_ENVIRONMENT_VARIABLE):
+        fetch_score.get_dataset_path()
+
+
 def test_scores_dataframe_works_with_an_hdf5_like_store(tmp_path):
     hdf5_path = tmp_path / 'scores.h5'
     make_test_hdf5(hdf5_path)
