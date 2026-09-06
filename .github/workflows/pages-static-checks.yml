@@ -41,6 +41,7 @@ jobs:
       - run: node --check docs/assets/plot-model.js
       - run: node --check docs/assets/query-contract.js
       - run: node --check docs/assets/query-worker.js
+      - run: node --check docs/assets/species-context.js
       - run: node --check docs/assets/live-plots.js
       - run: node --check docs/assets/analytics.js
       - run: node --check docs/assets/site.js

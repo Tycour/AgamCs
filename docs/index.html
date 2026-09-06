@@ -16,18 +16,19 @@
   <title>AgamCs conservation explorer</title>
   <link rel="canonical" href="https://tycour.github.io/AgamCs/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/site.css?v=2026-09-05-notable-windows-v1">
-  <script src="assets/plot-model.js?v=2026-09-05-notable-windows-v1" defer></script>
-  <script src="assets/query-summary.js?v=2026-09-05-notable-windows-v1" defer></script>
-  <script src="assets/notable-windows.js?v=2026-09-05-notable-windows-v1" defer></script>
-  <script src="assets/live-plots.js?v=2026-09-05-notable-windows-v1" defer></script>
-  <script src="assets/gene-search.js?v=2026-09-05-notable-windows-v1" defer></script>
-  <script src="assets/gene-ranking.js?v=2026-09-05-notable-windows-v1" defer></script>
-  <script src="assets/accession-lookup.js?v=2026-09-05-notable-windows-v1" defer></script>
-  <script src="assets/query-contract.js?v=2026-09-05-notable-windows-v1" defer></script>
-  <script src="assets/query-interaction.js?v=2026-09-05-notable-windows-v1" defer></script>
-  <script src="assets/analytics.js?v=2026-09-05-notable-windows-v1" data-measurement-id="G-25RC4QKPP9" defer></script>
-  <script src="assets/site.js?v=2026-09-05-notable-windows-v1" defer></script>
+  <link rel="stylesheet" href="assets/site.css?v=2026-09-05-species-context-v1">
+  <script src="assets/plot-model.js?v=2026-09-05-species-context-v1" defer></script>
+  <script src="assets/query-summary.js?v=2026-09-05-species-context-v1" defer></script>
+  <script src="assets/notable-windows.js?v=2026-09-05-species-context-v1" defer></script>
+  <script src="assets/species-context.js?v=2026-09-05-species-context-v1" defer></script>
+  <script src="assets/live-plots.js?v=2026-09-05-species-context-v1" defer></script>
+  <script src="assets/gene-search.js?v=2026-09-05-species-context-v1" defer></script>
+  <script src="assets/gene-ranking.js?v=2026-09-05-species-context-v1" defer></script>
+  <script src="assets/accession-lookup.js?v=2026-09-05-species-context-v1" defer></script>
+  <script src="assets/query-contract.js?v=2026-09-05-species-context-v1" defer></script>
+  <script src="assets/query-interaction.js?v=2026-09-05-species-context-v1" defer></script>
+  <script src="assets/analytics.js?v=2026-09-05-species-context-v1" data-measurement-id="G-25RC4QKPP9" defer></script>
+  <script src="assets/site.js?v=2026-09-05-species-context-v1" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -176,6 +177,31 @@
               <p>Cross-species identity across the same genomic interval.</p>
             </header>
             <div class="live-plot" id="live-heatmap-plot"></div>
+            <details class="species-display-controls" id="species-display-controls">
+              <summary>Species display controls (heatmap only)</summary>
+              <p>Selection, ordering, and clade collapse change only Figure 2 and its SVG. The exact TSV and species/clade summary retain all comparison species.</p>
+              <div class="species-display-toolbar">
+                <label for="species-display-order">Row order
+                  <select id="species-display-order">
+                    <option value="topology">Versioned topology</option>
+                    <option value="alphabetical">Alphabetical</option>
+                  </select>
+                </label>
+                <div class="species-display-actions" aria-label="Species selection actions">
+                  <button class="button secondary" id="species-select-all" type="button">Select all</button>
+                  <button class="button secondary" id="species-clear-all" type="button">Clear all</button>
+                </div>
+              </div>
+              <fieldset>
+                <legend>Visible species</legend>
+                <div class="species-checkbox-grid" id="species-checkbox-grid"></div>
+              </fieldset>
+              <fieldset>
+                <legend>Collapse encoded clades</legend>
+                <div class="species-checkbox-grid" id="clade-collapse-grid"></div>
+              </fieldset>
+              <p id="species-display-status" aria-live="polite">All species are shown in versioned-topology order.</p>
+            </details>
             <a class="download-link figure-download" id="live-heatmap-download" hidden download>Download species heatmap (SVG)</a>
           </section>
           <div class="plot-resolution-controls" aria-labelledby="plot-resolution-heading">
@@ -276,6 +302,31 @@
           </div>
           <p class="summary-method" id="summary-method-note"></p>
         </div>
+        <section class="query-summary species-context" id="species-context" aria-labelledby="species-context-heading" hidden>
+          <div class="query-summary-heading">
+            <div>
+              <h3 id="species-context-heading">Species and encoded-clade context</h3>
+              <p id="species-context-subject">Run a query to summarize exact detected CNEr evidence.</p>
+            </div>
+            <code id="species-context-version">agamcs-species-context-v1</code>
+          </div>
+          <div class="query-summary-table-scroll">
+            <table class="query-summary-table species-context-table">
+              <thead>
+                <tr>
+                  <th scope="col">Species or clade</th>
+                  <th scope="col">Detected CNEr bases</th>
+                  <th scope="col">Detected fraction</th>
+                  <th scope="col">Mean identity</th>
+                  <th scope="col">Longest undetected run</th>
+                  <th scope="col">Lowest qualifying 100-bp identity window</th>
+                </tr>
+              </thead>
+              <tbody id="species-context-body"></tbody>
+            </table>
+          </div>
+          <p class="summary-method" id="species-context-method">Zero-coded positions mean no detected CNEr interval and are excluded from identity means. Species fractions use query bases; clade fractions use species × query-base denominators. A 100-bp window qualifies at 80% detected species-bases. Clade rows are limited to named groups already present in the versioned topology; polytomies remain unresolved.</p>
+        </section>
         <section class="query-summary notable-windows" id="notable-windows" aria-labelledby="notable-windows-heading" hidden>
           <div class="query-summary-heading">
             <div>

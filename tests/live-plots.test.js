@@ -8,6 +8,7 @@ const plotContract = require('../docs/assets/data/plot-contract.json');
 
 require('../docs/assets/plot-model.js');
 require('../docs/assets/query-summary.js');
+require('../docs/assets/species-context.js');
 require('../docs/assets/live-plots.js');
 globalThis.AgamCsPlots.configurePlotContract(plotContract);
 
@@ -610,6 +611,24 @@ test('notable windows are exact-query analysis with native zoom and TSV actions'
   const plotStart = source.indexOf('function renderLivePlots');
   const plotEnd = source.indexOf('function valuesMatch', plotStart);
   assert.doesNotMatch(source.slice(plotStart, plotEnd), /clearNotableWindowDownloads/);
+});
+
+test('species display controls rerender only the heatmap view and preserve full exports', () => {
+  const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '../docs/index.html'), 'utf8');
+  for (const id of [
+    'species-display-controls', 'species-display-order', 'species-select-all',
+    'species-clear-all', 'species-checkbox-grid', 'clade-collapse-grid',
+    'species-display-status', 'species-context', 'species-context-body',
+  ]) assert.match(html, new RegExp(`id="${id}"`));
+  assert.match(html, /change only Figure 2 and its SVG/i);
+  assert.match(html, /exact TSV and species\/clade summary retain all comparison species/i);
+  assert.match(source, /AgamCsSpeciesContext\.displayRows/);
+  assert.match(source, /AgamCsSpeciesContext\.analyzeSpeciesContext/);
+  const controlsStart = source.indexOf('function readSpeciesDisplayControls');
+  const controlsEnd = source.indexOf('function renderSpeciesContext', controlsStart);
+  assert.match(source.slice(controlsStart, controlsEnd), /rerenderRetainedPlots/);
+  assert.doesNotMatch(source.slice(controlsStart, controlsEnd), /workerQuery|buildTsv|benchmarkDownload/);
 });
 
 test('rejected and failed replacement queries preserve previous figures and downloads', () => {
