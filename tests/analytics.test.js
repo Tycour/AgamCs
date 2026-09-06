@@ -144,6 +144,17 @@ test('event allowlist drops raw query fields and rejects unknown categories', ()
   assert.doesNotMatch(JSON.stringify(commandValues(fixture.dataLayer)), /AGAP|2L:|result|secret/);
 });
 
+test('report downloads admit only their coarse artifact type', () => {
+  const fixture = controllerFixture();
+  fixture.controller.setConsent(analytics.CONSENT_GRANTED);
+  assert.equal(fixture.controller.track('file_download', {
+    artifact_type: 'report_json', filename: 'AgamCs_AGAP006241_report.json', caption: 'private',
+  }), true);
+  const event = commandValues(fixture.dataLayer).find(([name]) => name === 'event');
+  assert.deepEqual(event, ['event', 'file_download', { artifact_type: 'report_json' }]);
+  assert.doesNotMatch(JSON.stringify(event), /AGAP|caption|filename/);
+});
+
 test('placeholder IDs are disabled and page locations omit query strings and fragments', () => {
   assert.equal(analytics.isMeasurementId('G-XXXXXXXXXX'), false);
   assert.equal(analytics.isMeasurementId('G-LOCALTEST1'), false);

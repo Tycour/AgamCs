@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-09-05-species-context-v1';
+const PAGES_RELEASE = '2026-09-06-reproducible-query-report-v1';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -33,6 +33,12 @@ document.querySelectorAll('[role="tablist"]').forEach((tablist) => {
 const benchmarkForm = document.querySelector('#benchmark-form');
 const benchmarkStatus = document.querySelector('#benchmark-status');
 const benchmarkDownload = document.querySelector('#benchmark-download');
+const queryReportActions = document.querySelector('#query-report-actions');
+const queryReportStatus = document.querySelector('#query-report-status');
+const queryReportVersion = document.querySelector('#query-report-version');
+const queryReportDownload = document.querySelector('#query-report-download');
+const copyMethods = document.querySelector('#copy-methods');
+const copyFigureCaption = document.querySelector('#copy-figure-caption');
 const benchmarkSubmit = document.querySelector('#benchmark-submit');
 const querySummary = document.querySelector('#query-summary');
 const querySummaryBody = document.querySelector('#query-summary-body');
@@ -104,6 +110,9 @@ const pendingQueries = new Map();
 let examples = [];
 let queryRequestId = 0;
 let benchmarkDownloadUrl;
+let queryReportDownloadUrl;
+let currentQueryReport;
+let queryReportContext;
 let queryManifestPromise;
 let plotContractPromise;
 let accessionIndexPromise;
@@ -133,6 +142,9 @@ function trackUsage(eventName, parameters) {
 benchmarkDownload.addEventListener('click', () => {
   trackUsage('file_download', { artifact_type: 'tsv' });
 });
+queryReportDownload.addEventListener('click', () => {
+  trackUsage('file_download', { artifact_type: 'report_json' });
+});
 liveSignalDownload.addEventListener('click', () => {
   trackUsage('file_download', { artifact_type: 'signal_svg' });
 });
@@ -149,6 +161,100 @@ function clearFigureDownloads() {
     link.removeAttribute('download');
   });
 }
+
+function clearQueryReport() {
+  if (queryReportDownloadUrl) URL.revokeObjectURL(queryReportDownloadUrl);
+  queryReportDownloadUrl = undefined;
+  currentQueryReport = undefined;
+  queryReportContext = undefined;
+  queryReportDownload.hidden = true;
+  queryReportDownload.removeAttribute('href');
+  queryReportDownload.removeAttribute('download');
+  queryReportActions.hidden = true;
+}
+
+function browserReportProvenance(manifest, index) {
+  const topology = manifest.stack.topology;
+  return {
+    assembly: manifest.assembly,
+    dataset: {
+      filename: manifest.source.filename,
+      url: manifest.source.url,
+      score_source: { doi: manifest.source.doi, filename: manifest.source.filename },
+      accessibility_source: manifest.accessibility,
+    },
+    annotation_index: {
+      coordinate_index_version: index?.index_version || null,
+      annotation_source: index?.annotation || null,
+    },
+    species_topology: {
+      schema_version: topology.schema_version,
+      title: topology.title,
+      representation: topology.representation,
+      sources: topology.sources,
+    },
+  };
+}
+
+function reportFilename(queryState) {
+  const coordinates = queryState.coordinates;
+  const subject = queryState.accession || `${coordinates.chromosome}_${coordinates.start}-${coordinates.end}`;
+  return `AgamCs_${subject}_${coordinates.chromosome}_${coordinates.start}-${coordinates.end}_report.json`;
+}
+
+function renderQueryReport(result, { annotation, transcriptAnnotations, ranking, queryState, manifest, index }) {
+  const state = retainedPlotState;
+  const report = globalThis.AgamCsQueryReport.buildReport(result, {
+    annotation,
+    transcriptAnnotations,
+    ranking,
+    queryState,
+    provenance: browserReportProvenance(manifest, index),
+    display: {
+      start: state.displayRange.start,
+      end: state.displayRange.end,
+      signal_resolution_bins: state.signalResolutionBins,
+      heatmap_resolution_bins: state.heatmapResolutionBins,
+    },
+  });
+  globalThis.AgamCsQueryReport.validateReport(report);
+  if (queryReportDownloadUrl) URL.revokeObjectURL(queryReportDownloadUrl);
+  queryReportDownloadUrl = URL.createObjectURL(new Blob([
+    `${JSON.stringify(report, null, 2)}\n`,
+  ], { type: 'application/json' }));
+  queryReportDownload.href = queryReportDownloadUrl;
+  queryReportDownload.download = reportFilename(report.query_state);
+  queryReportDownload.hidden = false;
+  queryReportVersion.textContent = report.report_version;
+  queryReportStatus.textContent = `Versioned report for ${report.query_state.coordinates.chromosome}:${report.query_state.coordinates.start.toLocaleString()}–${report.query_state.coordinates.end.toLocaleString()} with display settings at the time of download.`;
+  queryReportActions.hidden = false;
+  currentQueryReport = report;
+}
+
+async function copyReportText(field, label) {
+  if (!currentQueryReport) return;
+  const text = currentQueryReport[field];
+  try {
+    await navigator.clipboard.writeText(text);
+    queryReportStatus.textContent = `${label} copied from ${currentQueryReport.report_version}.`;
+  } catch (_error) {
+    const fallback = document.createElement('textarea');
+    fallback.value = text;
+    fallback.setAttribute('readonly', '');
+    fallback.style.position = 'fixed';
+    fallback.style.opacity = '0';
+    document.body.append(fallback);
+    fallback.select();
+    const copied = document.execCommand('copy');
+    fallback.remove();
+    queryReportStatus.textContent = copied
+      ? `${label} copied from ${currentQueryReport.report_version}.`
+      : `${label} is unavailable to copy in this browser; download the JSON report instead.`;
+  }
+}
+
+copyMethods.addEventListener('click', () => copyReportText('methods_text', 'Methods'));
+copyFigureCaption.addEventListener('click', () => copyReportText('figure_caption', 'Figure caption'));
 
 function clearNotableWindowDownloads() {
   notableWindowDownloadUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -1457,6 +1563,8 @@ function renderLivePlots(
     displayRange: activeRange,
     signalChoice: String(signalChoice),
     heatmapChoice: String(heatmapChoice),
+    signalResolutionBins: signalSummary.binCount,
+    heatmapResolutionBins: heatmapSummary.binCount,
   };
   updatePlotRangeControls(result, activeRange);
   if (figureStem) {
@@ -1472,6 +1580,9 @@ function renderLivePlots(
     );
   }
   liveVisuals.hidden = false;
+  if (queryReportContext?.result === result) {
+    renderQueryReport(result, queryReportContext);
+  }
 }
 
 function rerenderRetainedPlots() {
@@ -1600,7 +1711,9 @@ async function runLiveQuery() {
   let accessionIndex = null;
   let resolution = null;
   let paddingDetails = null;
+  let rankingDocuments = null;
   renderGeneRanking(null, null);
+  clearQueryReport();
   setPortalState('Preparing query', 'Loading', 'loading');
   benchmarkStatus.textContent = mode === 'accession'
     ? 'Resolving the gene or transcript from the versioned AgamP4 indexes…'
@@ -1622,8 +1735,8 @@ async function runLiveQuery() {
       closeAccessionSuggestions();
       configureIsoformControl(resolution.accession);
       updatePaddingHelp();
-      const rankingDocument = await loadGeneRankings().catch(() => null);
-      renderGeneRanking(rankingDocument, resolution.geneAccession);
+      rankingDocuments = await loadGeneRankings().catch(() => null);
+      renderGeneRanking(rankingDocuments, resolution.geneAccession);
     } catch (error) {
       setPortalState('Query not run', 'Check input', 'error');
       benchmarkStatus.textContent = `Accession lookup stopped: ${error.message}`;
@@ -1766,6 +1879,27 @@ async function runLiveQuery() {
       result, annotation, annotationAccession, transcriptAnnotations,
       figureStem, true,
     );
+
+    const reportRanking = resolution && rankingDocuments
+      ? globalThis.AgamCsGeneRankings.lookup(
+        rankingDocuments.cs, rankingDocuments.snpDensity, resolution.geneAccession,
+      )
+      : null;
+    queryReportContext = {
+      result,
+      annotation: resolution ? annotation : null,
+      transcriptAnnotations: resolution ? transcriptAnnotations : [],
+      ranking: reportRanking,
+      queryState: {
+        mode,
+        accession: resolution?.accession || null,
+        matched_as: resolution?.matchedAs || null,
+        padding_bases_per_side: paddingDetails?.requestedPadding || 0,
+      },
+      manifest,
+      index: accessionIndex,
+    };
+    renderQueryReport(result, queryReportContext);
 
     if (benchmarkDownloadUrl) URL.revokeObjectURL(benchmarkDownloadUrl);
     benchmarkDownloadUrl = URL.createObjectURL(new Blob([buildTsv(result)], { type: 'text/tab-separated-values' }));

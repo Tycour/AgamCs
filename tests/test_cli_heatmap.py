@@ -1,6 +1,7 @@
 import json
 import sys
 
+import pandas as pd
 import pytest
 
 from AgamCs import create_heatmap, fetch_score, heatmap_renderer, main, plot_signal_summary
@@ -149,6 +150,67 @@ def test_cli_parser_accepts_bounded_explicit_plot_resolutions(monkeypatch):
 
     assert calls[-1]['signal_bins'] == 120
     assert calls[-1]['heatmap_bins'] == 1000
+
+
+def test_report_json_is_additive_and_uses_stable_batch_output_names(tmp_path, monkeypatch):
+    observed = {}
+    _stub_plot_pipeline(monkeypatch, observed)
+    from AgamCs.create_heatmap import SPECIES_GENOME_CODES
+
+    def fake_fetch(_region, _fields, _path, **_kwargs):
+        frame = pd.DataFrame({
+            'chromosome': ['2L', '2L'], 'pos': [1, 2],
+            'Cs_C': [0.2, 0.4], 'snp_density_s': [0.1, 0.2],
+            'is_accessible': [True, False],
+        })
+        for index, code in enumerate(SPECIES_GENOME_CODES):
+            frame[f'stack_{code}'] = [50 + index, 0]
+        return frame
+
+    monkeypatch.setattr(fetch_score, 'fetch_scores', fake_fetch)
+    main.process_region(
+        '2L:1-2', 'AGAPTEST', results_root=tmp_path,
+        report_json=True, padding=15,
+        gene_annotation={
+            'id': 'AGAPTEST', 'transcript_id': 'AGAPTEST-RA', 'chromosome': '2L',
+            'start': 1, 'end': 2, 'strand': 1,
+            'exons': [{'start': 1, 'end': 2}], 'cds_start': 1, 'cds_end': 2,
+        },
+    )
+
+    report_path = tmp_path / 'AGAPTEST' / 'AGAPTEST_report.json'
+    report = json.loads(report_path.read_text())
+    assert report['report_version'] == 'agamcs-query-report-v1'
+    assert report['query_state']['padding_bases_per_side'] == 15
+    assert report['query_state']['coordinates'] == {'chromosome': '2L', 'start': 1, 'end': 2}
+
+
+def test_cli_parser_forwards_report_json_without_changing_defaults(monkeypatch):
+    calls = []
+    monkeypatch.setattr(main, 'build_jobs', lambda _args: [('2L:1-3', 'manual', None, [])])
+    monkeypatch.setattr(main, 'process_region', lambda **kwargs: calls.append(kwargs))
+    monkeypatch.setattr(sys, 'argv', ['agamcs', '--region', '2L:1-3', '--report-json'])
+    main.main()
+    assert calls[-1]['report_json'] is True
+    assert calls[-1]['padding'] == 0
+
+
+def test_report_json_keeps_one_named_artifact_per_batch_job(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        main, 'build_jobs',
+        lambda _args: [('2L:1-3', 'AGAP000001', None, []), ('2R:4-6', 'AGAP000002', None, [])],
+    )
+    monkeypatch.setattr(main, 'process_region', lambda **kwargs: calls.append(kwargs))
+    monkeypatch.setattr(sys, 'argv', [
+        'agamcs', '--accessions', 'AGAP000001', 'AGAP000002',
+        '--output', 'batch-report', '--report-json',
+    ])
+    main.main()
+    assert [(call['output_name'], call['results_root'], call['report_json']) for call in calls] == [
+        ('AGAP000001', 'results/batch-report', True),
+        ('AGAP000002', 'results/batch-report', True),
+    ]
 
 
 @pytest.mark.parametrize('value', ['0', '-1', '1.5', 'many', '1001'])
