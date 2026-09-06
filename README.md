@@ -242,6 +242,31 @@ remain explicitly labelled as representative-transcript rankings. These cohorts
 are global or chromosome-arm cohorts; no length-matched or exon-count-matched
 cohorts are included in this version.
 
+### Private two-gene comparison
+
+The browser can compare exactly two distinct indexed genes using
+`agamcs-two-gene-comparison-v1`. It loads detailed loci sequentially through
+the same range-request, cooldown, cancellation, and 200,000-base safeguards as
+an ordinary query. A replacement is transactional: if either side fails or is
+cancelled, any earlier completed comparison remains intact.
+
+The comparison presents contextual, standardized evidence only: static Cs and
+QC-aware low-SNP-density percentiles for the gene span and every available
+representative-transcript partition, plus selected-transcript live query
+summaries. Every ranking row includes its rank cohort denominator, assessed
+bases, accessibility numerator/denominator, and eligibility state. It names
+the pinned representative transcript for static rankings separately from the
+transcript selected for the live query summary. Non-coding, missing,
+QC-ineligible, and unavailable partitions remain explicit unavailable states.
+
+Each gene keeps an independent AgamP4 genomic axis. The comparison does not
+superimpose, stretch, align, synchronize, or statistically test unrelated
+coordinates; it includes no sequence alignment, selection inference, external
+annotations, or comparison permalink. Per-locus exact TSVs are unchanged. The
+browser-local comparison TSV records standardized summaries, provenance,
+denominators, and `UNAVAILABLE` states without converting unknown evidence to
+zero. Neither accession nor comparison state is sent to analytics.
+
 Method details are available in the
 [original paper](https://doi.org/10.3390/insects12020097) and the
 [source-pipeline documentation](https://github.com/nkran/AgamP4_conservation_score#storage).

@@ -170,6 +170,11 @@ def validate_page(page: Path) -> list[str]:
                 )
         required_ids = {
             'explorer', 'benchmark-form', 'live-accession', 'example-select',
+            'two-gene-comparison', 'comparison-form', 'comparison-left-accession',
+            'comparison-right-accession', 'comparison-submit', 'comparison-cancel',
+            'comparison-status', 'comparison-results', 'comparison-locus-grid',
+            'comparison-table-body', 'comparison-left-tsv', 'comparison-right-tsv',
+            'comparison-export',
             'query-options', 'accession-query-options',
             'featured-example-strip', 'featured-example-actions',
             'about', 'about-title',
@@ -253,8 +258,8 @@ def validate_page(page: Path) -> list[str]:
                 'index.html: engineering diagnostics remain in the public result portal: '
                 f'{sorted(retained_labels)}'
             )
-        if checker.form_count != 1:
-            errors.append(f'index.html: expected one query form, found {checker.form_count}')
+        if checker.form_count != 2:
+            errors.append(f'index.html: expected one primary query form and one two-gene comparison form, found {checker.form_count}')
     return errors
 
 

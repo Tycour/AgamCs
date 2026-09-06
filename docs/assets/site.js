@@ -1,4 +1,4 @@
-const PAGES_RELEASE = '2026-09-06-named-query-intervals-v1';
+const PAGES_RELEASE = '2026-09-06-two-gene-comparison-v1';
 const LOCAL_FILE_PREVIEW_MESSAGE = 'This explorer cannot run from a file:// URL. From the AgamCs repository, start python3 -m http.server 8000 --directory docs, then open http://127.0.0.1:8000/.';
 
 function versionedAsset(path) {
@@ -114,6 +114,18 @@ const featuredExampleStrip = document.querySelector('#featured-example-strip');
 const featuredExampleActions = document.querySelector('#featured-example-actions');
 const resultTitle = document.querySelector('#result-title');
 const resultStatus = document.querySelector('#result-status');
+const comparisonForm = document.querySelector('#comparison-form');
+const comparisonLeftAccession = document.querySelector('#comparison-left-accession');
+const comparisonRightAccession = document.querySelector('#comparison-right-accession');
+const comparisonSubmit = document.querySelector('#comparison-submit');
+const comparisonCancel = document.querySelector('#comparison-cancel');
+const comparisonStatus = document.querySelector('#comparison-status');
+const comparisonResults = document.querySelector('#comparison-results');
+const comparisonLocusGrid = document.querySelector('#comparison-locus-grid');
+const comparisonTableBody = document.querySelector('#comparison-table-body');
+const comparisonLeftTsv = document.querySelector('#comparison-left-tsv');
+const comparisonRightTsv = document.querySelector('#comparison-right-tsv');
+const comparisonExport = document.querySelector('#comparison-export');
 const localFilePreview = window.location.protocol === 'file:';
 const queryWorker = localFilePreview
   ? null
@@ -142,6 +154,10 @@ let activeAccessionSuggestion = -1;
 let speciesDisplayState = { selectedCodes: null, order: 'topology', collapsedClades: [] };
 let namedIntervalState = [];
 let editingIntervalId = null;
+let comparisonState = null;
+let comparisonGeneration = 0;
+let comparisonAbortController = null;
+const comparisonDownloadUrls = new Map();
 const parsedInitialPermalink = globalThis.AgamCsQueryPermalinks.parse(window.location.hash);
 let pendingPermalinkState = null;
 const figureDownloadUrls = new Map();
@@ -927,12 +943,24 @@ async function loadQueryManifest() {
   return queryManifestPromise;
 }
 
-function workerQuery(chromosome, start, end) {
+function workerQuery(chromosome, start, end, { signal } = {}) {
   if (!queryWorker) return Promise.reject(new Error(LOCAL_FILE_PREVIEW_MESSAGE));
   queryRequestId += 1;
   const requestId = queryRequestId;
   return new Promise((resolve, reject) => {
-    pendingQueries.set(requestId, { resolve, reject });
+    const cancel = () => {
+      const pending = pendingQueries.get(requestId);
+      if (!pending) return;
+      pendingQueries.delete(requestId);
+      queryWorker.postMessage({ action: 'cancel', requestId });
+      reject(signal?.reason || new Error('The browser query was cancelled.'));
+    };
+    if (signal?.aborted) {
+      reject(signal.reason || new Error('The browser query was cancelled.'));
+      return;
+    }
+    pendingQueries.set(requestId, { resolve, reject, signal, cancel });
+    signal?.addEventListener('abort', cancel, { once: true });
     queryWorker.postMessage({ action: 'query', requestId, chromosome, start, end });
   });
 }
@@ -941,6 +969,7 @@ queryWorker?.addEventListener('message', ({ data }) => {
   const pending = pendingQueries.get(data.requestId);
   if (!pending) return;
   pendingQueries.delete(data.requestId);
+  pending.signal?.removeEventListener('abort', pending.cancel);
   if (data.ok) pending.resolve(data);
   else pending.reject(new Error(data.message));
 });
@@ -982,6 +1011,197 @@ function buildTsv(data, range = null) {
     ].join('\t'));
   }
   return `${lines.join('\n')}\n`;
+}
+
+function clearComparisonDownloads() {
+  comparisonDownloadUrls.forEach((url) => URL.revokeObjectURL(url));
+  comparisonDownloadUrls.clear();
+  [comparisonLeftTsv, comparisonRightTsv, comparisonExport].forEach((link) => {
+    link.hidden = true;
+    link.removeAttribute('href');
+    link.removeAttribute('download');
+  });
+}
+
+function comparisonCell(primary, secondary = '') {
+  const cell = document.createElement('td');
+  const strong = document.createElement('strong'); strong.textContent = primary;
+  const small = document.createElement('small'); small.textContent = secondary;
+  cell.append(strong, small);
+  return cell;
+}
+
+function comparisonMetricText(record, kind) {
+  if (record.availability !== 'available') {
+    return { primary: 'Unavailable', detail: record.reason };
+  }
+  const metric = record.value;
+  const percentile = metric.global.percentile.toFixed(2);
+  const rank = rankingPosition(metric.global);
+  const label = kind === 'cs' ? 'Cs percentile' : 'Low-SNP-density percentile';
+  return { primary: `${percentile}th`, detail: `${label} · ${rank}` };
+}
+
+function comparisonEvidence(record, kind) {
+  const metric = record.value || record;
+  const total = metric.total_bases ?? 'NA';
+  const assessed = metric.assessed_bases ?? 'NA';
+  const accessible = metric.accessible_bases;
+  const coverage = kind === 'low_snp_density'
+    ? ` · ${accessible ?? 'NA'}/${total} accessible (${metric.accessible_fraction == null ? 'NA' : `${(100 * metric.accessible_fraction).toFixed(1)}%`})`
+    : '';
+  const cohorts = `Global cohort ${metric.global_cohort_denominator ?? 'NA'} · arm cohort ${metric.chromosome_cohort_denominator ?? 'NA'}`;
+  return `${assessed}/${total} assessed${coverage} · ${cohorts}`;
+}
+
+function renderComparison(comparison, sources) {
+  comparisonLocusGrid.replaceChildren(...Object.entries(comparison.sides).map(([name, side]) => {
+    const card = document.createElement('article'); card.className = 'comparison-locus-card';
+    const heading = document.createElement('h3'); heading.textContent = `${name === 'left' ? 'First' : 'Second'}: ${side.gene_accession}`;
+    const axis = document.createElement('p'); axis.className = 'comparison-locus-axis';
+    axis.textContent = `${side.chromosome}:${side.query_coordinates.start.toLocaleString()}–${side.query_coordinates.end.toLocaleString()} (independent axis)`;
+    const live = document.createElement('p'); live.textContent = `Live selected transcript: ${side.live_query_transcript.transcript_id || 'unavailable'}.`;
+    const pinned = document.createElement('p'); pinned.textContent = `Static ranking representative transcript: ${side.pinned_ranking_transcript.transcript_id || 'unavailable'}.`;
+    card.append(heading, axis, live, pinned);
+    return card;
+  }));
+  const rows = [];
+  for (const [sideName, side] of Object.entries(comparison.sides)) {
+    for (const scope of ['query', 'cds', 'utr', 'introns']) {
+      const summary = side.query_summary.scopes[scope];
+      if (!summary) continue;
+      const scopeLabel = summary.label || scope;
+      const eligible = summary.meets_ranking_accessibility_threshold == null
+        ? 'Unavailable (zero-base partition)'
+        : summary.meets_ranking_accessibility_threshold ? 'Meets 80% reference' : 'Below 80% reference';
+      for (const [metricLabel, value, assessed] of [
+        ['Mean Cs', summary.mean_cs, summary.finite_cs_bases],
+        ['Accessible-base SNP mean', summary.mean_accessible_snp_density, summary.finite_accessible_snp_bases],
+      ]) {
+        const row = document.createElement('tr');
+        row.append(
+          comparisonCell(sideName === 'left' ? 'First gene' : 'Second gene', side.gene_accession),
+          comparisonCell(scopeLabel), comparisonCell(metricLabel),
+          comparisonCell(displayNumber(value), `${assessed.toLocaleString()}/${summary.total_bases.toLocaleString()} finite assessed bases`),
+          comparisonCell(`${summary.accessible_bases.toLocaleString()}/${summary.total_bases.toLocaleString()} accessible (${summary.accessible_fraction == null ? 'NA' : `${(100 * summary.accessible_fraction).toFixed(1)}%`})`),
+          comparisonCell('Live selected-transcript summary', eligible),
+        );
+        rows.push(row);
+      }
+    }
+    for (const [scope, metrics] of Object.entries(side.static_rankings)) {
+      for (const [kind, record] of Object.entries(metrics)) {
+        const row = document.createElement('tr');
+        const scopeLabel = scope.replace('representative_', 'Representative ').replace('_', ' ');
+        const metricLabel = kind === 'cs' ? 'Cs' : 'QC-aware low SNP density';
+        const rank = comparisonMetricText(record, kind);
+        const state = record.availability === 'available' ? 'Ranked' : 'Unavailable';
+        row.append(
+          comparisonCell(sideName === 'left' ? 'First gene' : 'Second gene', side.gene_accession),
+          comparisonCell(scopeLabel), comparisonCell(metricLabel),
+          comparisonCell(rank.primary, rank.detail), comparisonCell(comparisonEvidence(record, kind)),
+          comparisonCell(state, record.availability === 'available'
+            ? `Pinned ${side.pinned_ranking_transcript.transcript_id || 'representative transcript'}`
+            : record.reason),
+        );
+        rows.push(row);
+      }
+    }
+  }
+  comparisonTableBody.replaceChildren(...rows);
+  clearComparisonDownloads();
+  const bindDownload = (link, source, text, filename) => {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/tab-separated-values' }));
+    comparisonDownloadUrls.set(link, url);
+    link.href = url; link.download = filename; link.hidden = false;
+  };
+  bindDownload(comparisonLeftTsv, sources.left.result, buildTsv(sources.left.result),
+    `AgamCs_${sources.left.geneAccession}_${sources.left.result.chromosome}_${sources.left.result.start}-${sources.left.result.end}.tsv`);
+  bindDownload(comparisonRightTsv, sources.right.result, buildTsv(sources.right.result),
+    `AgamCs_${sources.right.geneAccession}_${sources.right.result.chromosome}_${sources.right.result.start}-${sources.right.result.end}.tsv`);
+  bindDownload(comparisonExport, null, globalThis.AgamCsTwoGeneComparison.toTsv(comparison),
+    `AgamCs_${sources.left.geneAccession}_vs_${sources.right.geneAccession}_comparison.tsv`);
+  comparisonResults.hidden = false;
+}
+
+async function resolveComparisonSide(raw, index, manifest, rankings, signal) {
+  const namingIndex = geneSearchSnapshot || await loadGeneSearch().catch(() => ({ names: {} }));
+  const canonical = globalThis.AgamCsGeneSearch.canonicalize(index, namingIndex, raw);
+  const resolution = globalThis.AgamCsAccessions.resolve(index, canonical.value);
+  const { chromosome, start, end } = globalThis.AgamCsQueryContract.validateCoordinates(
+    manifest, resolution.annotation.chromosome, resolution.annotation.start, resolution.annotation.end,
+  );
+  const result = await workerQuery(chromosome, start, end, { signal });
+  const ranking = globalThis.AgamCsGeneRankings.lookup(
+    rankings.cs, rankings.snpDensity, resolution.geneAccession,
+  );
+  return {
+    result,
+    annotation: resolution.annotation,
+    geneAccession: resolution.geneAccession,
+    ranking,
+  };
+}
+
+async function runTwoGeneComparison() {
+  if (localFilePreview) {
+    comparisonStatus.textContent = LOCAL_FILE_PREVIEW_MESSAGE;
+    return;
+  }
+  const generation = ++comparisonGeneration;
+  if (comparisonAbortController) comparisonAbortController.abort(new Error('Superseded by a new comparison.'));
+  const controller = new AbortController();
+  comparisonAbortController = controller;
+  comparisonSubmit.disabled = true;
+  comparisonCancel.hidden = false;
+  comparisonStatus.textContent = 'Resolving both genes and loading the first detailed query…';
+  try {
+    const [index, manifest, rankings] = await Promise.all([
+      loadAccessionIndex(), loadQueryManifest(), loadGeneRankings(),
+    ]);
+    if (generation !== comparisonGeneration) return;
+    const left = await resolveComparisonSide(
+      comparisonLeftAccession.value, index, manifest, rankings, controller.signal,
+    );
+    if (generation !== comparisonGeneration) return;
+    comparisonStatus.textContent = 'First locus retained locally; loading the second detailed query sequentially…';
+    const right = await resolveComparisonSide(
+      comparisonRightAccession.value, index, manifest, rankings, controller.signal,
+    );
+    if (generation !== comparisonGeneration) return;
+    const comparison = globalThis.AgamCsTwoGeneComparison.buildComparison({
+      left, right,
+      provenance: browserReportProvenance(manifest, index),
+    });
+    comparisonState = { comparison, sources: { left, right } };
+    renderComparison(comparison, comparisonState.sources);
+    comparisonStatus.textContent = 'Comparison complete. Both loci remain browser-local; exports preserve unavailable states explicitly.';
+  } catch (error) {
+    if (generation !== comparisonGeneration) return;
+    const preserved = comparisonState ? ' The previous completed comparison remains available.' : '';
+    comparisonStatus.textContent = `Comparison replacement failed: ${error.message}.${preserved}`;
+  } finally {
+    if (generation === comparisonGeneration) {
+      comparisonAbortController = null;
+      comparisonSubmit.disabled = false;
+      comparisonCancel.hidden = true;
+    }
+  }
+}
+
+if (typeof comparisonForm !== 'undefined') {
+  comparisonForm.addEventListener('submit', (event) => { event.preventDefault(); runTwoGeneComparison(); });
+  comparisonCancel.addEventListener('click', () => {
+    if (!comparisonAbortController) return;
+    comparisonAbortController.abort(new Error('Comparison replacement cancelled.'));
+    comparisonGeneration += 1;
+    comparisonAbortController = null;
+    comparisonSubmit.disabled = false;
+    comparisonCancel.hidden = true;
+    comparisonStatus.textContent = comparisonState
+      ? 'Comparison replacement cancelled. The previous completed comparison remains available.'
+      : 'Comparison cancelled before completion.';
+  });
 }
 
 function displayNumber(value) {
