@@ -114,3 +114,19 @@ test('canonicalizes unique names but refuses ambiguous names', () => {
 test('descriptions provide context but are not search identifiers', () => {
   assert.equal(geneSearch.search(index(), namingIndex(), 'innexin').total, 0);
 });
+
+test('restored gene is searchable by accession, name and transcript but is not featured', () => {
+  const accessionIndex = require('../docs/assets/data/accession-index.json');
+  const names = require('../docs/assets/data/gene-search.json');
+  const examples = require('../docs/examples.json');
+  const lookup = require('../docs/assets/accession-lookup.js');
+  const gene = 'AGAP013705';
+  const transcript = accessionIndex.accessions[gene].transcript_ids[0];
+  for (const query of [gene, names.names[gene].name, transcript]) {
+    const result = geneSearch.search(accessionIndex, names, query);
+    assert.ok(result.matches.some(match => match.accession === gene || match.accession === transcript));
+  }
+  assert.equal(lookup.resolve(accessionIndex, gene).accession, gene);
+  assert.equal(lookup.resolve(accessionIndex, transcript).geneAccession, gene);
+  assert.ok(!examples.examples.some(example => example.accession === gene));
+});

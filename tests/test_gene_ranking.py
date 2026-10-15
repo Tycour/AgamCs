@@ -148,7 +148,7 @@ def test_validation_rejects_incomplete_accession_coverage():
         )
 
 
-def test_checked_in_rankings_preserve_anonymous_source_cohort_context():
+def test_checked_in_rankings_restore_gene_without_changing_cohorts():
     root = Path(__file__).resolve().parents[1]
     index = json.loads((root / 'docs/assets/data/accession-index.json').read_text())
     cs = json.loads((root / 'AgamCs/data/gene-cs-rankings.json').read_text())
@@ -156,8 +156,9 @@ def test_checked_in_rankings_preserve_anonymous_source_cohort_context():
 
     build_gene_rankings.validate_cs_rankings(cs, index)
     build_gene_rankings.validate_snp_rankings(snp, index)
-    assert len(cs['records']) == len(snp['records']) == len(index['accessions']) == 13_096
-    assert len(cs['redacted_records']) == len(snp['redacted_records']) == 1
+    assert len(cs['records']) == len(snp['records']) == len(index['accessions']) == 13_097
+    assert not cs.get('redacted_records') and not snp.get('redacted_records')
+    assert 'AGAP013705' in cs['records'] and 'AGAP013705' in snp['records']
     assert cs['cohorts']['global_ranked_scope_counts'] == {
         'gene_span': 13_097,
         'representative_exons': 13_097,

@@ -57,12 +57,12 @@ REQUIRED_META_NAMES = {'author', 'description', 'theme-color', 'twitter:card'}
 REQUIRED_META_PROPERTIES = {'og:type', 'og:title', 'og:description', 'og:url', 'og:image'}
 FORBIDDEN_PAGES_SUFFIXES = {'.h5', '.hdf5', '.zarr', '.zip', '.tar', '.gz'}
 MAX_PAGES_FILE_BYTES = 10 * 1024 * 1024
-EXPECTED_ACCESSION_RECORDS = 13_096
-EXPECTED_TRANSCRIPT_RECORDS = 15_316
+EXPECTED_ACCESSION_RECORDS = 13_097
+EXPECTED_TRANSCRIPT_RECORDS = 15_317
 EXPECTED_ACCESSION_SOURCE_SHA256 = '916a1e0e4d4613d36be31dc03c53871f6f62c94f4d8bc4662d0002131658c0c7'
-EXPECTED_GENE_SEARCH_RECORDS = 2_254
+EXPECTED_GENE_SEARCH_RECORDS = 2_255
 EXPECTED_GENE_SEARCH_SOURCE_SHA256 = 'fb1e13c3265b966901cd01524bb16d49ff854c3a002745489daaeae54f638bce'
-REQUIRED_ACCESSIONS = {'AGAP001683', 'AGAP004568'}
+REQUIRED_ACCESSIONS = {'AGAP001683', 'AGAP004568', 'AGAP013705'}
 REQUIRED_TRANSCRIPTS = {'AGAP000040-RA', 'AGAP000040-RB', 'AGAP000040-RC'}
 RELEASE_PATTERN = re.compile(r"(?:PAGES|WORKER)_RELEASE\s*=\s*['\"]([^'\"]+)['\"]")
 HTML_RELEASE_PATTERN = re.compile(r"[?&]v=([A-Za-z0-9._-]+)")
@@ -373,9 +373,9 @@ def validate_accessions() -> list[str]:
         )
     if index['annotation']['source_snapshot_sha256'] != EXPECTED_ACCESSION_SOURCE_SHA256:
         errors.append('accession index does not match the reviewed VectorBase-68 GFF checksum')
-    if index.get('coverage', {}).get('privacy_filtered_gene_records') != 1 \
-            or index.get('coverage', {}).get('privacy_filtered_transcript_records') != 1:
-        errors.append('accession index is missing the reviewed public-curation exclusion counts')
+    if index.get('coverage', {}).get('privacy_filtered_gene_records') != 0 \
+            or index.get('coverage', {}).get('privacy_filtered_transcript_records') != 0:
+        errors.append('accession index must not exclude genes or transcripts from search')
     for accession in sorted(REQUIRED_ACCESSIONS):
         if accession not in index['accessions']:
             errors.append(f'required arbitrary-accession regression record is missing: {accession}')

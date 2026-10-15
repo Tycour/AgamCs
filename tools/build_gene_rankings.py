@@ -10,7 +10,6 @@ within the GitHub Pages payload limit.
 from __future__ import annotations
 
 import argparse
-import copy
 import hashlib
 import json
 import math
@@ -53,65 +52,6 @@ SNP_SCOPE_FIELDS = (
     'mean_snp_density', 'global', 'chromosome',
 )
 MIN_ACCESSIBLE_FRACTION = 0.8
-PRESERVED_CS_RANKING_CONTEXT = ({
-    'chromosome': '3L',
-    'gene_span': {
-        'total_bases': 131, 'bases_assessed': 131,
-        'mean_cs': 0.3467839052829579, 'rankable': True,
-        'global': None, 'chromosome': None,
-    },
-    'representative_exons': {
-        'total_bases': 131, 'bases_assessed': 131,
-        'mean_cs': 0.3467839052829579, 'rankable': True,
-        'global': None, 'chromosome': None,
-    },
-    **{
-        metric: {
-            'total_bases': None, 'bases_assessed': 0, 'mean_cs': None,
-            'rankable': False, 'global': None, 'chromosome': None,
-        }
-        for metric in METRICS[2:]
-    },
-},)
-PRESERVED_SNP_RANKING_CONTEXT = ({
-    'chromosome': '3L',
-    'gene_span': {
-        'total_bases': 131, 'accessible_bases': 131, 'bases_assessed': 131,
-        'accessible_fraction': 1.0, 'mean_snp_density': 0.058396947264443826,
-        'eligible': True,
-        'global': None, 'chromosome': None,
-    },
-    'representative_exons': {
-        'total_bases': 131, 'accessible_bases': 131, 'bases_assessed': 131,
-        'accessible_fraction': 1.0, 'mean_snp_density': 0.058396947264443826,
-        'eligible': True,
-        'global': None, 'chromosome': None,
-    },
-    **{
-        metric: {
-            'total_bases': None, 'accessible_bases': None, 'bases_assessed': 0,
-            'accessible_fraction': None, 'mean_snp_density': None,
-            'eligible': False, 'global': None, 'chromosome': None,
-        }
-        for metric in METRICS[2:]
-    },
-},)
-
-
-def _records_with_preserved_context(index: dict, records: dict, context: tuple) -> tuple[dict, list[str]]:
-    """Include anonymous values only when the public index records a curation exclusion."""
-    excluded = int(index.get('coverage', {}).get('privacy_filtered_gene_records', 0))
-    if excluded != len(context):
-        return records, []
-    combined = dict(records)
-    keys = []
-    for position, record in enumerate(context, start=1):
-        key = f'__redacted_record_{position}'
-        combined[key] = copy.deepcopy(record)
-        keys.append(key)
-    return combined, keys
-
-
 def sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open('rb') as handle:
@@ -437,21 +377,11 @@ def build_cs_rankings(score_root, index: dict, score_sha256: str) -> dict:
             'representative_transcript': transcript_id,
             **_cs_summary(score_root[chromosome]['Cs'], intervals, accession),
         }
-    ranking_records, redacted_keys = _records_with_preserved_context(
-        index, records, PRESERVED_CS_RANKING_CONTEXT,
-    )
-    counts = _attach_rankings(ranking_records, 'mean_cs', True)
+    counts = _attach_rankings(records, 'mean_cs', True)
     document = _common_document(
         index, CS_RANKING_VERSION, f'docs/assets/data/{CS_FILENAME}', records, 'mean_cs',
     )
     document.update({
-        'redacted_records': [
-            _encode_record(ranking_records[key], 'mean_cs') for key in redacted_keys
-        ],
-        'ranking_context': (
-            'Anonymous values from reviewed public-curation exclusions remain in cohort '
-            'calculations so established ranks and denominators do not change.'
-        ),
         'score_source': {
             'file': 'AgamP4_conservation.h5', 'array': 'Cs',
             'zenodo_record': 4304586, 'sha256': score_sha256,
@@ -499,23 +429,12 @@ def build_snp_rankings(score_root, accessibility_root, index: dict,
             **_snp_summary(score_root[chromosome]['snp_density'],
                            accessibility_root[chromosome]['status'], intervals),
         }
-    ranking_records, redacted_keys = _records_with_preserved_context(
-        index, records, PRESERVED_SNP_RANKING_CONTEXT,
-    )
-    counts = _attach_rankings(ranking_records, 'mean_snp_density', False)
+    counts = _attach_rankings(records, 'mean_snp_density', False)
     document = _common_document(
         index, SNP_RANKING_VERSION, f'docs/assets/data/{SNP_FILENAME}', records,
         'accessible_mean_snp_density',
     )
     document.update({
-        'redacted_records': [
-            _encode_record(ranking_records[key], 'accessible_mean_snp_density')
-            for key in redacted_keys
-        ],
-        'ranking_context': (
-            'Anonymous values from reviewed public-curation exclusions remain in cohort '
-            'calculations so established ranks and denominators do not change.'
-        ),
         'score_source': {
             'file': 'AgamP4_conservation.h5', 'array': 'snp_density',
             'zenodo_record': 4304586, 'sha256': score_sha256,
