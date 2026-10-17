@@ -9,6 +9,7 @@ const plotContract = require('../docs/assets/data/plot-contract.json');
 require('../docs/assets/plot-model.js');
 require('../docs/assets/query-summary.js');
 require('../docs/assets/species-context.js');
+require('../docs/assets/guide-design.js');
 require('../docs/assets/live-plots.js');
 globalThis.AgamCsPlots.configurePlotContract(plotContract);
 
@@ -20,6 +21,7 @@ const {
   transcriptAnnotationsForDisplay,
   abbreviatedSpeciesName,
   rangeFromDisplayBins,
+  renderSignalPlot,
   renderHeatmap,
   topologyTipCodes,
   validateSpeciesTopology,
@@ -442,6 +444,55 @@ test('single-transcript figure annotation labels link to the VectorBase gene', (
   }
 });
 
+test('signal figures place guide details below plotted annotations without fixed empty space', () => {
+  const previousDocument = globalThis.document;
+  globalThis.document = {
+    createElementNS: (_namespace, name) => new FakeElement(name),
+    createElement: (name) => new FakeElement(name),
+  };
+  try {
+    const result = {
+      chromosome: '2L', start: 100, end: 105,
+      values: {
+        Cs: Float32Array.from([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+        snp_density: Float32Array.from([0, 0.1, 0, 0.1, 0, 0.1]),
+        status: Uint8Array.from([1, 1, 1, 1, 1, 1]),
+      },
+    };
+    const annotation = {
+      id: 'AGAPQUERY', chromosome: '2L', start: 100, end: 105, strand: 1,
+      transcript_id: 'AGAPQUERY-RA', exons: [{ start: 100, end: 105 }],
+      cds_start: 100, cds_end: 105,
+    };
+    const container = new FakeElement('container');
+    renderSignalPlot(container, result, annotation, [annotation]);
+    const [plainSvg] = container.children;
+    const plainHeight = Number(plainSvg.getAttribute('viewBox').split(' ')[3]);
+    assert.ok(plainHeight < 700, `expected compact annotation plot, got ${plainHeight}`);
+
+    const selectedGuide = {
+      id: 'guide-1', tool_rank: 1, chromosome: '2L', strand: '+',
+      start: 101, end: 103,
+      spacer_start: 101, spacer_end: 102, pam_start: 103, pam_end: 103,
+      spacer: 'AC', pam: 'AGG', sequence_context: 'AACGTT', sequence_context_start: 100,
+    };
+    renderSignalPlot(container, result, annotation, [annotation], 'adaptive', null, null, selectedGuide);
+    const [guidedSvg] = container.children;
+    const axisLabel = descendants(guidedSvg).find((child) => (
+      child.name === 'text' && child.textContent.includes('Position relative to AGAPQUERY')
+    ));
+    const guideLabel = descendants(guidedSvg).find((child) => (
+      child.name === 'text' && child.textContent.startsWith('Guide 1')
+    ));
+    const guidedHeight = Number(guidedSvg.getAttribute('viewBox').split(' ')[3]);
+    assert.ok(axisLabel && guideLabel);
+    assert.ok(Number(guideLabel.getAttribute('y')) - Number(axisLabel.getAttribute('y')) < 36);
+    assert.ok(guidedHeight < 760, `expected compact guide overlay, got ${guidedHeight}`);
+  } finally {
+    globalThis.document = previousDocument;
+  }
+});
+
 test('standalone SVG download path remains present after plot-model extraction', () => {
   const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
   assert.match(source, /function configureFigureDownload/);
@@ -529,7 +580,6 @@ test('focus-first layout keeps the primary query visible and secondary controls 
     'Representative-transcript gene rankings',
     'Exact query and selected-transcript summaries',
     'Species and encoded-clade context',
-    'Notable 100-base windows',
   ]) assert.match(supplementaryDetails, new RegExp(heading));
   assert.match(html, /class="ranking-grid"/);
   assert.match(html, /Representative-transcript gene rankings/);
@@ -556,6 +606,13 @@ test('figure-first results expose both plots before rankings and supporting deta
   assert.match(html, /<h4 id="live-heatmap-heading">Species identity heatmap<\/h4>/);
   assert.doesNotMatch(html, /aria-label="Query figures"/);
   assert.doesNotMatch(html, /id="live-heatmap-panel"[^>]*hidden/);
+  assert.ok(html.indexOf('id="guide-disclosure"') > html.indexOf('id="live-signals-panel"'));
+  assert.ok(html.indexOf('id="guide-disclosure"') < html.indexOf('id="live-heatmap-panel"'));
+  assert.match(html, /<details class="guide-disclosure" id="guide-disclosure">/);
+  assert.doesNotMatch(html, /<details class="guide-disclosure" id="guide-disclosure" open>/);
+  assert.equal((html.match(/id="guide-panel"/g) || []).length, 1);
+  assert.match(html.slice(html.indexOf('id="guide-disclosure"'), html.indexOf('id="live-heatmap-panel"')), /<section class="guide-panel" id="guide-panel"[^>]*hidden>/);
+  assert.match(fs.readFileSync(path.join(__dirname, '../docs/assets/guide-panel.js'), 'utf8'), /const cs = element\('td', numeric\(g\.spacer_context\.mean_cs, 3\)\);\s*const snp = element\('td', numeric\(g\.spacer_context\.mean_snp_density, 4\)\);/);
   assert.match(source, /function formatResolutionLabel\(resolution\)/);
   assert.match(source, /setPortalState\(resolution \? formatResolutionLabel\(resolution\)/);
 });
@@ -605,26 +662,15 @@ test('exact window TSV is a bounded subset while the primary TSV remains complet
   assert.equal(complete.length, 6);
   assert.equal(window.length, 4);
   assert.deepEqual(window.slice(1).map((line) => Number(line.split('\t')[1])), [101, 102, 103]);
-  assert.match(fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8'), /primary TSV remains the complete query/);
 });
 
-test('notable windows are exact-query analysis with native zoom and TSV actions', () => {
+test('guide exploration replaces notable-window UI but retains report calculations', () => {
   const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
   const html = fs.readFileSync(path.join(__dirname, '../docs/index.html'), 'utf8');
-  const start = source.indexOf('function renderNotableWindows');
-  const end = source.indexOf('function findPinnedAnnotation', start);
-  const renderer = source.slice(start, end);
-  assert.match(renderer, /AgamCsNotableWindows\.analyzeNotableWindows/);
-  assert.match(renderer, /zoomToPlotRange\(window, 'notable-window'\)/);
-  assert.match(renderer, /configureNotableWindowDownload/);
-  assert.doesNotMatch(renderer, /workerQuery|selectedPlotResolution|displayRange/);
-  assert.match(html, /Five highest mean-Cs windows/);
-  assert.match(html, /Five lowest mean-SNP-density windows/);
-  assert.match(renderer, /Zoom to window/);
-  assert.match(renderer, /Exact window TSV/);
-  const plotStart = source.indexOf('function renderLivePlots');
-  const plotEnd = source.indexOf('function valuesMatch', plotStart);
-  assert.doesNotMatch(source.slice(plotStart, plotEnd), /clearNotableWindowDownloads/);
+  assert.doesNotMatch(html, /Notable 100-base windows/);
+  for (const id of ['guide-enable', 'guide-overlay', 'guide-body', 'guide-download']) assert.ok(html.includes(`id="${id}"`));
+  assert.match(source, /guideController.overlay/);
+  assert.match(fs.readFileSync(path.join(__dirname, '../docs/assets/query-report.js'), 'utf8'), /notable_windows/);
 });
 
 test('species display controls rerender only the heatmap view and preserve full exports', () => {

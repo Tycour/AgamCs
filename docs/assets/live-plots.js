@@ -341,6 +341,7 @@
     addText(svg, `Position relative to ${annotation.id} transcription start (bp)`, centre, y + 76 + rowRightEdges.length * 18, {
       'text-anchor': 'middle', fill: COLORS.ink, 'font-size': 12,
     });
+    return y + 90 + rowRightEdges.length * 18;
   }
 
   function drawTranscriptModels(
@@ -447,6 +448,7 @@
       });
     }
     addText(svg, label, 531, y + 47, { 'text-anchor': 'middle', fill: COLORS.ink, 'font-size': 12 });
+    return y + 60;
   }
 
   function inaccessibleRuns(records) {
@@ -591,7 +593,7 @@
 
   function renderSignalPlot(
     container, result, annotation = null, transcriptAnnotations = null,
-    resolution = 'adaptive', displayRange = null, rangeSelection = null,
+    resolution = 'adaptive', displayRange = null, rangeSelection = null, selectedGuide = null,
   ) {
     const summary = summarizeSignals(result, annotation, resolution, displayRange);
     const hasAnnotation = Boolean(summary.annotation);
@@ -614,9 +616,7 @@
     );
     const hasAnnotationTracks = annotationModels.length > 0;
     const width = 1000;
-    const height = hasAnnotationTracks
-      ? Math.max(700, 592 + annotationModels.length * 24)
-      : 520;
+    const minimumHeight = 520;
     const plotLeft = hasAnnotationTracks ? 115 : 86;
     const plotRight = 976;
     const plotWidth = plotRight - plotLeft;
@@ -624,8 +624,9 @@
     const csHeight = 230;
     const snpTop = 340;
     const snpHeight = 105;
+    let contentBottom = snpTop + snpHeight;
     const svg = svgElement('svg', {
-      viewBox: `0 0 ${width} ${height}`,
+      viewBox: `0 0 ${width} ${minimumHeight}`,
       role: 'img',
       'aria-label': `Binned conservation and SNP-density tracks for ${result.chromosome}:${summary.displayStart}-${summary.displayEnd}`,
       class: 'live-svg signal-svg',
@@ -684,7 +685,7 @@
       const onlyQueriedModel = annotationModels.length === 1
         && annotationModels[0].transcript_id === summary.annotation.transcript_id;
       if (annotationModels.length && !onlyQueriedModel) {
-        drawTranscriptModels(
+        contentBottom = drawTranscriptModels(
           svg, summary.annotation, annotationModels, xScale, 478,
           summary.minimum, summary.maximum,
           {
@@ -696,15 +697,15 @@
           },
         );
       } else if (onlyQueriedModel) {
-        drawGeneModel(svg, summary.annotation, xScale, 490, summary.minimum, summary.maximum);
+        contentBottom = drawGeneModel(svg, summary.annotation, xScale, 490, summary.minimum, summary.maximum);
       } else {
-        drawXAxis(
+        contentBottom = drawXAxis(
           svg, xScale, summary.minimum, summary.maximum, snpTop + snpHeight,
           `Position relative to ${summary.annotation.id} transcription start (bp)`,
         );
       }
     } else if (hasAnnotationTracks) {
-      drawTranscriptModels(
+      contentBottom = drawTranscriptModels(
         svg, displayAnnotation, annotationModels, xScale, 478,
         summary.minimum, summary.maximum,
         {
@@ -717,7 +718,7 @@
         },
       );
     } else {
-      drawXAxis(
+      contentBottom = drawXAxis(
         svg, xScale, summary.minimum, summary.maximum, snpTop + snpHeight,
         `Position in plotted region (bp; Chromosome ${result.chromosome}: ${summary.displayStart.toLocaleString()}–${summary.displayEnd.toLocaleString()})`,
       );
@@ -729,6 +730,9 @@
     addLegendItem(svg, 565, snpTop + 20, 'Mean SNP (accessible bases)', { line: true, color: COLORS.snp });
     addLegendItem(svg, 785, snpTop + 20, 'QC failed / unknown', { color: COLORS.unknown, opacity: 0.3 });
 
+    const guideOverlayTop = contentBottom + 4;
+    svg.setAttribute('viewBox', `0 0 ${width} ${Math.max(minimumHeight, contentBottom + 20)}`);
+    global.AgamCsGuides?.drawOverlay(svg, selectedGuide, summary, xScale, plotLeft, plotRight, csTop, snpTop + snpHeight, guideOverlayTop, true);
     container.replaceChildren(svg);
     installSignalTooltip(container, svg, summary, xScale, plotLeft, plotWidth, csTop, snpTop + snpHeight);
     installPlotRangeSelector(
@@ -836,7 +840,7 @@
   function renderHeatmap(
     container, result, annotation = null, transcriptAnnotations = null,
     resolution = 'adaptive', displayRange = null, rangeSelection = null,
-    displayOptions = null,
+    displayOptions = null, selectedGuide = null,
   ) {
     const baseSummary = summarizeHeatmap(result, annotation, resolution, displayRange);
     validateSpeciesTopology(result.stackTopology, result.stackRows);
@@ -1021,6 +1025,7 @@
       );
     }
 
+    global.AgamCsGuides?.drawOverlay(svg, selectedGuide, summary, xScale, plotLeft, plotRight, rowTop, rowTop + plotHeight, height);
     container.replaceChildren(svg);
     installHeatmapTooltip(container, svg, summary, displayedRows, plotLeft, plotWidth, rowTop, rowHeight);
     installPlotRangeSelector(
