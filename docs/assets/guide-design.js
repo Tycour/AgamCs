@@ -2,7 +2,7 @@
   const api = factory(); root.AgamCsGuides = api;
   if (typeof module === 'object' && module.exports) module.exports = api;
 }(globalThis, () => {
-  const SCHEMA = 'agamcs-guide-catalogue-v1';
+  const SCHEMA = 'agamcs-guide-catalogue-v2';
   const SORT_FIELDS = {
     tool_rank: { key: 'tool_rank', direction: 'asc' },
     start: { key: 'start', direction: 'asc' },
@@ -45,6 +45,14 @@
           || g.spacer_end - g.spacer_start !== 19 || g.pam_end - g.pam_start !== 2
           || (g.strand === '+' ? g.spacer_start !== g.start || g.pam_end !== g.end || g.spacer_end + 1 !== g.pam_start
             : g.pam_start !== g.start || g.spacer_end !== g.end || g.pam_end + 1 !== g.spacer_start)) throw new Error('Invalid guide geometry or sequence.');
+        if (typeof g.sequence_context !== 'string' || !/^[ACGTN]+$/.test(g.sequence_context)
+          || !Number.isSafeInteger(g.sequence_context_start)
+          || g.sequence_context_start < region.start || g.sequence_context_start > g.start
+          || g.sequence_context_start + g.sequence_context.length <= g.end
+          || g.sequence_context_start + g.sequence_context.length > region.end + 1) throw new Error('Invalid guide reference sequence context.');
+        const target = g.sequence_context.slice(g.start - g.sequence_context_start, g.start - g.sequence_context_start + 23);
+        const reverseTarget = target.replace(/[ACGT]/g, (base) => ({ A:'T', C:'G', G:'C', T:'A' })[base]).split('').reverse().join('');
+        if ((g.strand === '+' ? target : reverseTarget) !== `${g.spacer}${g.pam}`) throw new Error('Guide sequence does not match its reference context.');
         ids.add(g.id);
       }
     }
@@ -125,7 +133,7 @@
     const x = Math.max(left, Math.min(...positions)); const edge = Math.min(right, Math.max(...positions));
     return { x, width: Math.min(right - x, Math.max(1, edge - x)) };
   }
-  function drawOverlay(svg, guide, summary, xScale, left, right, top, bottom, height) {
+  function drawOverlay(svg, guide, summary, xScale, left, right, top, bottom, height, showReferenceSequence = false) {
     if (!guide) return;
     const el = (tag, attrs = {}, text = '') => { const node = document.createElementNS('http://www.w3.org/2000/svg', tag); Object.entries(attrs).forEach(([k,v]) => node.setAttribute(k, v)); node.textContent = text; return node; };
     const annotation = summary.annotation;
@@ -147,9 +155,29 @@
     const seq = el('text', { x: left, y: height + 51, 'font-size': 14, 'font-family': 'monospace' });
     seq.append(el('tspan', { fill: '#007f88' }, `5′ ${guide.spacer} `), el('tspan', { fill: '#bf5b00', 'font-weight': 700 }, `${guide.pam} 3′`));
     group.append(seq, el('text', { x: left, y: height + 70, fill: '#526369', 'font-size': 11 }, 'Teal: 20-base spacer · orange: NGG PAM · sequence shown in guide orientation'));
+    if (showReferenceSequence) {
+      group.append(el('text', { x: left, y: height + 92, fill: '#526369', 'font-size': 11 }, 'Reference + strand sequence (aligned to genomic positions):'));
+      const context = guide.sequence_context || '';
+      const contextStart = guide.sequence_context_start;
+      const pixelsPerBase = Math.abs(xScale(map(contextStart + 1)) - xScale(map(contextStart)));
+      if (context && pixelsPerBase >= 8) {
+        for (let index = 0; index < context.length; index += 1) {
+          const position = contextStart + index;
+          if (position < range.start || position > range.end) continue;
+          const fill = position >= guide.spacer_start && position <= guide.spacer_end ? '#007f88'
+            : position >= guide.pam_start && position <= guide.pam_end ? '#bf5b00' : '#263b40';
+          group.append(el('text', { x: xScale(map(position)), y: height + 112, fill, 'font-size': 12,
+            'font-family': 'monospace', 'font-weight': fill === '#263b40' ? 400 : 700, 'text-anchor': 'middle',
+            'class': 'guide-reference-base', 'data-position': position }, context[index]));
+        }
+      } else {
+        group.append(el('text', { x: left, y: height + 112, fill: '#526369', 'font-size': 11 },
+          context ? 'Zoom to the guide to read individual bases.' : 'Reference sequence context unavailable.'));
+      }
+    }
     svg.append(group);
     const width = svg.getAttribute('viewBox').split(/\s+/)[2];
-    svg.setAttribute('viewBox', `0 0 ${width} ${height + 86}`);
+    svg.setAttribute('viewBox', `0 0 ${width} ${height + (showReferenceSequence ? 128 : 86)}`);
   }
   return { SCHEMA, SORT_FIELDS, FILTER_FIELDS, validateCatalogue, guidesForQuery, contextualize, summarizeBases, asTsv, sortGuides, filterGuides, clippedSegment, drawOverlay };
 }));

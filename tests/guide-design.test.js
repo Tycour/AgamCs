@@ -15,6 +15,13 @@ test('catalogue preserves native order, full geometry and explicit bounded cover
     const scores = r.guides.map((g) => g.mit_specificity).filter((v) => v !== null);
     assert.deepEqual(scores, [...scores].sort((a,b) => b-a));
     for (const g of r.guides) assert.equal(g.off_target_count, g.mismatch_counts.reduce((a,b) => a+b,0));
+    for (const g of r.guides) {
+      const offset = g.start - g.sequence_context_start;
+      const target = g.sequence_context.slice(offset, offset + 23);
+      const reverse = (value) => value.replace(/[ACGT]/g, (base) => ({ A:'T', C:'G', G:'C', T:'A' })[base]).split('').reverse().join('');
+      assert.equal(g.strand === '+' ? target : reverse(target), g.spacer + g.pam);
+      assert.ok(offset >= 0 && offset + 23 <= g.sequence_context.length);
+    }
   }
 });
 test('no catalogue coverage is distinct from a covered interval with no guides', () => {

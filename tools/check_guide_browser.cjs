@@ -56,6 +56,10 @@ const catalogue = require('../docs/assets/data/guide-catalogue.json');
     assert.equal(tsv.trim().split('\n').length,198); assert.ok(tsv.includes('pam_mean_snp_density')); assert.ok(tsv.includes('display_order'));
     await page.locator('#guide-details button').click();
     await page.waitForFunction(() => Number(document.querySelector('#plot-range-end').value) - Number(document.querySelector('#plot-range-start').value) <= 62);
+    await page.waitForFunction(() => document.querySelectorAll('#live-signal-plot .guide-reference-base').length >= 43);
+    assert.equal(await page.locator('#live-heatmap-plot .guide-reference-base').count(),0);
+    const zoomedSvg = await page.evaluate(async () => (await fetch(document.querySelector('#live-signal-download').href)).text());
+    assert.ok(zoomedSvg.includes('Reference + strand sequence')); assert.ok(zoomedSvg.includes('guide-reference-base'));
     assert.equal(await page.locator('#guide-body tr').count(),197);
     await page.locator('#plot-range-reset').click();
     if (process.env.GUIDE_SCREENSHOTS) {

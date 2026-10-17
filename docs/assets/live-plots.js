@@ -729,7 +729,7 @@
     addLegendItem(svg, 565, snpTop + 20, 'Mean SNP (accessible bases)', { line: true, color: COLORS.snp });
     addLegendItem(svg, 785, snpTop + 20, 'QC failed / unknown', { color: COLORS.unknown, opacity: 0.3 });
 
-    global.AgamCsGuides?.drawOverlay(svg, selectedGuide, summary, xScale, plotLeft, plotRight, csTop, snpTop + snpHeight, height);
+    global.AgamCsGuides?.drawOverlay(svg, selectedGuide, summary, xScale, plotLeft, plotRight, csTop, snpTop + snpHeight, height, true);
     container.replaceChildren(svg);
     installSignalTooltip(container, svg, summary, xScale, plotLeft, plotWidth, csTop, snpTop + snpHeight);
     installPlotRangeSelector(

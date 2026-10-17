@@ -38,6 +38,8 @@ class CatalogueTests(unittest.TestCase):
                 self.assertEqual(g['pam_start'],100 if reverse else 120)
                 self.assertEqual(g['spacer_start'],103 if reverse else 100)
                 self.assertEqual(g['exact_matches'],1)
+                self.assertEqual(g['sequence_context_start'],region['start'])
+                self.assertEqual(g['sequence_context'],region['sequence'])
             region['sequence']='G'+region['sequence'][1:]
             with self.assertRaisesRegex(ValueError,'sequence'):module.import_region(region,directory)
 

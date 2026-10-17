@@ -13,7 +13,7 @@ import json
 import re
 from pathlib import Path
 
-SCHEMA = 'agamcs-guide-catalogue-v1'
+SCHEMA = 'agamcs-guide-catalogue-v2'
 IMAGE = 'sha256:5f4d6c35a67974f012b4d62267174bc15a346b211e86b4426d99bb49de764294'
 
 def reverse_complement(sequence):
@@ -90,9 +90,13 @@ def import_region(region, directory):
             warnings.append('Poly-T stretch (4+ bases)')
         if row.get('GrafEtAlStatus') not in (None, 'GrafOK'):
             warnings.append({'tt': 'CRISPOR TT-motif warning', 'gcc': 'CRISPOR GCC-motif warning'}.get(row['GrafEtAlStatus'], 'CRISPOR motif warning: '+row['GrafEtAlStatus']))
+        context_start = max(0, offset-20)
+        context_end = min(len(sequence), offset+23+20)
         guides.append(dict(id=region['id']+':'+row['guideId'], tool_rank=rank,
             chromosome=region['chromosome'], start=start, end=end, strand=strand,
             spacer_start=spacer_start, spacer_end=spacer_end, pam_start=pam_start, pam_end=pam_end,
+            sequence_context_start=region['start']+context_start,
+            sequence_context=sequence[context_start:context_end],
             spacer=target[:20], pam=target[20:], mit_specificity=score,
             cfd_specificity=number(row['cfdSpecScore']), activity_doench2016=number(row["Doench '16-Score"]),
             exact_matches=exact_matches, off_target_count=sum(histogram), mismatch_counts=histogram,
