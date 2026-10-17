@@ -77,8 +77,8 @@
         choose.setAttribute('aria-label', `Select CRISPOR guide ${g.tool_rank}: ${g.spacer} ${g.pam}`); choose.setAttribute('aria-pressed', 'false'); choose.addEventListener('click', () => select(g));
         const rank = element('td', ''); rank.append(choose);
         const seq = element('td', ''); seq.append(sequence(g), element('small', `${g.chromosome}:${g.start}–${g.end} (${g.strand})`));
-        const cs = element('td', numeric(g.spacer_context.mean_cs, 3)); cs.append(element('small', `${g.spacer_context.finite_cs_bases}/20 valid bases`));
-        const snp = element('td', numeric(g.spacer_context.mean_snp_density, 4)); snp.append(element('small', `${g.spacer_context.finite_accessible_snp_bases}/20 valid accessible bases`));
+        const cs = element('td', numeric(g.spacer_context.mean_cs, 3));
+        const snp = element('td', numeric(g.spacer_context.mean_snp_density, 4));
         row.append(rank, seq, element('td', numeric(g.mit_specificity, 0)), element('td', numeric(g.cfd_specificity, 0)), element('td', numeric(g.activity_doench2016, 0)), cs, snp,
           element('td', g.exact_matches == null ? 'Unknown' : String(g.exact_matches)), element('td', g.off_target_count == null ? 'Unknown' : String(g.off_target_count)),
           element('td', numeric(g.gc_percent, 1)), element('td', g.warnings.join('; ') || '—', g.warnings.length ? 'guide-warning' : ''));

@@ -204,40 +204,6 @@
           <div><dt>Annotation</dt><dd id="resolved-annotation">—</dd></div>
           <div><dt>Index</dt><dd id="resolved-index-version">—</dd></div>
         </dl>
-        <section class="guide-panel" id="guide-panel" aria-labelledby="guide-heading">
-          <div class="query-summary-heading"><div><p class="eyebrow">Optional · prototype</p><h3 id="guide-heading">Explore CRISPR guides</h3><p>20-base spacers with an NGG PAM. Choose a guide to inspect conservation and variation at its binding site.</p></div></div>
-          <div class="guide-controls"><label><input type="checkbox" id="guide-enable"> Explore guides in this interval</label><label><input type="checkbox" id="guide-overlay"> Show selected guide and PAM on both figures</label></div>
-          <p id="guide-status" role="status">Run a query to explore guides.</p>
-          <div id="guide-examples" class="guide-examples"><span>Prototype examples:</span><button type="button" data-region="2L:1000000-1000999">Benchmark locus</button><button type="button" data-region="2L:28585064-28586748">AGAP006241</button><button type="button" data-region="3L:3855186-3858609">AGAP010449</button><button type="button" data-region="3R:38377342-38377436">AGAP009678</button></div>
-          <div id="guide-content" hidden>
-            <p class="field-help">Sequences are written 5′→3′ in guide orientation; the orange triplet is the PAM. Activity is a Doench 2016 prediction, not measured activity in Anopheles. Guides with repeated exact matches remain visible with warnings.</p>
-            <details class="guide-filters">
-              <summary>Filter by metric or sequence</summary>
-              <p class="field-help">Set a minimum, maximum, or both for any numeric column. A bound excludes guides where that metric is unavailable. Bounds include their endpoints.</p>
-              <fieldset><legend>Numeric ranges</legend><div id="guide-filter-grid" class="guide-filter-grid"></div></fieldset>
-              <label for="guide-filter-text">Sequence, chromosome, strand, or warning contains
-                <input id="guide-filter-text" type="search" placeholder="For example, exact reference matches">
-              </label>
-            </details>
-            <p id="guide-view-status" role="status" aria-live="polite"></p>
-            <div class="guide-table-scroll" tabindex="0" aria-label="Scored guides; select a column heading to sort"><table class="query-summary-table guide-table"><thead id="guide-table-head"><tr>
-              <th scope="col" data-sort="tool_rank" aria-sort="ascending"><button type="button" data-sort="tool_rank" class="guide-sort-header" aria-label="Sort by CRISPOR order">CRISPOR order <span aria-hidden="true">↑</span></button></th>
-              <th scope="col" data-sort="start" aria-sort="none"><button type="button" data-sort="start" class="guide-sort-header" aria-label="Sort by genomic position">Spacer + PAM / location</button></th>
-              <th scope="col" data-sort="mit_specificity" aria-sort="none"><button type="button" data-sort="mit_specificity" class="guide-sort-header" aria-label="Sort by MIT specificity">MIT specificity</button></th>
-              <th scope="col" data-sort="cfd_specificity" aria-sort="none"><button type="button" data-sort="cfd_specificity" class="guide-sort-header" aria-label="Sort by CFD specificity">CFD specificity</button></th>
-              <th scope="col" data-sort="activity_doench2016" aria-sort="none"><button type="button" data-sort="activity_doench2016" class="guide-sort-header" aria-label="Sort by predicted activity">Predicted activity</button></th>
-              <th scope="col" data-sort="spacer_mean_cs" aria-sort="none"><button type="button" data-sort="spacer_mean_cs" class="guide-sort-header" aria-label="Sort by spacer mean Cs">Spacer mean Cs</button></th>
-              <th scope="col" data-sort="spacer_mean_snp_density" aria-sort="none"><button type="button" data-sort="spacer_mean_snp_density" class="guide-sort-header" aria-label="Sort by spacer mean SNP density">Spacer mean SNP density</button></th>
-              <th scope="col" data-sort="exact_matches" aria-sort="none"><button type="button" data-sort="exact_matches" class="guide-sort-header" aria-label="Sort by exact reference matches">Exact matches</button></th>
-              <th scope="col" data-sort="off_target_count" aria-sort="none"><button type="button" data-sort="off_target_count" class="guide-sort-header" aria-label="Sort by off-target count">Off-target count</button></th>
-              <th scope="col" data-sort="gc_percent" aria-sort="none"><button type="button" data-sort="gc_percent" class="guide-sort-header" aria-label="Sort by spacer GC percent">Spacer GC %</button></th>
-              <th scope="col" data-sort="warnings" aria-sort="none"><button type="button" data-sort="warnings" class="guide-sort-header" aria-label="Sort by warnings">Warnings</button></th>
-            </tr></thead><tbody id="guide-body"></tbody></table></div>
-            <div id="guide-details" class="guide-details" aria-live="polite" hidden></div>
-            <div class="report-actions"><a class="button secondary" id="guide-download" download hidden>Download guide TSV</a><a class="button secondary" id="guide-json-download" download hidden>Download guide report (JSON)</a></div>
-            <p class="summary-method">Click a column heading to sort by that value; click it again to reverse the order. Cs means use finite bases. SNP means use valid accessible focal bases and retain the source’s centred 20-base rolling density; they are not counts of variants within the guide. Unknown bases are not zero. Spacer and PAM summaries are separate in the selected-guide details and downloads. These contextual values do not alter CRISPOR scores. Guide selection is recorded in the separate guide report, not the general query permalink/report.</p>
-          </div>
-        </section>
         <div class="live-visuals" id="live-visuals" hidden>
           <div class="live-visual-heading">
             <div>
@@ -254,6 +220,43 @@
             <div class="live-plot" id="live-signal-plot"></div>
             <a class="download-link figure-download" id="live-signal-download" hidden download>Download Cs + SNP/QC figure (SVG)</a>
           </section>
+          <details class="guide-disclosure" id="guide-disclosure">
+            <summary>Explore CRISPR guides <span>Optional · 20-base spacers with NGG PAM</span></summary>
+            <section class="guide-panel" id="guide-panel" aria-label="CRISPR guide settings" hidden>
+              <p class="field-help">Choose a 20-base NGG guide to inspect conservation and variation at its binding site.</p>
+              <div class="guide-controls"><label><input type="checkbox" id="guide-enable"> Explore guides in this interval</label><label><input type="checkbox" id="guide-overlay"> Show selected guide and PAM on both figures</label></div>
+              <p id="guide-status" role="status">Run a query to explore guides.</p>
+              <div id="guide-examples" class="guide-examples"><span>Prototype examples:</span><button type="button" data-region="2L:1000000-1000999">Benchmark locus</button><button type="button" data-region="2L:28585064-28586748">AGAP006241</button><button type="button" data-region="3L:3855186-3858609">AGAP010449</button><button type="button" data-region="3R:38377342-38377436">AGAP009678</button></div>
+              <div id="guide-content" hidden>
+                <p class="field-help">Sequences are written 5′→3′ in guide orientation; the orange triplet is the PAM. Activity is a Doench 2016 prediction, not measured activity in Anopheles. Guides with repeated exact matches remain visible with warnings.</p>
+                <details class="guide-filters">
+                  <summary>Filter by metric or sequence</summary>
+                  <p class="field-help">Set a minimum, maximum, or both for any numeric column. A bound excludes guides where that metric is unavailable. Bounds include their endpoints.</p>
+                  <fieldset><legend>Numeric ranges</legend><div id="guide-filter-grid" class="guide-filter-grid"></div></fieldset>
+                  <label for="guide-filter-text">Sequence, chromosome, strand, or warning contains
+                    <input id="guide-filter-text" type="search" placeholder="For example, exact reference matches">
+                  </label>
+                </details>
+                <p id="guide-view-status" role="status" aria-live="polite"></p>
+                <div class="guide-table-scroll" tabindex="0" aria-label="Scored guides; select a column heading to sort"><table class="query-summary-table guide-table"><thead id="guide-table-head"><tr>
+                  <th scope="col" data-sort="tool_rank" aria-sort="ascending"><button type="button" data-sort="tool_rank" class="guide-sort-header" aria-label="Sort by CRISPOR order">CRISPOR order <span aria-hidden="true">↑</span></button></th>
+                  <th scope="col" data-sort="start" aria-sort="none"><button type="button" data-sort="start" class="guide-sort-header" aria-label="Sort by genomic position">Spacer + PAM / location</button></th>
+                  <th scope="col" data-sort="mit_specificity" aria-sort="none"><button type="button" data-sort="mit_specificity" class="guide-sort-header" aria-label="Sort by MIT specificity">MIT specificity</button></th>
+                  <th scope="col" data-sort="cfd_specificity" aria-sort="none"><button type="button" data-sort="cfd_specificity" class="guide-sort-header" aria-label="Sort by CFD specificity">CFD specificity</button></th>
+                  <th scope="col" data-sort="activity_doench2016" aria-sort="none"><button type="button" data-sort="activity_doench2016" class="guide-sort-header" aria-label="Sort by predicted activity">Predicted activity</button></th>
+                  <th scope="col" data-sort="spacer_mean_cs" aria-sort="none"><button type="button" data-sort="spacer_mean_cs" class="guide-sort-header" aria-label="Sort by spacer mean Cs">Spacer mean Cs</button></th>
+                  <th scope="col" data-sort="spacer_mean_snp_density" aria-sort="none"><button type="button" data-sort="spacer_mean_snp_density" class="guide-sort-header" aria-label="Sort by spacer mean SNP density">Spacer mean SNP density</button></th>
+                  <th scope="col" data-sort="exact_matches" aria-sort="none"><button type="button" data-sort="exact_matches" class="guide-sort-header" aria-label="Sort by exact reference matches">Exact matches</button></th>
+                  <th scope="col" data-sort="off_target_count" aria-sort="none"><button type="button" data-sort="off_target_count" class="guide-sort-header" aria-label="Sort by off-target count">Off-target count</button></th>
+                  <th scope="col" data-sort="gc_percent" aria-sort="none"><button type="button" data-sort="gc_percent" class="guide-sort-header" aria-label="Sort by spacer GC percent">Spacer GC %</button></th>
+                  <th scope="col" data-sort="warnings" aria-sort="none"><button type="button" data-sort="warnings" class="guide-sort-header" aria-label="Sort by warnings">Warnings</button></th>
+                </tr></thead><tbody id="guide-body"></tbody></table></div>
+                <div id="guide-details" class="guide-details" aria-live="polite" hidden></div>
+                <div class="report-actions"><a class="button secondary" id="guide-download" download hidden>Download guide TSV</a><a class="button secondary" id="guide-json-download" download hidden>Download guide report (JSON)</a></div>
+                <p class="summary-method">Click a column heading to sort by that value; click it again to reverse the order. Cs means use finite bases. SNP means use valid accessible focal bases and retain the source’s centred 20-base rolling density; they are not counts of variants within the guide. Unknown bases are not zero. Spacer and PAM summaries are separate in the selected-guide details and downloads. These contextual values do not alter CRISPOR scores. Guide selection is recorded in the separate guide report, not the general query permalink/report.</p>
+              </div>
+            </section>
+          </details>
           <section class="live-figure-section" id="live-heatmap-panel" aria-labelledby="live-heatmap-heading">
             <header class="live-figure-title">
               <div><span>Figure 2</span><h4 id="live-heatmap-heading">Species identity heatmap</h4></div>

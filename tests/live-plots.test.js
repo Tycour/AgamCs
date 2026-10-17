@@ -556,6 +556,11 @@ test('figure-first results expose both plots before rankings and supporting deta
   assert.match(html, /<h4 id="live-heatmap-heading">Species identity heatmap<\/h4>/);
   assert.doesNotMatch(html, /aria-label="Query figures"/);
   assert.doesNotMatch(html, /id="live-heatmap-panel"[^>]*hidden/);
+  assert.ok(html.indexOf('id="guide-disclosure"') > html.indexOf('id="live-signals-panel"'));
+  assert.ok(html.indexOf('id="guide-disclosure"') < html.indexOf('id="live-heatmap-panel"'));
+  assert.match(html, /<details class="guide-disclosure" id="guide-disclosure">/);
+  assert.doesNotMatch(html, /<details class="guide-disclosure" id="guide-disclosure" open>/);
+  assert.match(fs.readFileSync(path.join(__dirname, '../docs/assets/guide-panel.js'), 'utf8'), /const cs = element\('td', numeric\(g\.spacer_context\.mean_cs, 3\)\);\s*const snp = element\('td', numeric\(g\.spacer_context\.mean_snp_density, 4\)\);/);
   assert.match(source, /function formatResolutionLabel\(resolution\)/);
   assert.match(source, /setPortalState\(resolution \? formatResolutionLabel\(resolution\)/);
 });
