@@ -2,13 +2,15 @@
 
 This branch adds an optional guide table, separate conservation/variation context, and a selected-guide/PAM overlay on both existing figures and their SVG exports. It replaces the notable 100-base windows panel. The older notable-window calculation remains in the existing versioned query reports for compatibility; guide results have dedicated TSV and JSON exports. Guide selection is not yet included in general query permalinks.
 
+**Production scoring limitation found during scaling:** CRISPOR excludes every perfect match inside its submitted input interval from off-target scoring. When the same spacer has another perfect match within that interval, the current importer adds back only one intended site; reported exact-match counts can therefore be underestimated and scores depend on the source batch. The scale benchmark reproduced this for eight shared guides when expanding a 1 kb input to 5 kb. A production catalogue must identify one intended locus per guide and validate batch-independent results before full-genome scoring. See [the scale benchmark](guide-scale-benchmark.md) for the measured scope, evidence and next steps. This bounded preview retains the native exported outputs.
+
 ## Accepted scientific behaviour
 
 - General guide exploration, with no gene-drive-specific assumptions.
 - 20-base spacers and NGG PAMs only. Candidate discovery and off-target evidence both use NGG for this release. This narrower search does not assess alternative PAMs or DNA/RNA bulges.
 - CRISPOR alone supplies ranking and predictions. Preserve its native export order: descending MIT specificity, including its tie order. No weighted combination with Cs, SNP density or activity; no hard activity or sequence-quality filter.
 - Show every complete spacer plus PAM within the queried interval. No gene/exon/transcript filter. Ranks in a subinterval retain their original source-batch numbers.
-- Keep guides with multiple exact reference matches visible with warnings. Exact-match counts include the intended site, while the exported mismatch histogram excludes it. Missing specificity is unknown; do not infer unique targeting from it.
+- Keep guides with multiple exact reference matches visible with warnings. The current importer adds one intended site to CRISPOR's exported zero-mismatch count; the limitation above applies if the input interval contains multiple perfect matches. Missing specificity is unknown; do not infer unique targeting from it.
 - Display Doench 2016 activity predictions without implying validation in Anopheles. GC, poly-T and CRISPOR motif warnings are contextual.
 - Show separate spacer (20-base) and PAM (3-base) Cs/SNP summaries. Cs uses finite positions. SNP uses finite values at accessible focal bases (`status & 1`), with explicit denominators. The archived SNP value is already a centred 20-base rolling density: its mean is not a guide-specific variant count, and does not establish population invariance. No additional accessibility threshold hides guides.
 - No candidate variants other than the supplied reference are searched. Unplaced/alternative sequence records remain included in the full reference. Assembly redundancy and activity in the intended experimental system remain unvalidated.

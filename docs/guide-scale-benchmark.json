@@ -1,0 +1,2729 @@
+{
+  "reference": {
+    "reference_sha256": "dd0d2bf6fd9913a7887873753306bd14db399552a5703a099aea0af055c8b505",
+    "reference_records": [
+      {
+        "name": "AgamP4_2L",
+        "bases": 49364325,
+        "unknown_bases": 838578,
+        "candidates": 4635592,
+        "strand_counts": {
+          "+": 2316766,
+          "-": 2318826
+        },
+        "queryable": true,
+        "owned_candidates_per_10kb_tile": {
+          "min": 0,
+          "p50": 962,
+          "p95": 1177,
+          "p99": 1278,
+          "max": 1658
+        },
+        "owned_candidates_per_aligned_200kb_span": {
+          "min": 11514,
+          "p50": 19297,
+          "p95": 21699,
+          "p99": 22384,
+          "max": 23040
+        }
+      },
+      {
+        "name": "AgamP4_2R",
+        "bases": 61545105,
+        "unknown_bases": 1412652,
+        "candidates": 5914055,
+        "strand_counts": {
+          "+": 2955835,
+          "-": 2958220
+        },
+        "queryable": true,
+        "owned_candidates_per_10kb_tile": {
+          "min": 0,
+          "p50": 985,
+          "p95": 1228,
+          "p99": 1331,
+          "max": 1569
+        },
+        "owned_candidates_per_aligned_200kb_span": {
+          "min": 9786,
+          "p50": 19809,
+          "p95": 22748,
+          "p99": 23393,
+          "max": 23589
+        }
+      },
+      {
+        "name": "AgamP4_3L",
+        "bases": 41963435,
+        "unknown_bases": 1204962,
+        "candidates": 3789640,
+        "strand_counts": {
+          "+": 1891557,
+          "-": 1898083
+        },
+        "queryable": true,
+        "owned_candidates_per_10kb_tile": {
+          "min": 0,
+          "p50": 921,
+          "p95": 1174,
+          "p99": 1275,
+          "max": 1518
+        },
+        "owned_candidates_per_aligned_200kb_span": {
+          "min": 9442,
+          "p50": 18633,
+          "p95": 21627,
+          "p99": 22400,
+          "max": 22706
+        }
+      },
+      {
+        "name": "AgamP4_3R",
+        "bases": 53200684,
+        "unknown_bases": 974116,
+        "candidates": 4913824,
+        "strand_counts": {
+          "+": 2460906,
+          "-": 2452918
+        },
+        "queryable": true,
+        "owned_candidates_per_10kb_tile": {
+          "min": 0,
+          "p50": 937,
+          "p95": 1170,
+          "p99": 1262,
+          "max": 1783
+        },
+        "owned_candidates_per_aligned_200kb_span": {
+          "min": 10876,
+          "p50": 18899,
+          "p95": 21749,
+          "p99": 23185,
+          "max": 23402
+        }
+      },
+      {
+        "name": "AgamP4_UNKN",
+        "bases": 42389979,
+        "unknown_bases": 15114991,
+        "candidates": 2288938,
+        "strand_counts": {
+          "+": 1140929,
+          "-": 1148009
+        },
+        "queryable": false
+      },
+      {
+        "name": "AgamP4_X",
+        "bases": 24393108,
+        "unknown_bases": 1007759,
+        "candidates": 2367472,
+        "strand_counts": {
+          "+": 1186000,
+          "-": 1181472
+        },
+        "queryable": true,
+        "owned_candidates_per_10kb_tile": {
+          "min": 0,
+          "p50": 996,
+          "p95": 1285,
+          "p99": 1398,
+          "max": 1580
+        },
+        "owned_candidates_per_aligned_200kb_span": {
+          "min": 9995,
+          "p50": 20164,
+          "p95": 22942,
+          "p99": 23875,
+          "max": 24204
+        }
+      },
+      {
+        "name": "AgamP4_Y_unplaced",
+        "bases": 237045,
+        "unknown_bases": 101890,
+        "candidates": 8025,
+        "strand_counts": {
+          "+": 3989,
+          "-": 4036
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01000047",
+        "bases": 21505,
+        "unknown_bases": 7136,
+        "candidates": 1298,
+        "strand_counts": {
+          "+": 558,
+          "-": 740
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01000163",
+        "bases": 28420,
+        "unknown_bases": 10021,
+        "candidates": 1678,
+        "strand_counts": {
+          "+": 880,
+          "-": 798
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01000448",
+        "bases": 22809,
+        "unknown_bases": 6800,
+        "candidates": 1684,
+        "strand_counts": {
+          "+": 833,
+          "-": 851
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01000791",
+        "bases": 62303,
+        "unknown_bases": 20200,
+        "candidates": 3642,
+        "strand_counts": {
+          "+": 1714,
+          "-": 1928
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01000813",
+        "bases": 74087,
+        "unknown_bases": 10129,
+        "candidates": 7553,
+        "strand_counts": {
+          "+": 3736,
+          "-": 3817
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01000889",
+        "bases": 171618,
+        "unknown_bases": 34168,
+        "candidates": 13830,
+        "strand_counts": {
+          "+": 6679,
+          "-": 7151
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01000995",
+        "bases": 75498,
+        "unknown_bases": 8284,
+        "candidates": 6020,
+        "strand_counts": {
+          "+": 3426,
+          "-": 2594
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01001048",
+        "bases": 27234,
+        "unknown_bases": 143,
+        "candidates": 2877,
+        "strand_counts": {
+          "+": 1503,
+          "-": 1374
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01001056",
+        "bases": 69061,
+        "unknown_bases": 17178,
+        "candidates": 5568,
+        "strand_counts": {
+          "+": 2741,
+          "-": 2827
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01001122",
+        "bases": 23950,
+        "unknown_bases": 6471,
+        "candidates": 1881,
+        "strand_counts": {
+          "+": 898,
+          "-": 983
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01001548",
+        "bases": 147037,
+        "unknown_bases": 45046,
+        "candidates": 8561,
+        "strand_counts": {
+          "+": 4101,
+          "-": 4460
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01001654",
+        "bases": 24299,
+        "unknown_bases": 3512,
+        "candidates": 1894,
+        "strand_counts": {
+          "+": 913,
+          "-": 981
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01001687",
+        "bases": 47397,
+        "unknown_bases": 17874,
+        "candidates": 3237,
+        "strand_counts": {
+          "+": 1711,
+          "-": 1526
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01001960",
+        "bases": 26872,
+        "unknown_bases": 16411,
+        "candidates": 945,
+        "strand_counts": {
+          "+": 469,
+          "-": 476
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01002000",
+        "bases": 25156,
+        "unknown_bases": 12131,
+        "candidates": 1026,
+        "strand_counts": {
+          "+": 500,
+          "-": 526
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01002010",
+        "bases": 26527,
+        "unknown_bases": 18853,
+        "candidates": 822,
+        "strand_counts": {
+          "+": 403,
+          "-": 419
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01002124",
+        "bases": 52770,
+        "unknown_bases": 28159,
+        "candidates": 1667,
+        "strand_counts": {
+          "+": 816,
+          "-": 851
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01002209",
+        "bases": 72426,
+        "unknown_bases": 22418,
+        "candidates": 5389,
+        "strand_counts": {
+          "+": 2679,
+          "-": 2710
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01002438",
+        "bases": 20802,
+        "unknown_bases": 40,
+        "candidates": 1537,
+        "strand_counts": {
+          "+": 777,
+          "-": 760
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01002725",
+        "bases": 30046,
+        "unknown_bases": 11192,
+        "candidates": 2117,
+        "strand_counts": {
+          "+": 1068,
+          "-": 1049
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01002859",
+        "bases": 18847,
+        "unknown_bases": 4149,
+        "candidates": 1502,
+        "strand_counts": {
+          "+": 758,
+          "-": 744
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01002965",
+        "bases": 18189,
+        "unknown_bases": 4597,
+        "candidates": 1267,
+        "strand_counts": {
+          "+": 605,
+          "-": 662
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01003040",
+        "bases": 21078,
+        "unknown_bases": 1739,
+        "candidates": 1799,
+        "strand_counts": {
+          "+": 891,
+          "-": 908
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01003176",
+        "bases": 28928,
+        "unknown_bases": 17291,
+        "candidates": 1228,
+        "strand_counts": {
+          "+": 610,
+          "-": 618
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01003214",
+        "bases": 15761,
+        "unknown_bases": 3428,
+        "candidates": 1080,
+        "strand_counts": {
+          "+": 519,
+          "-": 561
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01003746",
+        "bases": 39693,
+        "unknown_bases": 29940,
+        "candidates": 703,
+        "strand_counts": {
+          "+": 377,
+          "-": 326
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01003776",
+        "bases": 30352,
+        "unknown_bases": 4836,
+        "candidates": 2558,
+        "strand_counts": {
+          "+": 1305,
+          "-": 1253
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01003846",
+        "bases": 44509,
+        "unknown_bases": 8464,
+        "candidates": 3829,
+        "strand_counts": {
+          "+": 1894,
+          "-": 1935
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01003945",
+        "bases": 25653,
+        "unknown_bases": 19945,
+        "candidates": 561,
+        "strand_counts": {
+          "+": 281,
+          "-": 280
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01004174",
+        "bases": 26646,
+        "unknown_bases": 6555,
+        "candidates": 2075,
+        "strand_counts": {
+          "+": 888,
+          "-": 1187
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01004182",
+        "bases": 40084,
+        "unknown_bases": 8836,
+        "candidates": 3276,
+        "strand_counts": {
+          "+": 1465,
+          "-": 1811
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01004310",
+        "bases": 21269,
+        "unknown_bases": 13599,
+        "candidates": 748,
+        "strand_counts": {
+          "+": 407,
+          "-": 341
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01004737",
+        "bases": 36366,
+        "unknown_bases": 16648,
+        "candidates": 1909,
+        "strand_counts": {
+          "+": 883,
+          "-": 1026
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01004940",
+        "bases": 23910,
+        "unknown_bases": 1746,
+        "candidates": 1763,
+        "strand_counts": {
+          "+": 824,
+          "-": 939
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01004946",
+        "bases": 20831,
+        "unknown_bases": 11680,
+        "candidates": 894,
+        "strand_counts": {
+          "+": 483,
+          "-": 411
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01005038",
+        "bases": 45499,
+        "unknown_bases": 928,
+        "candidates": 4458,
+        "strand_counts": {
+          "+": 2182,
+          "-": 2276
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01005199",
+        "bases": 27801,
+        "unknown_bases": 18588,
+        "candidates": 768,
+        "strand_counts": {
+          "+": 354,
+          "-": 414
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01005264",
+        "bases": 23259,
+        "unknown_bases": 10405,
+        "candidates": 927,
+        "strand_counts": {
+          "+": 459,
+          "-": 468
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01005725",
+        "bases": 23113,
+        "unknown_bases": 9930,
+        "candidates": 1366,
+        "strand_counts": {
+          "+": 664,
+          "-": 702
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01006018",
+        "bases": 50549,
+        "unknown_bases": 11193,
+        "candidates": 4110,
+        "strand_counts": {
+          "+": 2193,
+          "-": 1917
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01006019",
+        "bases": 28531,
+        "unknown_bases": 11535,
+        "candidates": 1068,
+        "strand_counts": {
+          "+": 576,
+          "-": 492
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01006111",
+        "bases": 28696,
+        "unknown_bases": 7334,
+        "candidates": 1744,
+        "strand_counts": {
+          "+": 792,
+          "-": 952
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01006141",
+        "bases": 30987,
+        "unknown_bases": 6690,
+        "candidates": 1951,
+        "strand_counts": {
+          "+": 864,
+          "-": 1087
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01006400",
+        "bases": 34757,
+        "unknown_bases": 7798,
+        "candidates": 2621,
+        "strand_counts": {
+          "+": 1261,
+          "-": 1360
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01006471",
+        "bases": 23080,
+        "unknown_bases": 10829,
+        "candidates": 997,
+        "strand_counts": {
+          "+": 427,
+          "-": 570
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01006483",
+        "bases": 52080,
+        "unknown_bases": 17395,
+        "candidates": 3437,
+        "strand_counts": {
+          "+": 1871,
+          "-": 1566
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01006502",
+        "bases": 20902,
+        "unknown_bases": 2319,
+        "candidates": 1454,
+        "strand_counts": {
+          "+": 653,
+          "-": 801
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01006515",
+        "bases": 75550,
+        "unknown_bases": 29996,
+        "candidates": 3402,
+        "strand_counts": {
+          "+": 1561,
+          "-": 1841
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01006539",
+        "bases": 46071,
+        "unknown_bases": 16609,
+        "candidates": 3243,
+        "strand_counts": {
+          "+": 1681,
+          "-": 1562
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007479",
+        "bases": 24942,
+        "unknown_bases": 11530,
+        "candidates": 1241,
+        "strand_counts": {
+          "+": 619,
+          "-": 622
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007519",
+        "bases": 71277,
+        "unknown_bases": 16903,
+        "candidates": 5434,
+        "strand_counts": {
+          "+": 2324,
+          "-": 3110
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007521",
+        "bases": 42569,
+        "unknown_bases": 5276,
+        "candidates": 3517,
+        "strand_counts": {
+          "+": 1752,
+          "-": 1765
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007528",
+        "bases": 24697,
+        "unknown_bases": 13009,
+        "candidates": 800,
+        "strand_counts": {
+          "+": 412,
+          "-": 388
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007540",
+        "bases": 27369,
+        "unknown_bases": 6240,
+        "candidates": 1563,
+        "strand_counts": {
+          "+": 855,
+          "-": 708
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007642",
+        "bases": 59500,
+        "unknown_bases": 12819,
+        "candidates": 4281,
+        "strand_counts": {
+          "+": 2231,
+          "-": 2050
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007663",
+        "bases": 53393,
+        "unknown_bases": 1383,
+        "candidates": 5083,
+        "strand_counts": {
+          "+": 2529,
+          "-": 2554
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007666",
+        "bases": 21694,
+        "unknown_bases": 5542,
+        "candidates": 1713,
+        "strand_counts": {
+          "+": 894,
+          "-": 819
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007668",
+        "bases": 23013,
+        "unknown_bases": 7342,
+        "candidates": 1342,
+        "strand_counts": {
+          "+": 758,
+          "-": 584
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007669",
+        "bases": 86350,
+        "unknown_bases": 26031,
+        "candidates": 5677,
+        "strand_counts": {
+          "+": 2922,
+          "-": 2755
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007770",
+        "bases": 15261,
+        "unknown_bases": 483,
+        "candidates": 940,
+        "strand_counts": {
+          "+": 426,
+          "-": 514
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007773",
+        "bases": 36155,
+        "unknown_bases": 766,
+        "candidates": 3692,
+        "strand_counts": {
+          "+": 1861,
+          "-": 1831
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007779",
+        "bases": 98603,
+        "unknown_bases": 13339,
+        "candidates": 9285,
+        "strand_counts": {
+          "+": 4630,
+          "-": 4655
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007780",
+        "bases": 23948,
+        "unknown_bases": 508,
+        "candidates": 1732,
+        "strand_counts": {
+          "+": 782,
+          "-": 950
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007781",
+        "bases": 30689,
+        "unknown_bases": 2744,
+        "candidates": 3118,
+        "strand_counts": {
+          "+": 1572,
+          "-": 1546
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007801",
+        "bases": 140901,
+        "unknown_bases": 14742,
+        "candidates": 12390,
+        "strand_counts": {
+          "+": 6260,
+          "-": 6130
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007859",
+        "bases": 143482,
+        "unknown_bases": 20893,
+        "candidates": 13920,
+        "strand_counts": {
+          "+": 7385,
+          "-": 6535
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007891",
+        "bases": 25627,
+        "unknown_bases": 1762,
+        "candidates": 2282,
+        "strand_counts": {
+          "+": 1166,
+          "-": 1116
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007893",
+        "bases": 55453,
+        "unknown_bases": 9861,
+        "candidates": 4040,
+        "strand_counts": {
+          "+": 2012,
+          "-": 2028
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007904",
+        "bases": 30768,
+        "unknown_bases": 3520,
+        "candidates": 2499,
+        "strand_counts": {
+          "+": 1257,
+          "-": 1242
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007920",
+        "bases": 21136,
+        "unknown_bases": 13151,
+        "candidates": 542,
+        "strand_counts": {
+          "+": 277,
+          "-": 265
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007923",
+        "bases": 68805,
+        "unknown_bases": 977,
+        "candidates": 6856,
+        "strand_counts": {
+          "+": 3456,
+          "-": 3400
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007991",
+        "bases": 18406,
+        "unknown_bases": 3566,
+        "candidates": 1064,
+        "strand_counts": {
+          "+": 548,
+          "-": 516
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007992",
+        "bases": 36642,
+        "unknown_bases": 6613,
+        "candidates": 2956,
+        "strand_counts": {
+          "+": 1542,
+          "-": 1414
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007994",
+        "bases": 85560,
+        "unknown_bases": 33673,
+        "candidates": 5036,
+        "strand_counts": {
+          "+": 2554,
+          "-": 2482
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01007996",
+        "bases": 30657,
+        "unknown_bases": 8519,
+        "candidates": 2149,
+        "strand_counts": {
+          "+": 1070,
+          "-": 1079
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008030",
+        "bases": 31306,
+        "unknown_bases": 17253,
+        "candidates": 1109,
+        "strand_counts": {
+          "+": 600,
+          "-": 509
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008082",
+        "bases": 20693,
+        "unknown_bases": 4425,
+        "candidates": 1167,
+        "strand_counts": {
+          "+": 617,
+          "-": 550
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008085",
+        "bases": 24870,
+        "unknown_bases": 111,
+        "candidates": 2372,
+        "strand_counts": {
+          "+": 1202,
+          "-": 1170
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008089",
+        "bases": 41581,
+        "unknown_bases": 2406,
+        "candidates": 3883,
+        "strand_counts": {
+          "+": 1762,
+          "-": 2121
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008095",
+        "bases": 35900,
+        "unknown_bases": 5506,
+        "candidates": 3151,
+        "strand_counts": {
+          "+": 1513,
+          "-": 1638
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008098",
+        "bases": 17102,
+        "unknown_bases": 0,
+        "candidates": 1832,
+        "strand_counts": {
+          "+": 959,
+          "-": 873
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008115",
+        "bases": 35279,
+        "unknown_bases": 12603,
+        "candidates": 2031,
+        "strand_counts": {
+          "+": 976,
+          "-": 1055
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008118",
+        "bases": 21535,
+        "unknown_bases": 1390,
+        "candidates": 1712,
+        "strand_counts": {
+          "+": 792,
+          "-": 920
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008119",
+        "bases": 93601,
+        "unknown_bases": 18295,
+        "candidates": 7409,
+        "strand_counts": {
+          "+": 3802,
+          "-": 3607
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008137",
+        "bases": 17716,
+        "unknown_bases": 2936,
+        "candidates": 1009,
+        "strand_counts": {
+          "+": 513,
+          "-": 496
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008146",
+        "bases": 59485,
+        "unknown_bases": 15407,
+        "candidates": 4029,
+        "strand_counts": {
+          "+": 1922,
+          "-": 2107
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008166",
+        "bases": 31052,
+        "unknown_bases": 0,
+        "candidates": 2935,
+        "strand_counts": {
+          "+": 1546,
+          "-": 1389
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008180",
+        "bases": 86988,
+        "unknown_bases": 18244,
+        "candidates": 6843,
+        "strand_counts": {
+          "+": 3238,
+          "-": 3605
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008183",
+        "bases": 28896,
+        "unknown_bases": 13620,
+        "candidates": 1181,
+        "strand_counts": {
+          "+": 511,
+          "-": 670
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008192",
+        "bases": 71035,
+        "unknown_bases": 13399,
+        "candidates": 5927,
+        "strand_counts": {
+          "+": 2895,
+          "-": 3032
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008194",
+        "bases": 81817,
+        "unknown_bases": 10434,
+        "candidates": 7563,
+        "strand_counts": {
+          "+": 4285,
+          "-": 3278
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008208",
+        "bases": 20213,
+        "unknown_bases": 10797,
+        "candidates": 932,
+        "strand_counts": {
+          "+": 523,
+          "-": 409
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008214",
+        "bases": 37062,
+        "unknown_bases": 10396,
+        "candidates": 2337,
+        "strand_counts": {
+          "+": 1138,
+          "-": 1199
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008240",
+        "bases": 19655,
+        "unknown_bases": 0,
+        "candidates": 1795,
+        "strand_counts": {
+          "+": 893,
+          "-": 902
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008245",
+        "bases": 28128,
+        "unknown_bases": 2788,
+        "candidates": 2611,
+        "strand_counts": {
+          "+": 1317,
+          "-": 1294
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008246",
+        "bases": 168271,
+        "unknown_bases": 28609,
+        "candidates": 13337,
+        "strand_counts": {
+          "+": 6460,
+          "-": 6877
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008247",
+        "bases": 30670,
+        "unknown_bases": 3663,
+        "candidates": 2668,
+        "strand_counts": {
+          "+": 1351,
+          "-": 1317
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008266",
+        "bases": 83998,
+        "unknown_bases": 5231,
+        "candidates": 7134,
+        "strand_counts": {
+          "+": 3552,
+          "-": 3582
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008268",
+        "bases": 30929,
+        "unknown_bases": 4695,
+        "candidates": 2717,
+        "strand_counts": {
+          "+": 1269,
+          "-": 1448
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008287",
+        "bases": 27984,
+        "unknown_bases": 3987,
+        "candidates": 2412,
+        "strand_counts": {
+          "+": 1095,
+          "-": 1317
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008316",
+        "bases": 34372,
+        "unknown_bases": 4383,
+        "candidates": 2452,
+        "strand_counts": {
+          "+": 1288,
+          "-": 1164
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008407",
+        "bases": 19792,
+        "unknown_bases": 36,
+        "candidates": 1912,
+        "strand_counts": {
+          "+": 930,
+          "-": 982
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008408",
+        "bases": 28982,
+        "unknown_bases": 327,
+        "candidates": 3028,
+        "strand_counts": {
+          "+": 1358,
+          "-": 1670
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008449",
+        "bases": 28547,
+        "unknown_bases": 1770,
+        "candidates": 2913,
+        "strand_counts": {
+          "+": 1523,
+          "-": 1390
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008470",
+        "bases": 17839,
+        "unknown_bases": 1801,
+        "candidates": 1371,
+        "strand_counts": {
+          "+": 656,
+          "-": 715
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008494",
+        "bases": 28266,
+        "unknown_bases": 3868,
+        "candidates": 2095,
+        "strand_counts": {
+          "+": 1060,
+          "-": 1035
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008527",
+        "bases": 32117,
+        "unknown_bases": 1747,
+        "candidates": 2379,
+        "strand_counts": {
+          "+": 1255,
+          "-": 1124
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008530",
+        "bases": 255544,
+        "unknown_bases": 21477,
+        "candidates": 22370,
+        "strand_counts": {
+          "+": 11762,
+          "-": 10608
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008546",
+        "bases": 41486,
+        "unknown_bases": 822,
+        "candidates": 3322,
+        "strand_counts": {
+          "+": 1548,
+          "-": 1774
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008559",
+        "bases": 39604,
+        "unknown_bases": 7374,
+        "candidates": 2864,
+        "strand_counts": {
+          "+": 1373,
+          "-": 1491
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008696",
+        "bases": 27198,
+        "unknown_bases": 2835,
+        "candidates": 2483,
+        "strand_counts": {
+          "+": 1250,
+          "-": 1233
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008704",
+        "bases": 34479,
+        "unknown_bases": 3822,
+        "candidates": 3148,
+        "strand_counts": {
+          "+": 1519,
+          "-": 1629
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008724",
+        "bases": 64761,
+        "unknown_bases": 19592,
+        "candidates": 4333,
+        "strand_counts": {
+          "+": 2166,
+          "-": 2167
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008757",
+        "bases": 25227,
+        "unknown_bases": 18463,
+        "candidates": 634,
+        "strand_counts": {
+          "+": 293,
+          "-": 341
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008782",
+        "bases": 21466,
+        "unknown_bases": 5942,
+        "candidates": 1163,
+        "strand_counts": {
+          "+": 753,
+          "-": 410
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008806",
+        "bases": 78010,
+        "unknown_bases": 5702,
+        "candidates": 4722,
+        "strand_counts": {
+          "+": 2467,
+          "-": 2255
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008813",
+        "bases": 149287,
+        "unknown_bases": 25500,
+        "candidates": 12760,
+        "strand_counts": {
+          "+": 6791,
+          "-": 5969
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008824",
+        "bases": 27573,
+        "unknown_bases": 13782,
+        "candidates": 957,
+        "strand_counts": {
+          "+": 413,
+          "-": 544
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008837",
+        "bases": 102186,
+        "unknown_bases": 25091,
+        "candidates": 7671,
+        "strand_counts": {
+          "+": 3921,
+          "-": 3750
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008845",
+        "bases": 53693,
+        "unknown_bases": 11843,
+        "candidates": 3296,
+        "strand_counts": {
+          "+": 1766,
+          "-": 1530
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008853",
+        "bases": 120007,
+        "unknown_bases": 56378,
+        "candidates": 5511,
+        "strand_counts": {
+          "+": 2823,
+          "-": 2688
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008858",
+        "bases": 200955,
+        "unknown_bases": 32662,
+        "candidates": 14531,
+        "strand_counts": {
+          "+": 7245,
+          "-": 7286
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008866",
+        "bases": 40277,
+        "unknown_bases": 15449,
+        "candidates": 1805,
+        "strand_counts": {
+          "+": 881,
+          "-": 924
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008870",
+        "bases": 364519,
+        "unknown_bases": 71306,
+        "candidates": 27057,
+        "strand_counts": {
+          "+": 12930,
+          "-": 14127
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008872",
+        "bases": 16152,
+        "unknown_bases": 2630,
+        "candidates": 1015,
+        "strand_counts": {
+          "+": 441,
+          "-": 574
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008875",
+        "bases": 57611,
+        "unknown_bases": 9566,
+        "candidates": 5410,
+        "strand_counts": {
+          "+": 2839,
+          "-": 2571
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008884",
+        "bases": 39292,
+        "unknown_bases": 8122,
+        "candidates": 3169,
+        "strand_counts": {
+          "+": 1754,
+          "-": 1415
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008886",
+        "bases": 28599,
+        "unknown_bases": 10097,
+        "candidates": 2124,
+        "strand_counts": {
+          "+": 1195,
+          "-": 929
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008891",
+        "bases": 50950,
+        "unknown_bases": 20459,
+        "candidates": 2286,
+        "strand_counts": {
+          "+": 1252,
+          "-": 1034
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008895",
+        "bases": 55604,
+        "unknown_bases": 19609,
+        "candidates": 3335,
+        "strand_counts": {
+          "+": 1595,
+          "-": 1740
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008896",
+        "bases": 177647,
+        "unknown_bases": 49711,
+        "candidates": 11926,
+        "strand_counts": {
+          "+": 5952,
+          "-": 5974
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008908",
+        "bases": 253086,
+        "unknown_bases": 97766,
+        "candidates": 16314,
+        "strand_counts": {
+          "+": 8459,
+          "-": 7855
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008915",
+        "bases": 134505,
+        "unknown_bases": 59163,
+        "candidates": 7250,
+        "strand_counts": {
+          "+": 3836,
+          "-": 3414
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008916",
+        "bases": 415479,
+        "unknown_bases": 42413,
+        "candidates": 34186,
+        "strand_counts": {
+          "+": 17646,
+          "-": 16540
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008917",
+        "bases": 20826,
+        "unknown_bases": 7780,
+        "candidates": 1208,
+        "strand_counts": {
+          "+": 613,
+          "-": 595
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008918",
+        "bases": 28814,
+        "unknown_bases": 17860,
+        "candidates": 790,
+        "strand_counts": {
+          "+": 319,
+          "-": 471
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008923",
+        "bases": 98754,
+        "unknown_bases": 12646,
+        "candidates": 7676,
+        "strand_counts": {
+          "+": 3480,
+          "-": 4196
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008929",
+        "bases": 39994,
+        "unknown_bases": 11306,
+        "candidates": 3113,
+        "strand_counts": {
+          "+": 1499,
+          "-": 1614
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008945",
+        "bases": 84493,
+        "unknown_bases": 36287,
+        "candidates": 4364,
+        "strand_counts": {
+          "+": 2311,
+          "-": 2053
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008946",
+        "bases": 76177,
+        "unknown_bases": 21854,
+        "candidates": 5807,
+        "strand_counts": {
+          "+": 3109,
+          "-": 2698
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008950",
+        "bases": 67066,
+        "unknown_bases": 30121,
+        "candidates": 2731,
+        "strand_counts": {
+          "+": 1391,
+          "-": 1340
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008954",
+        "bases": 174991,
+        "unknown_bases": 59438,
+        "candidates": 12278,
+        "strand_counts": {
+          "+": 6427,
+          "-": 5851
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008965",
+        "bases": 104562,
+        "unknown_bases": 16321,
+        "candidates": 8445,
+        "strand_counts": {
+          "+": 4198,
+          "-": 4247
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008974",
+        "bases": 64810,
+        "unknown_bases": 33509,
+        "candidates": 2825,
+        "strand_counts": {
+          "+": 1400,
+          "-": 1425
+        },
+        "queryable": false
+      },
+      {
+        "name": "AAAB01008983",
+        "bases": 28559,
+        "unknown_bases": 9357,
+        "candidates": 1337,
+        "strand_counts": {
+          "+": 676,
+          "-": 661
+        },
+        "queryable": false
+      },
+      {
+        "name": "AgamP4_Mt",
+        "bases": 15363,
+        "unknown_bases": 0,
+        "candidates": 605,
+        "strand_counts": {
+          "+": 236,
+          "-": 369
+        },
+        "queryable": false
+      }
+    ],
+    "all_record_candidates": 24513729,
+    "queryable_candidates": 21620583,
+    "queryable_bases": 230466657,
+    "note": "Counts are candidate loci, not unique spacer sequences or scored guides. All 153 records remain off-target search scope."
+  },
+  "environment": {
+    "image_id": "sha256:fd7cf5e542bb30133678712931820256c45028464625682b5b4fd0cea37395aa",
+    "source_sha256": "2ec794d22263d8201c2f124075da49234d1a7892e6b432909ccd9485787b0797",
+    "memory_limit_bytes": 2147483648,
+    "cpus": 2,
+    "job_timeout_seconds": 240,
+    "total_timeout_seconds": 1200,
+    "per_batch_bytes_limit": 536870912,
+    "search_options": {
+      "pam": "NGG",
+      "mm": 4,
+      "minAltPamScore": 101,
+      "effScores": "fusi,doench"
+    },
+    "timing": "Wall time includes container startup; external index reused, fresh per-batch temporary directory."
+  },
+  "batches": [
+    {
+      "seconds": 14.58485554199433,
+      "exit_code": 0,
+      "stop_reason": null,
+      "region": {
+        "id": "2L-1000",
+        "chromosome": "2L",
+        "start": 1000000,
+        "end": 1000999,
+        "primary_sample": false,
+        "unknown_bases": 0
+      },
+      "guides": 60,
+      "json_pretty_bytes": 56924,
+      "json_minified_bytes": 34077,
+      "json_gzip_bytes": 5687,
+      "column_rows_gzip_bytes": 4745,
+      "raw_offtarget_bytes": 858112,
+      "missing_specificity": 0,
+      "multiple_exact_matches": 23,
+      "unknown_reference_warnings": 2,
+      "container_peak_memory_bytes": 1047969792,
+      "container_cpu_seconds": 9.21841,
+      "raw_offtarget_gzip_bytes": 148883,
+      "input_sha256": {
+        "query.fa": "8216a727ee4dac7055a98f712f01ae914a3c84a3c0757d1cc5a778106ddfa57d",
+        "guides.tsv": "0593ed13264e81649947819ed6babab7f3642744d0ed97e2c3e8ed70eebf8ab4",
+        "offtargets.tsv": "d00385eedb2e0807bc6c84c3ac8b7f82ee244d0b2fa89def92f9adce36092b28",
+        "command.json": "173720833c08754840184272d3deee70206e2be3f6fd38ef46e6e47bf3af8df8",
+        "complete.json": "23dd8d39ea302061f55a479db5a9c869cefa54e840651f71279401bd2593d371"
+      },
+      "catalogue_gzip_sha256": "c77bcd851ad1cd9865692225b1c9f6c5d5287762f2c64e6b629a8930632db525"
+    },
+    {
+      "seconds": 76.42465704202186,
+      "exit_code": 0,
+      "stop_reason": null,
+      "region": {
+        "id": "2L-10000",
+        "chromosome": "2L",
+        "start": 1000000,
+        "end": 1009999,
+        "primary_sample": true,
+        "unknown_bases": 0
+      },
+      "guides": 914,
+      "json_pretty_bytes": 849734,
+      "json_minified_bytes": 504565,
+      "json_gzip_bytes": 69310,
+      "column_rows_gzip_bytes": 53036,
+      "raw_offtarget_bytes": 13512938,
+      "missing_specificity": 0,
+      "multiple_exact_matches": 541,
+      "unknown_reference_warnings": 43,
+      "container_peak_memory_bytes": 1201836032,
+      "container_cpu_seconds": 102.906717,
+      "raw_offtarget_gzip_bytes": 2082302,
+      "input_sha256": {
+        "query.fa": "d07529fa18090c7ede0c23f73aa1493895c6e294679c8a0310a16c8742c8b0d4",
+        "guides.tsv": "b74531e13098e25eb9b6c535a3abf238e33429935d4d427d21fc15a335180534",
+        "offtargets.tsv": "0a92edc4c6b92f8f92d2f10f2784de7ea17f5c385634580900a2463336cbade2",
+        "command.json": "e350f9bd7309d4ed0f0c5710aa2888229367a4ec210e52f68f047f55e24bb221",
+        "complete.json": "c069c7cbf7ea10ca2fbacee5fe69ac80422145986e6bafe288234910d5a13195"
+      },
+      "catalogue_gzip_sha256": "55931f2be7a55f5786cd834efe2084a919f8202eb1198b1273ec5161ba4bd36c"
+    },
+    {
+      "seconds": 47.82487425004365,
+      "exit_code": 0,
+      "stop_reason": null,
+      "region": {
+        "id": "2L-5000",
+        "chromosome": "2L",
+        "start": 1000000,
+        "end": 1004999,
+        "primary_sample": false,
+        "unknown_bases": 0
+      },
+      "guides": 400,
+      "json_pretty_bytes": 366843,
+      "json_minified_bytes": 217844,
+      "json_gzip_bytes": 30647,
+      "column_rows_gzip_bytes": 23668,
+      "raw_offtarget_bytes": 5468549,
+      "missing_specificity": 0,
+      "multiple_exact_matches": 130,
+      "unknown_reference_warnings": 13,
+      "container_peak_memory_bytes": 1100390400,
+      "container_cpu_seconds": 50.787275,
+      "raw_offtarget_gzip_bytes": 881377,
+      "input_sha256": {
+        "query.fa": "72835fd7e51037185d632f15e53f7c610d5613f9c46f4807f897984cf355f642",
+        "guides.tsv": "944a55f6283471a64d8f2960c33b824eafe3a8ba88632d2156dc5a816ea214bd",
+        "offtargets.tsv": "8da1e61e25cacf66cdf36febec70835b0eae7b2a5a79c7a7b898ef2fcd6b9175",
+        "command.json": "6e69b92842f4a1d8bbbdc874f726ef797f0da6f17fa66881b9dcf6e93df6c46c",
+        "complete.json": "ffe238e999950f469d799dbf10bfd70b1eafa87ca144276a9988c13ac9c1ae4b"
+      },
+      "catalogue_gzip_sha256": "537b027a3dbd2e46e9b184f12775343e6751f2f181e194e2d7d620224d32b04a"
+    },
+    {
+      "seconds": 105.63164812501054,
+      "exit_code": 0,
+      "stop_reason": null,
+      "region": {
+        "id": "2R-10000",
+        "chromosome": "2R",
+        "start": 18823520,
+        "end": 18833519,
+        "primary_sample": true,
+        "unknown_bases": 219
+      },
+      "guides": 1013,
+      "json_pretty_bytes": 915078,
+      "json_minified_bytes": 546400,
+      "json_gzip_bytes": 74169,
+      "column_rows_gzip_bytes": 56217,
+      "raw_offtarget_bytes": 31592624,
+      "missing_specificity": 0,
+      "multiple_exact_matches": 21,
+      "unknown_reference_warnings": 39,
+      "container_peak_memory_bytes": 1202999296,
+      "container_cpu_seconds": 132.739959,
+      "raw_offtarget_gzip_bytes": 4506454,
+      "input_sha256": {
+        "query.fa": "7e20d2feafa549a91e5d5ce7d1ea7129c3ad1955078078b9752a5b53c55483d4",
+        "guides.tsv": "52163c2d985100b9f9fc933d05f25a972091b455feb0e0b17e9232cbf5a89326",
+        "offtargets.tsv": "ae3e0e18fc0b3cd787ea36c49cd908b2fb0e1732a4635d00b31ce59110561792",
+        "command.json": "79bd031bacb67de64d0dc47f3c60319d1fa90b00c67dc74105a0d01299e29cf0",
+        "complete.json": "2f7b7449c744ff00d7b935f7f99642d53032eedfe2dc7d982cbd2556288a9269"
+      },
+      "catalogue_gzip_sha256": "1d451db42427023b4131b704eecac26878ebf2343f1ae20a33cb30ffd185de99"
+    },
+    {
+      "seconds": 74.54117199999746,
+      "exit_code": 0,
+      "stop_reason": null,
+      "region": {
+        "id": "3L-10000",
+        "chromosome": "3L",
+        "start": 2035609,
+        "end": 2045608,
+        "primary_sample": true,
+        "unknown_bases": 0
+      },
+      "guides": 715,
+      "json_pretty_bytes": 644655,
+      "json_minified_bytes": 382772,
+      "json_gzip_bytes": 54321,
+      "column_rows_gzip_bytes": 39970,
+      "raw_offtarget_bytes": 9364123,
+      "missing_specificity": 0,
+      "multiple_exact_matches": 21,
+      "unknown_reference_warnings": 21,
+      "container_peak_memory_bytes": 1173798912,
+      "container_cpu_seconds": 87.780658,
+      "raw_offtarget_gzip_bytes": 1597570,
+      "input_sha256": {
+        "query.fa": "de89e70cccb8edff536d14a4a495bb0f3781fd23197951a369f38efd5297de53",
+        "guides.tsv": "b1ccf5a1b97f3f373a645d842570f2789e75aee39e878a6969d200ff03aa19a6",
+        "offtargets.tsv": "3abbddd991f39a848f935b5133cda43e389f66d9efbfe30472db4dbe6797338f",
+        "command.json": "69324f8f1f9ed3aa3f3420e1b99760500c279f4dd28957ca2e13e5006dc930c1",
+        "complete.json": "70f280d4cf67d6ffa5821e143dd116f1090b848056bcea9a32effc1f3a1ed094"
+      },
+      "catalogue_gzip_sha256": "6b1b034e541066b440c5201c886839b033957e23c67745ae256c2c5b71086f44"
+    },
+    {
+      "seconds": 76.67723149998346,
+      "exit_code": 0,
+      "stop_reason": null,
+      "region": {
+        "id": "3R-10000",
+        "chromosome": "3R",
+        "start": 29383754,
+        "end": 29393753,
+        "primary_sample": true,
+        "unknown_bases": 0
+      },
+      "guides": 825,
+      "json_pretty_bytes": 750583,
+      "json_minified_bytes": 447979,
+      "json_gzip_bytes": 62592,
+      "column_rows_gzip_bytes": 46595,
+      "raw_offtarget_bytes": 12518541,
+      "missing_specificity": 0,
+      "multiple_exact_matches": 26,
+      "unknown_reference_warnings": 33,
+      "container_peak_memory_bytes": 1199800320,
+      "container_cpu_seconds": 99.6778,
+      "raw_offtarget_gzip_bytes": 1944381,
+      "input_sha256": {
+        "query.fa": "08d6de4395bbab2354899c15b65470eb42ba9c265ed501fb02eb2779eb6f2782",
+        "guides.tsv": "b08bf73ff91dacc87fec4d303b197a6141fd08164cedb3ee109afceb0f6d537f",
+        "offtargets.tsv": "d16cf6cf240a7f21f4989a1225a244f17bf7f93ca4ca8cbd56cd0c23f94ad447",
+        "command.json": "d927923ba3d69960677c867fc62a248299c89f554e93071add4b5d648ee865e9",
+        "complete.json": "0a5c864525ec6e1148f42ee9d2a4f20983cdd6df1f498d9af88fa21de62dff58"
+      },
+      "catalogue_gzip_sha256": "3f1a341e910750482b2f233152b65b8be69578770c1d06d14618ba9cdd044bf6"
+    },
+    {
+      "seconds": 101.20227537502069,
+      "exit_code": 0,
+      "stop_reason": null,
+      "region": {
+        "id": "X-10000",
+        "chromosome": "X",
+        "start": 6131342,
+        "end": 6141341,
+        "primary_sample": true,
+        "unknown_bases": 0
+      },
+      "guides": 1069,
+      "json_pretty_bytes": 955559,
+      "json_minified_bytes": 566544,
+      "json_gzip_bytes": 77681,
+      "column_rows_gzip_bytes": 57641,
+      "raw_offtarget_bytes": 16552543,
+      "missing_specificity": 0,
+      "multiple_exact_matches": 19,
+      "unknown_reference_warnings": 36,
+      "container_peak_memory_bytes": 1235697664,
+      "container_cpu_seconds": 127.456587,
+      "raw_offtarget_gzip_bytes": 2623274,
+      "input_sha256": {
+        "query.fa": "57ecba71d9600d19ea51f1e4e4deab6c4299f27447da4220e33282d2a689dc1a",
+        "guides.tsv": "fc8dc44cf4c4aa8a1b612665ed41967a9469960176b705e2917c50a1890d036d",
+        "offtargets.tsv": "39ed81a1a279aa6f2692c425dc0fee26ec61aee3dededf53b4a8dfc9d7548f89",
+        "command.json": "d5a076b510feafece012e82fb777fb86089529a7969d12e311be13f0ea2a0db0",
+        "complete.json": "3db08478dfe6b6b540bc68ddf819154487f968751c324a6439a0c6b950e74b60"
+      },
+      "catalogue_gzip_sha256": "4bfaff898a98c8968bdb9676b7261034ce5bcf2e92a9be6ec5974169a36ae1f4"
+    }
+  ],
+  "benchmark_script_sha256": "644d32cc9c1e57d9552d3627af4be851f9a7b5028dcab7eedfbeb5a196ed07a0",
+  "incomplete_batches": [],
+  "projection": {
+    "queryable_candidates": 21620583,
+    "sample_guides": 4536,
+    "sample_10kb_batches": 5,
+    "serial_scoring_hours_at_aggregate_sample_rate": 575.2526513246174,
+    "serial_scoring_hours_at_fastest_and_slowest_sample_rate": [
+      502.1716632699879,
+      626.2525544898499
+    ],
+    "projected_json_pretty_bytes": 19616813488,
+    "projected_json_minified_bytes": 11669490418,
+    "projected_json_gzip_bytes": 1611405502,
+    "projected_column_rows_gzip_bytes": 1208097740,
+    "projected_raw_offtarget_bytes": 398192268529,
+    "projected_raw_offtarget_gzip_bytes": 60791116576,
+    "warning": "Planning extrapolation from 5 10 kb samples, not a measured full-genome build or statistical confidence interval; repeats and batch sizes can change throughput and output volume."
+  },
+  "nested_batch_consistency": [
+    {
+      "smaller_bases": 1000,
+      "larger_bases": 5000,
+      "shared_guides": 60,
+      "changed_guides": 8,
+      "differences": [
+        {
+          "start": 1000861,
+          "strand": "+",
+          "spacer": "TTATGGCCACAATACGTATG",
+          "changes": {
+            "mit_specificity": [
+              5.0,
+              6.0
+            ],
+            "cfd_specificity": [
+              74.0,
+              75.0
+            ],
+            "exact_matches": [
+              5,
+              4
+            ],
+            "off_target_count": [
+              162,
+              161
+            ],
+            "mismatch_counts": [
+              [
+                4,
+                23,
+                29,
+                56,
+                50
+              ],
+              [
+                3,
+                23,
+                29,
+                56,
+                50
+              ]
+            ],
+            "warnings": [
+              [
+                "5 exact reference matches"
+              ],
+              [
+                "4 exact reference matches"
+              ]
+            ]
+          }
+        },
+        {
+          "start": 1000859,
+          "strand": "+",
+          "spacer": "AATTATGGCCACAATACGTA",
+          "changes": {
+            "mit_specificity": [
+              4.0,
+              5.0
+            ],
+            "exact_matches": [
+              6,
+              5
+            ],
+            "off_target_count": [
+              189,
+              188
+            ],
+            "mismatch_counts": [
+              [
+                5,
+                30,
+                30,
+                62,
+                62
+              ],
+              [
+                4,
+                30,
+                30,
+                62,
+                62
+              ]
+            ],
+            "warnings": [
+              [
+                "6 exact reference matches"
+              ],
+              [
+                "5 exact reference matches"
+              ]
+            ]
+          }
+        },
+        {
+          "start": 1000860,
+          "strand": "+",
+          "spacer": "ATTATGGCCACAATACGTAT",
+          "changes": {
+            "exact_matches": [
+              5,
+              4
+            ],
+            "off_target_count": [
+              185,
+              184
+            ],
+            "mismatch_counts": [
+              [
+                4,
+                24,
+                29,
+                60,
+                68
+              ],
+              [
+                3,
+                24,
+                29,
+                60,
+                68
+              ]
+            ],
+            "warnings": [
+              [
+                "5 exact reference matches"
+              ],
+              [
+                "4 exact reference matches"
+              ]
+            ]
+          }
+        },
+        {
+          "start": 1000867,
+          "strand": "-",
+          "spacer": "TTATCGCCCCATACGTATTG",
+          "changes": {
+            "exact_matches": [
+              22,
+              21
+            ],
+            "off_target_count": [
+              156,
+              155
+            ],
+            "mismatch_counts": [
+              [
+                21,
+                31,
+                25,
+                8,
+                71
+              ],
+              [
+                20,
+                31,
+                25,
+                8,
+                71
+              ]
+            ],
+            "warnings": [
+              [
+                "22 exact reference matches"
+              ],
+              [
+                "21 exact reference matches"
+              ]
+            ]
+          }
+        },
+        {
+          "start": 1000893,
+          "strand": "+",
+          "spacer": "TAATGATGAGGTTTGATAAA",
+          "changes": {
+            "cfd_specificity": [
+              48.0,
+              49.0
+            ],
+            "exact_matches": [
+              51,
+              50
+            ],
+            "off_target_count": [
+              203,
+              202
+            ],
+            "mismatch_counts": [
+              [
+                50,
+                26,
+                56,
+                32,
+                39
+              ],
+              [
+                49,
+                26,
+                56,
+                32,
+                39
+              ]
+            ],
+            "warnings": [
+              [
+                "51 exact reference matches"
+              ],
+              [
+                "50 exact reference matches"
+              ]
+            ]
+          }
+        },
+        {
+          "start": 1000816,
+          "strand": "-",
+          "spacer": "TCAGCTAGACGAATACTTTT",
+          "changes": {
+            "exact_matches": [
+              125,
+              124
+            ],
+            "off_target_count": [
+              255,
+              254
+            ],
+            "mismatch_counts": [
+              [
+                124,
+                63,
+                29,
+                19,
+                20
+              ],
+              [
+                123,
+                63,
+                29,
+                19,
+                20
+              ]
+            ],
+            "warnings": [
+              [
+                "1 off-target rows contain unknown reference bases",
+                "125 exact reference matches",
+                "Poly-T stretch (4+ bases)",
+                "CRISPOR TT-motif warning"
+              ],
+              [
+                "1 off-target rows contain unknown reference bases",
+                "124 exact reference matches",
+                "Poly-T stretch (4+ bases)",
+                "CRISPOR TT-motif warning"
+              ]
+            ]
+          }
+        },
+        {
+          "start": 1000834,
+          "strand": "+",
+          "spacer": "GCTGAATATTTTGCAGAAAA",
+          "changes": {
+            "exact_matches": [
+              55,
+              54
+            ],
+            "off_target_count": [
+              252,
+              251
+            ],
+            "mismatch_counts": [
+              [
+                54,
+                76,
+                43,
+                25,
+                54
+              ],
+              [
+                53,
+                76,
+                43,
+                25,
+                54
+              ]
+            ],
+            "warnings": [
+              [
+                "55 exact reference matches",
+                "Poly-T stretch (4+ bases)"
+              ],
+              [
+                "54 exact reference matches",
+                "Poly-T stretch (4+ bases)"
+              ]
+            ]
+          }
+        },
+        {
+          "start": 1000844,
+          "strand": "+",
+          "spacer": "TTGCAGAAAAAGGCGAATTA",
+          "changes": {
+            "exact_matches": [
+              47,
+              46
+            ],
+            "off_target_count": [
+              250,
+              249
+            ],
+            "mismatch_counts": [
+              [
+                46,
+                66,
+                53,
+                47,
+                38
+              ],
+              [
+                45,
+                66,
+                53,
+                47,
+                38
+              ]
+            ],
+            "warnings": [
+              [
+                "47 exact reference matches"
+              ],
+              [
+                "46 exact reference matches"
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "smaller_bases": 5000,
+      "larger_bases": 10000,
+      "shared_guides": 400,
+      "changed_guides": 0,
+      "differences": []
+    },
+    {
+      "smaller_bases": 1000,
+      "larger_bases": 10000,
+      "shared_guides": 60,
+      "changed_guides": 8,
+      "differences": [
+        {
+          "start": 1000861,
+          "strand": "+",
+          "spacer": "TTATGGCCACAATACGTATG",
+          "changes": {
+            "mit_specificity": [
+              5.0,
+              6.0
+            ],
+            "cfd_specificity": [
+              74.0,
+              75.0
+            ],
+            "exact_matches": [
+              5,
+              4
+            ],
+            "off_target_count": [
+              162,
+              161
+            ],
+            "mismatch_counts": [
+              [
+                4,
+                23,
+                29,
+                56,
+                50
+              ],
+              [
+                3,
+                23,
+                29,
+                56,
+                50
+              ]
+            ],
+            "warnings": [
+              [
+                "5 exact reference matches"
+              ],
+              [
+                "4 exact reference matches"
+              ]
+            ]
+          }
+        },
+        {
+          "start": 1000859,
+          "strand": "+",
+          "spacer": "AATTATGGCCACAATACGTA",
+          "changes": {
+            "mit_specificity": [
+              4.0,
+              5.0
+            ],
+            "exact_matches": [
+              6,
+              5
+            ],
+            "off_target_count": [
+              189,
+              188
+            ],
+            "mismatch_counts": [
+              [
+                5,
+                30,
+                30,
+                62,
+                62
+              ],
+              [
+                4,
+                30,
+                30,
+                62,
+                62
+              ]
+            ],
+            "warnings": [
+              [
+                "6 exact reference matches"
+              ],
+              [
+                "5 exact reference matches"
+              ]
+            ]
+          }
+        },
+        {
+          "start": 1000860,
+          "strand": "+",
+          "spacer": "ATTATGGCCACAATACGTAT",
+          "changes": {
+            "exact_matches": [
+              5,
+              4
+            ],
+            "off_target_count": [
+              185,
+              184
+            ],
+            "mismatch_counts": [
+              [
+                4,
+                24,
+                29,
+                60,
+                68
+              ],
+              [
+                3,
+                24,
+                29,
+                60,
+                68
+              ]
+            ],
+            "warnings": [
+              [
+                "5 exact reference matches"
+              ],
+              [
+                "4 exact reference matches"
+              ]
+            ]
+          }
+        },
+        {
+          "start": 1000867,
+          "strand": "-",
+          "spacer": "TTATCGCCCCATACGTATTG",
+          "changes": {
+            "exact_matches": [
+              22,
+              21
+            ],
+            "off_target_count": [
+              156,
+              155
+            ],
+            "mismatch_counts": [
+              [
+                21,
+                31,
+                25,
+                8,
+                71
+              ],
+              [
+                20,
+                31,
+                25,
+                8,
+                71
+              ]
+            ],
+            "warnings": [
+              [
+                "22 exact reference matches"
+              ],
+              [
+                "21 exact reference matches"
+              ]
+            ]
+          }
+        },
+        {
+          "start": 1000893,
+          "strand": "+",
+          "spacer": "TAATGATGAGGTTTGATAAA",
+          "changes": {
+            "cfd_specificity": [
+              48.0,
+              49.0
+            ],
+            "exact_matches": [
+              51,
+              50
+            ],
+            "off_target_count": [
+              203,
+              202
+            ],
+            "mismatch_counts": [
+              [
+                50,
+                26,
+                56,
+                32,
+                39
+              ],
+              [
+                49,
+                26,
+                56,
+                32,
+                39
+              ]
+            ],
+            "warnings": [
+              [
+                "51 exact reference matches"
+              ],
+              [
+                "50 exact reference matches"
+              ]
+            ]
+          }
+        },
+        {
+          "start": 1000816,
+          "strand": "-",
+          "spacer": "TCAGCTAGACGAATACTTTT",
+          "changes": {
+            "exact_matches": [
+              125,
+              124
+            ],
+            "off_target_count": [
+              255,
+              254
+            ],
+            "mismatch_counts": [
+              [
+                124,
+                63,
+                29,
+                19,
+                20
+              ],
+              [
+                123,
+                63,
+                29,
+                19,
+                20
+              ]
+            ],
+            "warnings": [
+              [
+                "1 off-target rows contain unknown reference bases",
+                "125 exact reference matches",
+                "Poly-T stretch (4+ bases)",
+                "CRISPOR TT-motif warning"
+              ],
+              [
+                "1 off-target rows contain unknown reference bases",
+                "124 exact reference matches",
+                "Poly-T stretch (4+ bases)",
+                "CRISPOR TT-motif warning"
+              ]
+            ]
+          }
+        },
+        {
+          "start": 1000834,
+          "strand": "+",
+          "spacer": "GCTGAATATTTTGCAGAAAA",
+          "changes": {
+            "exact_matches": [
+              55,
+              54
+            ],
+            "off_target_count": [
+              252,
+              251
+            ],
+            "mismatch_counts": [
+              [
+                54,
+                76,
+                43,
+                25,
+                54
+              ],
+              [
+                53,
+                76,
+                43,
+                25,
+                54
+              ]
+            ],
+            "warnings": [
+              [
+                "55 exact reference matches",
+                "Poly-T stretch (4+ bases)"
+              ],
+              [
+                "54 exact reference matches",
+                "Poly-T stretch (4+ bases)"
+              ]
+            ]
+          }
+        },
+        {
+          "start": 1000844,
+          "strand": "+",
+          "spacer": "TTGCAGAAAAAGGCGAATTA",
+          "changes": {
+            "exact_matches": [
+              47,
+              46
+            ],
+            "off_target_count": [
+              250,
+              249
+            ],
+            "mismatch_counts": [
+              [
+                46,
+                66,
+                53,
+                47,
+                38
+              ],
+              [
+                45,
+                66,
+                53,
+                47,
+                38
+              ]
+            ],
+            "warnings": [
+              [
+                "47 exact reference matches"
+              ],
+              [
+                "46 exact reference matches"
+              ]
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
