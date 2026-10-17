@@ -591,7 +591,7 @@
 
   function renderSignalPlot(
     container, result, annotation = null, transcriptAnnotations = null,
-    resolution = 'adaptive', displayRange = null, rangeSelection = null,
+    resolution = 'adaptive', displayRange = null, rangeSelection = null, selectedGuide = null,
   ) {
     const summary = summarizeSignals(result, annotation, resolution, displayRange);
     const hasAnnotation = Boolean(summary.annotation);
@@ -729,6 +729,7 @@
     addLegendItem(svg, 565, snpTop + 20, 'Mean SNP (accessible bases)', { line: true, color: COLORS.snp });
     addLegendItem(svg, 785, snpTop + 20, 'QC failed / unknown', { color: COLORS.unknown, opacity: 0.3 });
 
+    global.AgamCsGuides?.drawOverlay(svg, selectedGuide, summary, xScale, plotLeft, plotRight, csTop, snpTop + snpHeight, height);
     container.replaceChildren(svg);
     installSignalTooltip(container, svg, summary, xScale, plotLeft, plotWidth, csTop, snpTop + snpHeight);
     installPlotRangeSelector(
@@ -836,7 +837,7 @@
   function renderHeatmap(
     container, result, annotation = null, transcriptAnnotations = null,
     resolution = 'adaptive', displayRange = null, rangeSelection = null,
-    displayOptions = null,
+    displayOptions = null, selectedGuide = null,
   ) {
     const baseSummary = summarizeHeatmap(result, annotation, resolution, displayRange);
     validateSpeciesTopology(result.stackTopology, result.stackRows);
@@ -1021,6 +1022,7 @@
       );
     }
 
+    global.AgamCsGuides?.drawOverlay(svg, selectedGuide, summary, xScale, plotLeft, plotRight, rowTop, rowTop + plotHeight, height);
     container.replaceChildren(svg);
     installHeatmapTooltip(container, svg, summary, displayedRows, plotLeft, plotWidth, rowTop, rowHeight);
     installPlotRangeSelector(

@@ -16,23 +16,25 @@
   <title>AgamCs conservation explorer</title>
   <link rel="canonical" href="https://tycour.github.io/AgamCs/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="assets/site.css?v=2026-10-15-restore-gene-search-v1">
-  <script src="assets/plot-model.js?v=2026-10-15-restore-gene-search-v1" defer></script>
-  <script src="assets/query-summary.js?v=2026-10-15-restore-gene-search-v1" defer></script>
-  <script src="assets/query-intervals.js?v=2026-10-15-restore-gene-search-v1" defer></script>
-  <script src="assets/notable-windows.js?v=2026-10-15-restore-gene-search-v1" defer></script>
-  <script src="assets/species-context.js?v=2026-10-15-restore-gene-search-v1" defer></script>
-  <script src="assets/query-report.js?v=2026-10-15-restore-gene-search-v1" defer></script>
-  <script src="assets/two-gene-comparison.js?v=2026-10-15-restore-gene-search-v1" defer></script>
-  <script src="assets/live-plots.js?v=2026-10-15-restore-gene-search-v1" defer></script>
-  <script src="assets/gene-search.js?v=2026-10-15-restore-gene-search-v1" defer></script>
-  <script src="assets/gene-ranking.js?v=2026-10-15-restore-gene-search-v1" defer></script>
-  <script src="assets/accession-lookup.js?v=2026-10-15-restore-gene-search-v1" defer></script>
-  <script src="assets/query-contract.js?v=2026-10-15-restore-gene-search-v1" defer></script>
-  <script src="assets/query-interaction.js?v=2026-10-15-restore-gene-search-v1" defer></script>
-  <script src="assets/query-permalink.js?v=2026-10-15-restore-gene-search-v1" defer></script>
-  <script src="assets/analytics.js?v=2026-10-15-restore-gene-search-v1" data-measurement-id="G-25RC4QKPP9" defer></script>
-  <script src="assets/site.js?v=2026-10-15-restore-gene-search-v1" defer></script>
+  <link rel="stylesheet" href="assets/site.css?v=2026-10-16-guide-prototype-v1">
+  <script src="assets/plot-model.js?v=2026-10-16-guide-prototype-v1" defer></script>
+  <script src="assets/query-summary.js?v=2026-10-16-guide-prototype-v1" defer></script>
+  <script src="assets/query-intervals.js?v=2026-10-16-guide-prototype-v1" defer></script>
+  <script src="assets/guide-design.js?v=2026-10-16-guide-prototype-v1" defer></script>
+  <script src="assets/guide-panel.js?v=2026-10-16-guide-prototype-v1" defer></script>
+  <script src="assets/notable-windows.js?v=2026-10-16-guide-prototype-v1" defer></script>
+  <script src="assets/species-context.js?v=2026-10-16-guide-prototype-v1" defer></script>
+  <script src="assets/query-report.js?v=2026-10-16-guide-prototype-v1" defer></script>
+  <script src="assets/two-gene-comparison.js?v=2026-10-16-guide-prototype-v1" defer></script>
+  <script src="assets/live-plots.js?v=2026-10-16-guide-prototype-v1" defer></script>
+  <script src="assets/gene-search.js?v=2026-10-16-guide-prototype-v1" defer></script>
+  <script src="assets/gene-ranking.js?v=2026-10-16-guide-prototype-v1" defer></script>
+  <script src="assets/accession-lookup.js?v=2026-10-16-guide-prototype-v1" defer></script>
+  <script src="assets/query-contract.js?v=2026-10-16-guide-prototype-v1" defer></script>
+  <script src="assets/query-interaction.js?v=2026-10-16-guide-prototype-v1" defer></script>
+  <script src="assets/query-permalink.js?v=2026-10-16-guide-prototype-v1" defer></script>
+  <script src="assets/analytics.js?v=2026-10-16-guide-prototype-v1" data-measurement-id="G-25RC4QKPP9" defer></script>
+  <script src="assets/site.js?v=2026-10-16-guide-prototype-v1" defer></script>
 </head>
 <body>
   <header class="site-header">
@@ -202,6 +204,19 @@
           <div><dt>Annotation</dt><dd id="resolved-annotation">—</dd></div>
           <div><dt>Index</dt><dd id="resolved-index-version">—</dd></div>
         </dl>
+        <section class="guide-panel" id="guide-panel" aria-labelledby="guide-heading">
+          <div class="query-summary-heading"><div><p class="eyebrow">Optional · prototype</p><h3 id="guide-heading">Explore CRISPR guides</h3><p>20-base spacers with an NGG PAM. Choose a guide to inspect conservation and variation at its binding site.</p></div></div>
+          <div class="guide-controls"><label><input type="checkbox" id="guide-enable"> Explore guides in this interval</label><label><input type="checkbox" id="guide-overlay"> Show selected guide and PAM on both figures</label></div>
+          <p id="guide-status" role="status">Run a query to explore guides.</p>
+          <div id="guide-examples" class="guide-examples"><span>Prototype examples:</span><button type="button" data-region="2L:1000000-1000999">Benchmark locus</button><button type="button" data-region="2L:28585064-28586748">AGAP006241</button><button type="button" data-region="3L:3855186-3858609">AGAP010449</button><button type="button" data-region="3R:38377342-38377436">AGAP009678</button></div>
+          <div id="guide-content" hidden>
+            <p class="field-help">Sequences are written 5′→3′ in guide orientation; the orange triplet is the PAM. Activity is a Doench 2016 prediction, not measured activity in Anopheles. Guides with repeated exact matches remain visible with warnings.</p>
+            <div class="guide-table-scroll" tabindex="0" aria-label="Scored guides in native CRISPOR order"><table class="query-summary-table guide-table"><thead><tr><th scope="col">CRISPOR order</th><th scope="col">Spacer + PAM / location</th><th scope="col">MIT specificity</th><th scope="col">Predicted activity</th><th scope="col">Spacer mean Cs</th><th scope="col">Spacer mean SNP density</th><th scope="col">Exact matches</th><th scope="col">Warnings</th></tr></thead><tbody id="guide-body"></tbody></table></div>
+            <div id="guide-details" class="guide-details" aria-live="polite" hidden></div>
+            <div class="report-actions"><a class="button secondary" id="guide-download" download hidden>Download guide TSV</a><a class="button secondary" id="guide-json-download" download hidden>Download guide report (JSON)</a></div>
+            <p class="summary-method">Cs means use finite bases. SNP means use valid accessible focal bases and retain the source’s centred 20-base rolling density; they are not counts of variants within the guide. Unknown bases are not zero. Spacer and PAM summaries are separate in the selected-guide details and downloads. These contextual values do not alter CRISPOR order. Guide selection is recorded in the separate guide report, not the general query permalink/report.</p>
+          </div>
+        </section>
         <div class="live-visuals" id="live-visuals" hidden>
           <div class="live-visual-heading">
             <div>
@@ -391,36 +406,6 @@
             </table>
           </div>
           <p class="summary-method" id="species-context-method">Zero-coded positions mean no detected CNEr interval and are excluded from identity means. Species fractions use query bases; clade fractions use species × query-base denominators. A 100-bp window qualifies at 80% detected species-bases. Clade rows are limited to named groups already present in the versioned topology; polytomies remain unresolved.</p>
-        </section>
-        <section class="query-summary notable-windows" id="notable-windows" aria-labelledby="notable-windows-heading" hidden>
-          <div class="query-summary-heading">
-            <div>
-              <h3 id="notable-windows-heading">Notable 100-base windows</h3>
-              <p id="notable-windows-subject">Run a query to identify fixed, query-anchored windows.</p>
-            </div>
-            <code id="notable-windows-version">agamcs-notable-windows-v1</code>
-          </div>
-          <p class="summary-method" id="notable-windows-method"></p>
-          <div class="notable-window-grid">
-            <section aria-labelledby="highest-cs-windows-heading">
-              <h4 id="highest-cs-windows-heading">Five highest mean-Cs windows</h4>
-              <div class="query-summary-table-scroll">
-                <table class="query-summary-table notable-window-table">
-                  <thead><tr><th scope="col">Window</th><th scope="col">Bases</th><th scope="col">Finite Cs</th><th scope="col">Mean Cs</th><th scope="col">Accessibility</th><th scope="col">Selected-transcript feature</th><th scope="col">Actions</th></tr></thead>
-                  <tbody id="highest-cs-windows-body"></tbody>
-                </table>
-              </div>
-            </section>
-            <section aria-labelledby="lowest-snp-windows-heading">
-              <h4 id="lowest-snp-windows-heading">Five lowest mean-SNP-density windows</h4>
-              <div class="query-summary-table-scroll">
-                <table class="query-summary-table notable-window-table">
-                  <thead><tr><th scope="col">Window</th><th scope="col">Bases</th><th scope="col">Finite Cs</th><th scope="col">Mean SNP density</th><th scope="col">Accessibility</th><th scope="col">Selected-transcript feature</th><th scope="col">Actions</th></tr></thead>
-                  <tbody id="lowest-snp-windows-body"></tbody>
-                </table>
-              </div>
-            </section>
-          </div>
         </section>
         <section class="query-summary query-report-actions" id="query-report-actions" aria-labelledby="query-report-heading" hidden>
           <div class="query-summary-heading">

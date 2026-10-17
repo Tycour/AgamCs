@@ -45,5 +45,8 @@ jobs:
       - run: node --check docs/assets/species-context.js
       - run: node --check docs/assets/live-plots.js
       - run: node --check docs/assets/analytics.js
+      - run: node --check docs/assets/guide-design.js
+      - run: node --check docs/assets/guide-panel.js
+      - run: python -m unittest discover -s tests -p test_guide_catalogue.py
       - run: node --check docs/assets/site.js
       - run: node --test tests/*.test.js

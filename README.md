@@ -365,3 +365,7 @@ problems, and feature requests on the
 problem, include the command used, the accession or region, the operating system
 and Python version, and the complete error message. Do not attach unpublished or
 sensitive accession lists; a minimal public example is preferable.
+
+## Guide exploration prototype
+
+The `codex/guide-design` prototype adds optional NGG guide exploration using native CRISPOR ordering, separate Cs/SNP context and figure overlays. It currently covers four explicitly labelled intervals (515 guides); other intervals report unavailable. See [the prototype methods, coverage and preview instructions](docs/guide-prototype.md).

@@ -9,6 +9,7 @@ const plotContract = require('../docs/assets/data/plot-contract.json');
 require('../docs/assets/plot-model.js');
 require('../docs/assets/query-summary.js');
 require('../docs/assets/species-context.js');
+require('../docs/assets/guide-design.js');
 require('../docs/assets/live-plots.js');
 globalThis.AgamCsPlots.configurePlotContract(plotContract);
 
@@ -529,7 +530,6 @@ test('focus-first layout keeps the primary query visible and secondary controls 
     'Representative-transcript gene rankings',
     'Exact query and selected-transcript summaries',
     'Species and encoded-clade context',
-    'Notable 100-base windows',
   ]) assert.match(supplementaryDetails, new RegExp(heading));
   assert.match(html, /class="ranking-grid"/);
   assert.match(html, /Representative-transcript gene rankings/);
@@ -605,26 +605,15 @@ test('exact window TSV is a bounded subset while the primary TSV remains complet
   assert.equal(complete.length, 6);
   assert.equal(window.length, 4);
   assert.deepEqual(window.slice(1).map((line) => Number(line.split('\t')[1])), [101, 102, 103]);
-  assert.match(fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8'), /primary TSV remains the complete query/);
 });
 
-test('notable windows are exact-query analysis with native zoom and TSV actions', () => {
+test('guide exploration replaces notable-window UI but retains report calculations', () => {
   const source = fs.readFileSync(path.join(__dirname, '../docs/assets/site.js'), 'utf8');
   const html = fs.readFileSync(path.join(__dirname, '../docs/index.html'), 'utf8');
-  const start = source.indexOf('function renderNotableWindows');
-  const end = source.indexOf('function findPinnedAnnotation', start);
-  const renderer = source.slice(start, end);
-  assert.match(renderer, /AgamCsNotableWindows\.analyzeNotableWindows/);
-  assert.match(renderer, /zoomToPlotRange\(window, 'notable-window'\)/);
-  assert.match(renderer, /configureNotableWindowDownload/);
-  assert.doesNotMatch(renderer, /workerQuery|selectedPlotResolution|displayRange/);
-  assert.match(html, /Five highest mean-Cs windows/);
-  assert.match(html, /Five lowest mean-SNP-density windows/);
-  assert.match(renderer, /Zoom to window/);
-  assert.match(renderer, /Exact window TSV/);
-  const plotStart = source.indexOf('function renderLivePlots');
-  const plotEnd = source.indexOf('function valuesMatch', plotStart);
-  assert.doesNotMatch(source.slice(plotStart, plotEnd), /clearNotableWindowDownloads/);
+  assert.doesNotMatch(html, /Notable 100-base windows/);
+  for (const id of ['guide-enable', 'guide-overlay', 'guide-body', 'guide-download']) assert.ok(html.includes(`id="${id}"`));
+  assert.match(source, /guideController.overlay/);
+  assert.match(fs.readFileSync(path.join(__dirname, '../docs/assets/query-report.js'), 'utf8'), /notable_windows/);
 });
 
 test('species display controls rerender only the heatmap view and preserve full exports', () => {

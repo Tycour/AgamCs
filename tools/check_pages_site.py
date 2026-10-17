@@ -31,6 +31,9 @@ QUERY_ASSETS = (
     ROOT / 'assets/data/query-validation.json',
     ROOT / 'assets/data/plot-validation.json',
     ROOT / 'assets/query-worker.js',
+    ROOT / 'assets/guide-design.js',
+    ROOT / 'assets/guide-panel.js',
+    ROOT / 'assets/data/guide-catalogue.json',
     ROOT / 'assets/plot-model.js',
     ROOT / 'assets/query-summary.js',
     ROOT / 'assets/query-intervals.js',
@@ -162,8 +165,12 @@ def validate_page(page: Path) -> list[str]:
         page_text = page.read_text(encoding='utf-8')
         if 'Anopheles gambiae' not in page_text:
             errors.append('index.html: public copy must name Anopheles gambiae')
+        # The portal itself is released; only the bounded guide feature is a prototype.
+        positioning_text = re.sub(r'<section class="guide-panel".*?</section>', '', page_text, flags=re.S)
+        positioning_text = re.sub(r'<script[^>]*>.*?</script>', '', positioning_text, flags=re.S)
+        positioning_text = re.sub(r'<[^>]+>', '', positioning_text)
         for retired_positioning in ('prototype', 'preview'):
-            if retired_positioning in page_text.lower():
+            if retired_positioning in positioning_text.lower():
                 errors.append(
                     'index.html: retired prototype/preview positioning remains: '
                     f'{retired_positioning!r}'
