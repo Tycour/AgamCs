@@ -58,6 +58,31 @@ test('repeated matches stay visible with a warning without changing score/order'
   assert.ok(repeats.length > 0); assert.ok(repeats.every((g) => g.warnings.some((w) => w.includes('exact reference matches'))));
   assert.deepEqual(guides.map((g) => g.tool_rank),region.guides.map((g) => g.tool_rank));
 });
+test('users can sort all exposed metrics while ties retain native CRISPOR order', () => {
+  const guides = api.contextualize(region.guides.slice(0, 4), result).map((g, i) => ({
+    ...g,
+    mit_specificity: [75, 90, 90, null][i],
+    spacer_context: { ...g.spacer_context, mean_cs: [0.2, 0.8, 0.5, null][i], mean_snp_density: [0.1, 0.3, 0.05, null][i] },
+  }));
+  assert.deepEqual(api.sortGuides(guides, 'tool_rank').map((g) => g.tool_rank), [1, 2, 3, 4]);
+  assert.deepEqual(api.sortGuides(guides, 'spacer_mean_cs').map((g) => g.tool_rank), [2, 3, 1, 4]);
+  assert.deepEqual(api.sortGuides(guides, 'spacer_mean_snp_density').map((g) => g.tool_rank), [3, 1, 2, 4]);
+  assert.deepEqual(api.sortGuides(guides, 'mit_specificity').map((g) => g.tool_rank), [2, 3, 1, 4]);
+  assert.deepEqual(api.sortGuides(guides, 'spacer_mean_cs', 'asc').map((g) => g.tool_rank), [1, 3, 2, 4]);
+  assert.throws(() => api.sortGuides(guides, 'not-a-column'));
+});
+test('numeric and text filters are inclusive and unavailable values remain excluded', () => {
+  const guides = api.contextualize(region.guides.slice(0, 4), result).map((g, i) => ({
+    ...g, mit_specificity: [75, 90, 90, null][i], exact_matches: [1, 2, 3, 4][i],
+    spacer_context: { ...g.spacer_context, mean_cs: [0.2, 0.8, 0.5, null][i] },
+    warnings: i === 1 ? ['Repeated exact reference matches'] : g.warnings,
+  }));
+  assert.deepEqual(api.filterGuides(guides, { spacer_mean_cs: { min: 0.2, max: 0.5 } }).map((g) => g.tool_rank), [1, 3]);
+  assert.deepEqual(api.filterGuides(guides, { mit_specificity: { min: 80, max: null } }).map((g) => g.tool_rank), [2, 3]);
+  assert.deepEqual(api.filterGuides(guides, { text: 'exact reference matches' }).map((g) => g.tool_rank), [2]);
+  assert.deepEqual(api.filterGuides(guides, { exact_matches: { min: 2, max: 3 } }).map((g) => g.tool_rank), [2, 3]);
+  assert.throws(() => api.filterGuides(guides, { spacer_mean_cs: { min: 0.7, max: 0.3 } }), /Minimum exceeds maximum/);
+});
 test('TSV distinguishes missing from zero and includes denominators and search provenance', () => {
   const altered=structuredClone(result); altered.values.status.fill(0);
   const tsv=api.asTsv(api.contextualize([region.guides[0]],altered),catalogue);
