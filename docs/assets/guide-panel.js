@@ -5,10 +5,9 @@
     const get = (id) => document.getElementById(id);
     const panel = get('guide-panel'); const enable = get('guide-enable'); const overlay = get('guide-overlay');
     const status = get('guide-status'); const body = get('guide-body'); const details = get('guide-details');
-    const sortBy = get('guide-sort'); const sortDirection = get('guide-sort-direction');
     const filterGrid = get('guide-filter-grid'); const filterText = get('guide-filter-text'); const viewStatus = get('guide-view-status');
     const content = get('guide-content'); const download = get('guide-download'); const jsonDownload = get('guide-json-download');
-    let result = null; let catalogue = null; let loading = null; let candidates = []; let guides = []; let selected = null; let generation = 0; const urls = [];
+    let result = null; let catalogue = null; let loading = null; let candidates = []; let guides = []; let selected = null; let sortBy = 'tool_rank'; let sortDirection = 'asc'; let generation = 0; const urls = [];
     const element = (tag, text, className = '') => { const node = document.createElement(tag); node.textContent = text; node.className = className; return node; };
     const numeric = (value, digits = 1) => value == null ? 'Unavailable' : Number(value).toFixed(digits);
     const FILTER_LABELS = {
@@ -51,7 +50,7 @@
         source_intervals: catalogue.regions.map(({ guides: _guides, ...metadata }) => metadata),
         context_method: 'Spacer and PAM means separately; finite Cs values, SNP values only at accessible focal bases (status bit 1). SNP is the archived centred 20-base rolling density, not variant counts. Missing values remain unknown.',
         selected_guide: selected?.id || null, show_on_figures: overlay.checked,
-        display: { sort_by: sortBy.value, sort_direction: sortDirection.value, filters: currentFilters(), matched_guides: guides.length, candidate_guides: candidates.length }, guides };
+        display: { sort_by: sortBy, sort_direction: sortDirection, filters: currentFilters(), matched_guides: guides.length, candidate_guides: candidates.length }, guides };
       for (const [link, data, type, suffix] of [[download, api.asTsv(guides, catalogue), 'text/tab-separated-values', 'tsv'], [jsonDownload, JSON.stringify(record, null, 2), 'application/json', 'json']]) {
         const url = URL.createObjectURL(new Blob([data], { type })); urls.push(url); link.href = url; link.download = `${stem}.${suffix}`; link.hidden = false;
       }
@@ -70,7 +69,7 @@
     function renderRows() {
       if (!guides.length) {
         const row = element('tr', ''); const cell = element('td', 'No guides match these filters. Clear a bound or text filter to show more guides.');
-        cell.colSpan = 8; row.append(cell); body.replaceChildren(row); return;
+        cell.colSpan = 11; row.append(cell); body.replaceChildren(row); return;
       }
       body.replaceChildren(...guides.map((g) => {
         const row = element('tr', '');
@@ -78,24 +77,33 @@
         choose.setAttribute('aria-label', `Select CRISPOR guide ${g.tool_rank}: ${g.spacer} ${g.pam}`); choose.setAttribute('aria-pressed', 'false'); choose.addEventListener('click', () => select(g));
         const rank = element('td', ''); rank.append(choose);
         const seq = element('td', ''); seq.append(sequence(g), element('small', `${g.chromosome}:${g.start}–${g.end} (${g.strand})`));
-        const specificity = element('td', numeric(g.mit_specificity, 0)); specificity.append(element('small', `CFD ${numeric(g.cfd_specificity, 0)}`));
         const cs = element('td', numeric(g.spacer_context.mean_cs, 3)); cs.append(element('small', `${g.spacer_context.finite_cs_bases}/20 valid bases`));
         const snp = element('td', numeric(g.spacer_context.mean_snp_density, 4)); snp.append(element('small', `${g.spacer_context.finite_accessible_snp_bases}/20 valid accessible bases`));
-        row.append(rank, seq, specificity, element('td', numeric(g.activity_doench2016, 0)), cs, snp, element('td', g.exact_matches == null ? 'Unknown' : String(g.exact_matches)), element('td', g.warnings.join('; ') || '—', g.warnings.length ? 'guide-warning' : ''));
+        row.append(rank, seq, element('td', numeric(g.mit_specificity, 0)), element('td', numeric(g.cfd_specificity, 0)), element('td', numeric(g.activity_doench2016, 0)), cs, snp,
+          element('td', g.exact_matches == null ? 'Unknown' : String(g.exact_matches)), element('td', g.off_target_count == null ? 'Unknown' : String(g.off_target_count)),
+          element('td', numeric(g.gc_percent, 1)), element('td', g.warnings.join('; ') || '—', g.warnings.length ? 'guide-warning' : ''));
         return row;
       }));
     }
     function renderView() {
       try {
-        guides = api.sortGuides(api.filterGuides(candidates, currentFilters()), sortBy.value, sortDirection.value);
+        guides = api.sortGuides(api.filterGuides(candidates, currentFilters()), sortBy, sortDirection);
       } catch (error) {
         guides = []; selected = null; details.hidden = true; renderRows(); releaseDownloads(); onChange();
         viewStatus.textContent = error.message; viewStatus.className = 'guide-warning'; return;
       }
       viewStatus.className = '';
-      const activeSort = sortBy.selectedOptions[0].textContent;
-      const direction = sortDirection.value === 'asc' ? 'ascending' : 'descending';
+      const activeHeader = get('guide-table-head').querySelector(`[data-sort="${sortBy}"] .guide-sort-header`);
+      const activeSort = activeHeader?.textContent.replace(/[↑↓]/g, '').trim() || sortBy;
+      const direction = sortDirection === 'asc' ? 'ascending' : 'descending';
       viewStatus.textContent = `Showing ${guides.length.toLocaleString()} of ${candidates.length.toLocaleString()} guides · ${activeSort}, ${direction}; CRISPOR order remains visible in the first column.`;
+      get('guide-table-head').querySelectorAll('th[data-sort]').forEach((header) => {
+        const active = header.dataset.sort === sortBy;
+        header.setAttribute('aria-sort', active ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none');
+        const button = header.querySelector('button'); const label = button.textContent.replace(/[↑↓]/g, '').trim();
+        button.setAttribute('aria-label', `Sort by ${label}${active ? `, currently ${direction}` : ''}`);
+        button.replaceChildren(document.createTextNode(`${label}${active ? ' ' : ''}`), ...(active ? [element('span', sortDirection === 'asc' ? '↑' : '↓')] : []));
+      });
       const selectedIsVisible = selected && guides.some((guide) => guide.id === selected.id);
       if (selected && !selectedIsVisible) { selected = null; details.hidden = true; onChange(); }
       renderRows();
@@ -120,8 +128,12 @@
         if (!candidates.length) status.textContent += ' No complete 20-base spacer plus PAM occurs inside this interval.';
       } catch (error) { if (token === generation) status.textContent = `Guide results unavailable: ${error.message} Disable and re-enable to retry.`; }
     }
-    sortBy.addEventListener('change', () => { sortDirection.value = api.SORT_FIELDS[sortBy.value].direction; renderView(); });
-    sortDirection.addEventListener('change', renderView);
+    get('guide-table-head').addEventListener('click', (event) => {
+      const button = event.target.closest('button[data-sort]'); if (!button) return;
+      if (button.dataset.sort === sortBy) sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+      else { sortBy = button.dataset.sort; sortDirection = api.SORT_FIELDS[sortBy].direction; }
+      renderView();
+    });
     filterText.addEventListener('input', renderView);
     enable.addEventListener('change', load);
     overlay.addEventListener('change', () => { updateDownloads(); onChange(); });

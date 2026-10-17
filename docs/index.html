@@ -211,30 +211,6 @@
           <div id="guide-examples" class="guide-examples"><span>Prototype examples:</span><button type="button" data-region="2L:1000000-1000999">Benchmark locus</button><button type="button" data-region="2L:28585064-28586748">AGAP006241</button><button type="button" data-region="3L:3855186-3858609">AGAP010449</button><button type="button" data-region="3R:38377342-38377436">AGAP009678</button></div>
           <div id="guide-content" hidden>
             <p class="field-help">Sequences are written 5′→3′ in guide orientation; the orange triplet is the PAM. Activity is a Doench 2016 prediction, not measured activity in Anopheles. Guides with repeated exact matches remain visible with warnings.</p>
-            <div class="guide-table-controls">
-              <label for="guide-sort">Order rows by
-                <select id="guide-sort">
-                  <option value="tool_rank">CRISPOR’s native rank</option>
-                  <option value="mit_specificity">MIT specificity</option>
-                  <option value="cfd_specificity">CFD specificity</option>
-                  <option value="activity_doench2016">Predicted activity</option>
-                  <option value="spacer_mean_cs">Spacer mean Cs</option>
-                  <option value="spacer_mean_snp_density">Spacer mean SNP density</option>
-                  <option value="pam_mean_cs">PAM mean Cs</option>
-                  <option value="pam_mean_snp_density">PAM mean SNP density</option>
-                  <option value="exact_matches">Exact reference matches</option>
-                  <option value="off_target_count">Off-target count</option>
-                  <option value="gc_percent">Spacer GC percent</option>
-                  <option value="start">Genomic position</option>
-                  <option value="strand">Strand</option>
-                  <option value="spacer">Sequence</option>
-                  <option value="warnings">Warnings</option>
-                </select>
-              </label>
-              <label for="guide-sort-direction">Direction
-                <select id="guide-sort-direction"><option value="asc">Ascending</option><option value="desc">Descending</option></select>
-              </label>
-            </div>
             <details class="guide-filters">
               <summary>Filter by metric or sequence</summary>
               <p class="field-help">Set a minimum, maximum, or both for any numeric column. A bound excludes guides where that metric is unavailable. Bounds include their endpoints.</p>
@@ -244,10 +220,22 @@
               </label>
             </details>
             <p id="guide-view-status" role="status" aria-live="polite"></p>
-            <div class="guide-table-scroll" tabindex="0" aria-label="Scored guides in native CRISPOR order"><table class="query-summary-table guide-table"><thead><tr><th scope="col">CRISPOR order</th><th scope="col">Spacer + PAM / location</th><th scope="col">MIT specificity</th><th scope="col">Predicted activity</th><th scope="col">Spacer mean Cs</th><th scope="col">Spacer mean SNP density</th><th scope="col">Exact matches</th><th scope="col">Warnings</th></tr></thead><tbody id="guide-body"></tbody></table></div>
+            <div class="guide-table-scroll" tabindex="0" aria-label="Scored guides; select a column heading to sort"><table class="query-summary-table guide-table"><thead id="guide-table-head"><tr>
+              <th scope="col" data-sort="tool_rank" aria-sort="ascending"><button type="button" data-sort="tool_rank" class="guide-sort-header" aria-label="Sort by CRISPOR order">CRISPOR order <span aria-hidden="true">↑</span></button></th>
+              <th scope="col" data-sort="start" aria-sort="none"><button type="button" data-sort="start" class="guide-sort-header" aria-label="Sort by genomic position">Spacer + PAM / location</button></th>
+              <th scope="col" data-sort="mit_specificity" aria-sort="none"><button type="button" data-sort="mit_specificity" class="guide-sort-header" aria-label="Sort by MIT specificity">MIT specificity</button></th>
+              <th scope="col" data-sort="cfd_specificity" aria-sort="none"><button type="button" data-sort="cfd_specificity" class="guide-sort-header" aria-label="Sort by CFD specificity">CFD specificity</button></th>
+              <th scope="col" data-sort="activity_doench2016" aria-sort="none"><button type="button" data-sort="activity_doench2016" class="guide-sort-header" aria-label="Sort by predicted activity">Predicted activity</button></th>
+              <th scope="col" data-sort="spacer_mean_cs" aria-sort="none"><button type="button" data-sort="spacer_mean_cs" class="guide-sort-header" aria-label="Sort by spacer mean Cs">Spacer mean Cs</button></th>
+              <th scope="col" data-sort="spacer_mean_snp_density" aria-sort="none"><button type="button" data-sort="spacer_mean_snp_density" class="guide-sort-header" aria-label="Sort by spacer mean SNP density">Spacer mean SNP density</button></th>
+              <th scope="col" data-sort="exact_matches" aria-sort="none"><button type="button" data-sort="exact_matches" class="guide-sort-header" aria-label="Sort by exact reference matches">Exact matches</button></th>
+              <th scope="col" data-sort="off_target_count" aria-sort="none"><button type="button" data-sort="off_target_count" class="guide-sort-header" aria-label="Sort by off-target count">Off-target count</button></th>
+              <th scope="col" data-sort="gc_percent" aria-sort="none"><button type="button" data-sort="gc_percent" class="guide-sort-header" aria-label="Sort by spacer GC percent">Spacer GC %</button></th>
+              <th scope="col" data-sort="warnings" aria-sort="none"><button type="button" data-sort="warnings" class="guide-sort-header" aria-label="Sort by warnings">Warnings</button></th>
+            </tr></thead><tbody id="guide-body"></tbody></table></div>
             <div id="guide-details" class="guide-details" aria-live="polite" hidden></div>
             <div class="report-actions"><a class="button secondary" id="guide-download" download hidden>Download guide TSV</a><a class="button secondary" id="guide-json-download" download hidden>Download guide report (JSON)</a></div>
-            <p class="summary-method">Cs means use finite bases. SNP means use valid accessible focal bases and retain the source’s centred 20-base rolling density; they are not counts of variants within the guide. Unknown bases are not zero. Spacer and PAM summaries are separate in the selected-guide details and downloads. These contextual values do not alter CRISPOR order. Guide selection is recorded in the separate guide report, not the general query permalink/report.</p>
+            <p class="summary-method">Click a column heading to sort by that value; click it again to reverse the order. Cs means use finite bases. SNP means use valid accessible focal bases and retain the source’s centred 20-base rolling density; they are not counts of variants within the guide. Unknown bases are not zero. Spacer and PAM summaries are separate in the selected-guide details and downloads. These contextual values do not alter CRISPOR scores. Guide selection is recorded in the separate guide report, not the general query permalink/report.</p>
           </div>
         </section>
         <div class="live-visuals" id="live-visuals" hidden>
