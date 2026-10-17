@@ -21,6 +21,7 @@ const {
   transcriptAnnotationsForDisplay,
   abbreviatedSpeciesName,
   rangeFromDisplayBins,
+  renderSignalPlot,
   renderHeatmap,
   topologyTipCodes,
   validateSpeciesTopology,
@@ -438,6 +439,55 @@ test('single-transcript figure annotation labels link to the VectorBase gene', (
     );
     const linkedText = descendants(links[0]).find((child) => child.name === 'text');
     assert.equal(linkedText.textContent, 'AGAPQUERY-RA (+ strand; shown 5′→3′)');
+  } finally {
+    globalThis.document = previousDocument;
+  }
+});
+
+test('signal figures place guide details below plotted annotations without fixed empty space', () => {
+  const previousDocument = globalThis.document;
+  globalThis.document = {
+    createElementNS: (_namespace, name) => new FakeElement(name),
+    createElement: (name) => new FakeElement(name),
+  };
+  try {
+    const result = {
+      chromosome: '2L', start: 100, end: 105,
+      values: {
+        Cs: Float32Array.from([0.1, 0.2, 0.3, 0.4, 0.5, 0.6]),
+        snp_density: Float32Array.from([0, 0.1, 0, 0.1, 0, 0.1]),
+        status: Uint8Array.from([1, 1, 1, 1, 1, 1]),
+      },
+    };
+    const annotation = {
+      id: 'AGAPQUERY', chromosome: '2L', start: 100, end: 105, strand: 1,
+      transcript_id: 'AGAPQUERY-RA', exons: [{ start: 100, end: 105 }],
+      cds_start: 100, cds_end: 105,
+    };
+    const container = new FakeElement('container');
+    renderSignalPlot(container, result, annotation, [annotation]);
+    const [plainSvg] = container.children;
+    const plainHeight = Number(plainSvg.getAttribute('viewBox').split(' ')[3]);
+    assert.ok(plainHeight < 700, `expected compact annotation plot, got ${plainHeight}`);
+
+    const selectedGuide = {
+      id: 'guide-1', tool_rank: 1, chromosome: '2L', strand: '+',
+      start: 101, end: 103,
+      spacer_start: 101, spacer_end: 102, pam_start: 103, pam_end: 103,
+      spacer: 'AC', pam: 'AGG', sequence_context: 'AACGTT', sequence_context_start: 100,
+    };
+    renderSignalPlot(container, result, annotation, [annotation], 'adaptive', null, null, selectedGuide);
+    const [guidedSvg] = container.children;
+    const axisLabel = descendants(guidedSvg).find((child) => (
+      child.name === 'text' && child.textContent.includes('Position relative to AGAPQUERY')
+    ));
+    const guideLabel = descendants(guidedSvg).find((child) => (
+      child.name === 'text' && child.textContent.startsWith('Guide 1')
+    ));
+    const guidedHeight = Number(guidedSvg.getAttribute('viewBox').split(' ')[3]);
+    assert.ok(axisLabel && guideLabel);
+    assert.ok(Number(guideLabel.getAttribute('y')) - Number(axisLabel.getAttribute('y')) < 36);
+    assert.ok(guidedHeight < 760, `expected compact guide overlay, got ${guidedHeight}`);
   } finally {
     globalThis.document = previousDocument;
   }
