@@ -560,6 +560,8 @@ test('figure-first results expose both plots before rankings and supporting deta
   assert.ok(html.indexOf('id="guide-disclosure"') < html.indexOf('id="live-heatmap-panel"'));
   assert.match(html, /<details class="guide-disclosure" id="guide-disclosure">/);
   assert.doesNotMatch(html, /<details class="guide-disclosure" id="guide-disclosure" open>/);
+  assert.equal((html.match(/id="guide-panel"/g) || []).length, 1);
+  assert.match(html.slice(html.indexOf('id="guide-disclosure"'), html.indexOf('id="live-heatmap-panel"')), /<section class="guide-panel" id="guide-panel"[^>]*hidden>/);
   assert.match(fs.readFileSync(path.join(__dirname, '../docs/assets/guide-panel.js'), 'utf8'), /const cs = element\('td', numeric\(g\.spacer_context\.mean_cs, 3\)\);\s*const snp = element\('td', numeric\(g\.spacer_context\.mean_snp_density, 4\)\);/);
   assert.match(source, /function formatResolutionLabel\(resolution\)/);
   assert.match(source, /setPortalState\(resolution \? formatResolutionLabel\(resolution\)/);

@@ -14,8 +14,9 @@ const catalogue = require('../docs/assets/data/guide-catalogue.json');
       await page.waitForFunction(() => document.querySelector('#result-status').textContent === 'Complete' || document.querySelector('#result-status').textContent === 'Failed', {}, { timeout: 45000 });
       assert.equal(await page.locator('#result-status').textContent(), 'Complete', await page.locator('#benchmark-status').textContent());
     }
-    async function example(name, count) {
-      await page.locator('#guide-examples button').filter({ hasText: name }).click();
+  async function example(name, count) {
+    await page.locator('#guide-disclosure > summary').click();
+    await page.locator('#guide-examples button').filter({ hasText: name }).click();
       await waitForQuery();
       await page.waitForFunction((n) => document.querySelector('#guide-body').children.length === n, count);
       assert.equal(await page.locator('input[name="live-query-mode"][value="coordinates"]').isChecked(), true);
